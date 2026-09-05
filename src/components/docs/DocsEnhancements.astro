@@ -1,0 +1,166 @@
+---
+import { getT } from '../../i18n/t'
+
+type Props = { locale?: string }
+
+const { locale = 'en' } = Astro.props as Props
+
+const t = getT(locale)
+
+// Handed to the inline script as data attributes rather than interpolated into
+// the JS source: the strings are translated prose and one of the nine will
+// eventually contain an apostrophe, which would end the string literal and take
+// the whole script with it.
+const labels = {
+    anchor: t('docs.anchor'),
+    copy: t('docs.code.copy'),
+    copied: t('docs.code.copied'),
+    failed: t('docs.code.failed'),
+}
+---
+
+<div
+    id="docs-enhance"
+    hidden
+    data-anchor={labels.anchor}
+    data-copy={labels.copy}
+    data-copied={labels.copied}
+    data-failed={labels.failed}
+>
+</div>
+
+{/*
+    Two progressive enhancements, done in plain DOM rather than as React
+    islands: a heading gets a "link to this section" anchor, and a code block
+    gets a copy button.
+
+    Both are decorations on markup Astro already rendered at build time — there
+    is no state, no props and nothing to hydrate. Making them islands would ship
+    a React tree per page to move two elements around, and would mean the MDX
+    renderer had to hand every `pre` and `h2` through a component override just
+    to attach a button. `is:inline` keeps it a single <script> the browser runs
+    once, with no module graph.
+*/}
+<script is:inline>
+    ;(function () {
+        var cfg = document.getElementById('docs-enhance')
+        if (!cfg) return
+
+        var L = {
+            anchor: cfg.dataset.anchor || 'Link to this section',
+            copy: cfg.dataset.copy || 'Copy',
+            copied: cfg.dataset.copied || 'Copied',
+            failed: cfg.dataset.failed || 'Press Ctrl+C to copy',
+        }
+
+        var article = document.querySelector('.docs-prose')
+        if (!article) return
+
+        /* ---- Section anchors ------------------------------------------- */
+
+        var headings = article.querySelectorAll('h2[id], h3[id], h4[id]')
+
+        headings.forEach(function (h) {
+            var a = document.createElement('a')
+
+            a.href = '#' + h.id
+            a.className = 'heading-anchor'
+            a.setAttribute('aria-label', L.anchor)
+            a.title = L.anchor
+            a.textContent = '#'
+
+            h.appendChild(a)
+        })
+
+        /* ---- Table scroll wrappers ------------------------------------- */
+
+        /*
+         * Markdown gives no hook to wrap a table, and a scope table with a
+         * prose column is wider than the article at any phone width. Without a
+         * scrolling ancestor the widest table on a page sets the width of the
+         * whole DOCUMENT, so one endpoint reference puts a horizontal scrollbar
+         * on every section of it.
+         */
+        article.querySelectorAll('table').forEach(function (table) {
+            var parent = table.parentElement
+            if (parent && parent.classList.contains('table-wrap')) return
+
+            var wrap = document.createElement('div')
+            wrap.className = 'table-wrap'
+
+            table.parentNode.insertBefore(wrap, table)
+            wrap.appendChild(table)
+        })
+
+        /* ---- Copy buttons ---------------------------------------------- */
+
+        var blocks = article.querySelectorAll('pre')
+
+        blocks.forEach(function (pre) {
+            // Shiki renders `<pre><code>…</code></pre>`; the wrapper is what
+            // positions the button, and `pre` itself is the scroll container,
+            // so the button has to sit OUTSIDE it or it scrolls away with the
+            // code.
+            var wrap = document.createElement('div')
+            wrap.className = 'code-block'
+
+            pre.parentNode.insertBefore(wrap, pre)
+            wrap.appendChild(pre)
+
+            var btn = document.createElement('button')
+            btn.type = 'button'
+            btn.className = 'code-copy'
+            btn.textContent = L.copy
+            btn.setAttribute('aria-label', L.copy)
+
+            btn.addEventListener('click', function () {
+                var code = pre.querySelector('code')
+                var text = (code || pre).innerText
+
+                var done = function (ok) {
+                    btn.textContent = ok ? L.copied : L.failed
+                    btn.classList.toggle('is-copied', ok)
+
+                    window.setTimeout(function () {
+                        btn.textContent = L.copy
+                        btn.classList.remove('is-copied')
+                    }, 2000)
+                }
+
+                // `navigator.clipboard` is undefined on plain HTTP, which is
+                // exactly how this site is reached in local dev, so the
+                // execCommand path is the one that runs while you are writing
+                // the docs — it is not dead legacy code.
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(
+                        function () {
+                            done(true)
+                        },
+                        function () {
+                            done(false)
+                        }
+                    )
+                    return
+                }
+
+                try {
+                    var ta = document.createElement('textarea')
+                    ta.value = text
+                    ta.setAttribute('readonly', '')
+                    ta.style.position = 'fixed'
+                    ta.style.opacity = '0'
+
+                    document.body.appendChild(ta)
+                    ta.select()
+
+                    done(document.execCommand('copy'))
+                    document.body.removeChild(ta)
+                } catch (e) {
+                    done(false)
+                }
+            })
+
+            wrap.appendChild(btn)
+        })
+    })()
+</script>

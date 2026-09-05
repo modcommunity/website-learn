@@ -1,0 +1,82 @@
+---
+title: External sources
+description: Where else an item is published — CurseForge, NexusMods, a repository — and how a source's install template works.
+order: 90
+source:
+  - prisma/models/content-source.prisma
+---
+
+A **source** is an external website a content item is also published on:
+CurseForge, NexusMods, a launcher's own catalogue, a git repository.
+
+Attaching one says *"this mod is also at that address"*. It is a pointer, not an
+endorsement — we are not affiliated with these sites, and a source's owner can
+ask for it to be removed.
+
+Available on **mods** and **assets**.
+
+## The source, and the item's entry on it
+
+Two levels:
+
+**A source** is the site itself — its name, its URL, its icon, whether it
+carries mods or assets or both, and its install template. Sources are
+staff-maintained and browsable at `/sources`.
+
+**A source item** is your item's entry on that source:
+
+<Params>
+  <Param name="sourceId" type="int" required>
+    Which source. This is what identifies the entry — not its own `id` — so
+    re-attaching the same source updates rather than duplicating.
+  </Param>
+  <Param name="path" type="string" required>
+    The item's path on that source's site. An absolute URL is reduced to its
+    path server-side, so pasting the whole address works.
+  </Param>
+  <Param name="externalId" type="string">
+    The item's id on that source. Fills `[id]` in the source's install template.
+  </Param>
+  <Param name="externalFileId" type="string">
+    Fills `[file_id]`.
+  </Param>
+  <Param name="externalAdditional" type="string">
+    Fills `[additional]`.
+  </Param>
+  <Param name="isPrimaryGit" type="boolean" default="false">
+    Marks this as the item's **repository**.
+  </Param>
+</Params>
+
+The external ids only matter when the source defines an install template. Where
+it does not, `path` alone is enough.
+
+## The repository is a source, not a link
+
+An item's open-source repository — and the star count shown beside it — is **not
+a column on the item**. It is the source entry flagged `isPrimaryGit`, pointing
+at a source marked as a git host.
+
+That is why adding a `GITHUB` [link](/learn/content/relations/links) puts an
+icon on the page and connects nothing. If you want the repository recognised as
+one, attach it as a source.
+
+## Through the API
+
+<Endpoint method="PUT" path="/api/content/{type}/{id}/sources" auth="API key" scope="canWrite">
+Replace the source set. Members are identified by `sourceId`.
+</Endpoint>
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/mod/5/sources \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "sourceId": 3, "path": "/minecraft/mod/231", "externalId": "231" }]'
+```
+
+The source must be visible to you and must declare that it carries **this item's
+kind** — a mods-only site rejects an asset, and vice versa.
+
+<Related>
+- [Releases — building from a repository](/learn/content/relations/releases#building-from-a-repository)
+- [Links](/learn/content/relations/links)
+</Related>

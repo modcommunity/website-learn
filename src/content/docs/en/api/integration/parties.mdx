@@ -1,0 +1,242 @@
+---
+title: Parties
+description: The five party endpoints — state, sessions, matches, create, end — plus reading a roster, and the row budgets that bound them.
+order: 10
+source:
+  - docs/api/integration-api.md
+---
+
+## Reporting state
+
+<Endpoint method="POST" path="/api/integration/v1/party/state" auth="Integration" scope="PARTY_STATE">
+The full current picture. Send this on a timer, every 10–30 seconds,
+unconditionally.
+</Endpoint>
+
+```json
+{
+  "partyId": "4471",
+  "mapName": "de_dust2",
+  "gameMode": "Competitive",
+  "players": [
+    { "name": "Ashley", "steamId": "76561198000000000", "score": 22, "kills": 18, "deaths": 11 },
+    { "name": "Sam", "score": 9 }
+  ],
+  "ts": 1753822800
+}
+```
+
+```json
+{ "ok": true, "matched": 1, "ambiguous": 0, "unmatched": 1 }
+```
+
+`unmatched` is the number of reported players who are not members of the party —
+usually normal, since other people are on the server too. A persistently high
+`matched: 0` is the signature of a name-matching problem, and the same figures
+land in your request log so you can see it without instrumenting anything.
+
+Up to **256 players** per report.
+
+## Exact join and leave times
+
+<Endpoint method="POST" path="/api/integration/v1/party/session" auth="Integration" scope="PARTY_SESSION">
+One join or leave. Complements state reports rather than replacing them.
+</Endpoint>
+
+```json
+{
+  "partyId": "4471",
+  "event": "leave",
+  "player": { "name": "Ashley", "steamId": "76561198000000000" },
+  "ts": 1753822812
+}
+```
+
+```json
+{ "ok": true, "applied": true }
+```
+
+`applied: false` means no party member matched that player. That is a `200`, not
+an error, because you have no way to know which of your players are site members
+and retrying would not help.
+
+State reports keep the roster honest; sessions make the **timing** exact instead
+of quantised to your report interval. You do not need sessions for a correct
+roster.
+
+## Rounds
+
+<Endpoint method="POST" path="/api/integration/v1/party/match" auth="Integration" scope="PARTY_STATE + PARTY_STATS">
+A round started or finished.
+</Endpoint>
+
+```json
+{
+  "partyId": "4471",
+  "event": "end",
+  "mapName": "de_dust2",
+  "gameMode": "Competitive",
+  "players": [
+    { "name": "Ashley", "score": 31, "kills": 24, "deaths": 14, "place": 1, "seconds": 1820 }
+  ],
+  "ts": 1753824600
+}
+```
+
+```json
+{ "ok": true, "matchId": "913", "recorded": 1 }
+```
+
+`event: "start"` closes any open round and opens a new one. `event: "end"`
+closes the current one and records the results.
+
+Sending `end` with **no open round** opens and immediately closes one — so a
+reporter that only ever emits results still produces usable history.
+
+`recorded` counts the results attributed to a matched member. Unmatched players'
+scores are dropped rather than stored against nobody.
+
+## Creating a party
+
+<Endpoint method="POST" path="/api/integration/v1/party/create" auth="Integration" scope="PARTY_WRITE">
+Create a party on the credential's behalf.
+</Endpoint>
+
+```json
+{ "name": "Ranked queue", "maxUsers": 10, "type": "PUBLIC" }
+```
+
+```json
+{ "ok": true, "partyId": "4472", "url": "/parties/4472-ranked-queue" }
+```
+
+<Callout type="warning" title="The host is the credential's owner">
+Never a player you name. An integration acts as the member who created it —
+that is the only account it can be held to, and the only one that can revoke it.
+</Callout>
+
+`type` is limited to `PUBLIC` or `FRIENDS`. A password party created by a
+machine has a password only the machine knows; a private one would have an
+invite list nobody can manage.
+
+A server-scoped credential creates parties on its own server. An app-scoped one
+may name a `serverId`, validated against the app.
+
+## Ending a party
+
+<Endpoint method="POST" path="/api/integration/v1/party/end" auth="Integration" scope="PARTY_WRITE">
+End the party.
+</Endpoint>
+
+```json
+{ "partyId": "4471" }
+```
+
+Ends it with reason `SERVER` — **not** `HOST`. The party's own history should say
+what actually happened, and "the game side closed it" is not the same as the
+host pressing End.
+
+## Reading a party
+
+<Endpoint method="GET" path="/api/integration/v1/party/{id}" auth="Integration" scope="PARTY_READ">
+The party and its roster.
+</Endpoint>
+
+```json
+{
+  "ok": true,
+  "party": {
+    "id": "4471",
+    "name": "Ranked queue",
+    "type": "PUBLIC",
+    "techType": "THIRD_PARTY_SUPPORTED",
+    "maxUsers": 10,
+    "users": 4,
+    "startTime": "2026-07-29T20:00:00.000Z",
+    "endTime": null,
+    "mapName": "de_dust2",
+    "gameMode": "Competitive",
+    "hostId": "clx…",
+    "appId": 3,
+    "serverId": 4821
+  },
+  "members": [
+    {
+      "userId": "clx…",
+      "displayName": "Ashley",
+      "gameName": "Ashley",
+      "role": "HOST",
+      "presence": "CONFIRMED",
+      "score": 22,
+      "kills": 18,
+      "deaths": 11,
+      "assist": 0,
+      "joinedAt": "2026-07-29T20:00:00.000Z"
+    }
+  ]
+}
+```
+
+<Callout type="info" title="This is the one place anonymity is not applied">
+Your whole job is to reconcile our roster against the game's player list, and a
+member hidden from you could never be matched — so their play time and score
+would silently never be recorded.
+
+Site *visitors* see the anonymised roster; the game server a member deliberately
+connected to sees who is there. It returns display names and ids and **nothing
+else** — no email, no profile.
+</Callout>
+
+## Looking up a player
+
+<Endpoint method="GET" path="/api/integration/v1/user/lookup" auth="Integration" scope="USER_LOOKUP">
+Resolve an in-game name to a member.
+</Endpoint>
+
+```
+GET /api/integration/v1/user/lookup?partyId=4471&name=Ashley
+```
+
+```json
+{
+  "ok": true,
+  "found": true,
+  "ambiguous": false,
+  "via": "steamId",
+  "user": { "id": "clx…", "displayName": "Ashley" }
+}
+```
+
+Deliberately the narrowest possible oracle. It answers **only** within a party
+your credential is entitled to, **only** for members who have already joined
+that party themselves, and returns an id and a display name and nothing else. A
+general name-to-account lookup would be worth more to an attacker than
+everything else in this API combined.
+
+`ambiguous: true` means more than one member could be that name, so we will not
+say which.
+
+## Row budgets
+
+Every one of these **degrades rather than refusing**, except where noted — a
+real, long-lived deployment crosses some of them eventually, and turning that
+into an error would break working software at the exact moment nobody is
+watching.
+
+| Limit | Default | At the ceiling |
+| --- | --- | --- |
+| Recorded matches per party | 500 | `match start` opens nothing. The response carries `capped: true` and a null `matchId` |
+| Parties created per credential, per day | 200 | **`429`** — this one IS an error, because everything you do next is about a party that does not exist |
+| Parties created per owner, per day | 50 | **`429`**. Your parties are your owner's parties, and count against the same figure their own account has |
+
+<Callout type="info" title="Why a per-day party budget exists">
+The one-live-party rule already stops a credential holding more than one party
+at a time — but create → end → create never violates it and appends a row every
+time.
+</Callout>
+
+<Related>
+- [Chat relay](/learn/api/integration/chat)
+- [Integrating a game](/learn/parties/integration)
+- [Parties, conceptually](/learn/parties)
+</Related>

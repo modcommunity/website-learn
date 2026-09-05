@@ -1,0 +1,83 @@
+---
+title: Groups
+description: A roster of people — and, unusually, a principal that can be granted access to somebody else's content.
+order: 70
+source:
+  - prisma/models/group.prisma
+  - prisma/models/permission.prisma
+---
+
+A **group** is two things at once, deliberately:
+
+1. **A content item.** It browses, it has a page, it takes categories, tags,
+   media, ratings, reviews, comments, credits and dependencies, exactly like a
+   mod or a community.
+2. **A permission principal.** A group can be granted `READ`, `WRITE` or
+   `DELETE` over some *other* content item, and **every member inherits that
+   grant**.
+
+The second is what makes groups worth having. Handing a five-person team write
+access to a mod is one grant to a group, not five grants to five accounts — and
+adding a sixth person to the team gives them access to everything the group
+holds, immediately.
+
+## The two directions of a grant
+
+This trips people up, so it is worth stating plainly:
+
+| | Means |
+| --- | --- |
+| A grant **held by** the group | Its members can act on somebody else's item |
+| A grant **over** the group | Somebody can co-manage the group itself |
+
+They are separate. Giving your group `WRITE` on a mod does **not** let its
+members edit the group.
+
+## Roles inside a group
+
+| Role | |
+| --- | --- |
+| `OWNER` | The creator. Mirrors the group's owner field |
+| `ADMIN` | Full management of the group |
+| `MODERATOR` | Moderates the group's own surfaces |
+| `USER` | An ordinary member |
+
+These are the group's own hierarchy and are **unrelated to site-wide roles**. A
+site `MODERATOR` is not automatically a group moderator, and a group `ADMIN` has
+no site powers.
+
+## Joining
+
+<Params>
+  <Param name="inviteOnly" type="boolean" default="false">
+    Members must be invited, or approved, rather than joining freely.
+    Outstanding invitations are tracked separately from the roster, so a pending
+    invite never counts as membership.
+  </Param>
+  <Param name="primary" type="boolean" default="false">
+    Marks the group surfaced first wherever a member's or an item's groups are
+    listed — a team's main roster as opposed to its side groups.
+  </Param>
+</Params>
+
+## Names are global
+
+A group's name and URL slug are both globally unique, like a community's. There
+is no per-app namespace to disambiguate them.
+
+## What can be attached
+
+The standard set, minus releases and links. Groups also have no relation
+sub-resources through the API — see the availability table in
+[Relations](/learn/api/content/relations#availability).
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/group" auth="API key" scope="canWrite">
+Only `name` is required. `primary` is rejected — it is a privileged flag.
+</Endpoint>
+
+<Related>
+- [The shared content model](/learn/content/model#ownership-and-access)
+- [Permissions and usage policy](/learn/content/relations/permissions)
+</Related>

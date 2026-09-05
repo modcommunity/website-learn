@@ -1,0 +1,37 @@
+@layer utilities {
+    .nav-active {
+        @apply text-white font-bold;
+    }
+
+    .special {
+        @apply text-special-1 font-bold;
+    }
+
+    /*
+     * A hover/state transition that CANNOT touch layout. Ported from
+     * website-city's `src/styles/Utilities.css`, which is the source of truth
+     * for it, so the shell reads the same on both sites.
+     *
+     * `transition-all` is the obvious thing to reach for and it is a trap:
+     * its property list includes width, height, padding and the inset
+     * properties, so a hover — or any reflow that happens to change a box while
+     * the pointer is over it — is paid for in layout rather than on the
+     * compositor. This is that list narrowed to what a hover state here
+     * actually changes and nothing that moves a box.
+     *
+     * Duration is NOT set here: this file is imported after Tailwind's own
+     * utilities, so a `transition-duration` in this rule would beat every
+     * `duration-*` it is paired with. Every caller names its own.
+     */
+    .transition-visual {
+        transition-property:
+            color, background-color, border-color, text-decoration-color, fill,
+            stroke, box-shadow, transform, translate, scale, rotate, opacity,
+            filter, backdrop-filter;
+
+        transition-timing-function: var(
+            --tw-ease,
+            var(--default-transition-timing-function, cubic-bezier(0.4, 0, 0.2, 1))
+        );
+    }
+}

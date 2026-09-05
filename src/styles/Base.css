@@ -1,0 +1,135 @@
+@layer base {
+  /*
+   * In-page anchors (the Assets callout → the gaming-platform section) glide
+   * instead of jumping. Honour a reduced-motion preference, where a long
+   * animated scroll is exactly what the user asked not to have.
+   */
+  html {
+    @apply scroll-smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body,
+  main {
+    @apply !text-text-default font-dm-sans;
+  }
+
+  header {
+    .nav-active {
+      @apply text-text-primary font-bold;
+    }
+  }
+
+  footer {
+    @apply w-full h-full min-h-60;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold text-text-primary font-pjs;
+
+    /*
+     * Let a heading break a word rather than widen the page.
+     *
+     * Headings are the largest type on the site and the most likely to meet a
+     * word longer than the column. English rarely produces one; Russian and
+     * German routinely do — "Полнофункциональная" is 350px of unbreakable text
+     * in a 288px column at 320px viewport, and the whole document then scrolls
+     * sideways by 46px on every page carrying that heading.
+     *
+     * It was invisible to the overflow audit for two runs because the *element*
+     * fits perfectly: the h2's box is 288px wide and well inside the viewport,
+     * and only its scrollWidth gives it away. An audit that asks which element
+     * sticks out finds nothing to blame.
+     *
+     * break-word rather than break-all: it only ever breaks a word that cannot
+     * fit on a line of its own, so nothing that already fits is re-wrapped and
+     * no other language is affected. Same fix, same reason, as the shared
+     * Footer's labels and CLink's text.
+     */
+    overflow-wrap: break-word;
+  }
+
+  h1 {
+    @apply text-4xl;
+  }
+
+  h2 {
+    @apply text-3xl;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
+  h6 {
+    @apply text-base;
+  }
+
+  p {
+    a {
+      @apply text-special-1-hover visited:text-special-1 hover:text-special-1-ring underline underline-offset-2;
+
+      color: color-mix(in srgb, var(--color-special-1) 80%, white);
+    }
+
+    a:hover {
+      color: color-mix(in srgb, var(--color-special-1) 70%, white);
+    }
+
+    a:visited {
+      color: color-mix(in srgb, var(--color-special-1) 85%, white);
+    }
+  }
+
+  input,
+  textarea,
+  select {
+    @apply bg-item ring-1 ring-border-secondary focus-visible:ring-border-primary focus-visible:border-0 focus:border-0 text-foreground rounded py-1 px-2 outline-none;
+  }
+
+  /*
+   * Scrollbar chrome, mirroring website-city's `src/styles/Base.css` — that
+   * file is the source of truth, keep the two in step. This used to be a grey
+   * thumb on the header colour, which is the one piece of shell chrome that
+   * still looked like the old bespoke palette after the theme move.
+   *
+   * `w-2` only sizes the vertical bar; without a height the horizontal one
+   * keeps the platform default and reads as a thick grey band.
+   */
+  ::-webkit-scrollbar {
+    @apply h-2 w-2;
+    @apply rounded;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-accent;
+
+    @apply rounded-lg;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-accent-hover;
+  }
+}

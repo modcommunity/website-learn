@@ -1,0 +1,43 @@
+@layer components {
+  /*
+   * Typography for the legal pages (ToS, privacy policy, licenses). The copy in
+   * those components is plain <p>/<ul>/<strong> markup, so the styling lives
+   * here rather than being repeated as utility classes on every element.
+   */
+  .legal-prose {
+    @apply text-muted leading-relaxed;
+  }
+
+  .legal-prose strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .legal-prose a {
+    @apply text-accent underline underline-offset-2 transition-colors hover:text-accent-hover;
+  }
+
+  .legal-prose ul {
+    @apply flex list-disc flex-col gap-2 pl-5 marker:text-accent/70;
+  }
+
+  .legal-prose ol {
+    @apply flex list-decimal flex-col gap-2 pl-5 marker:text-accent/70;
+  }
+
+  .legal-prose li {
+    @apply pl-1;
+  }
+
+  /*
+   * Long enumerations (tracked games, the fields we store, sign-in providers)
+   * read terribly as a 25-item bullet column — lay them out as a chip grid
+   * instead. Applied per-list with `class="legal-chips"`.
+   */
+  .legal-prose ul.legal-chips {
+    @apply grid list-none grid-cols-1 gap-2 pl-0 sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .legal-prose ul.legal-chips li {
+    @apply rounded-lg border border-border bg-surface px-3 py-2 pl-3 text-sm;
+  }
+}

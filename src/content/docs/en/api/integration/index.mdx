@@ -1,0 +1,175 @@
+---
+title: Integration API
+description: How a game server plugin or game mod reports state back to us — what it can do, what it deliberately cannot, and how to authenticate it.
+order: 50
+source:
+  - docs/api/integration-api.md
+---
+
+The integration API is how a **game server plugin or a game mod** reports state
+back to us: who is in a party, what map is running, what everybody scored, and
+what was said in the game's chat.
+
+It is deliberately not the same thing as the [public content
+API](/learn/api/content). That one lets a *person* script what they could do in
+the browser. This one lets a *program* — running on a machine its owner does not
+necessarily control alone — report facts about **one specific content item**, and
+nothing else.
+
+**Base URL:** `/api/integration/v1`. Everything is JSON.
+
+Manage your credentials under **Account → Integrations**.
+
+<Cards>
+  <Card title="Parties" href="/learn/api/integration/parties">
+    State, sessions, matches, create and end, and reading a party's roster.
+  </Card>
+  <Card title="Servers" href="/learn/servers/reporting">
+    Reporting your own statistics and roster. These two live outside
+    `/v1`, and the reason is worth knowing.
+  </Card>
+  <Card title="Chat" href="/learn/api/integration/chat">
+    Relaying in-game chat in, and injecting site chat back into the game.
+  </Card>
+</Cards>
+
+## Why it exists
+
+The party system has three integration levels, and they decide how much we are
+allowed to believe:
+
+| Level | What it means |
+| --- | --- |
+| `NATIVE` | Fully wired in. Playable in the browser through the app's web loader, and state is authoritative |
+| `THIRD_PARTY_SUPPORTED` | Not natively integrated, but a mod reports through **this API**, so the roster and the scores are authoritative |
+| `THIRD_PARTY` | Nothing integrated. We infer who is in the game by matching display names against the query server's player list |
+
+**Using this API is what moves a game from the third row to the second.** The
+site marks a `THIRD_PARTY` party's roster as a guess everywhere it shows it; a
+supported one is presented as fact. See [Tech
+levels](/learn/parties/tech-levels).
+
+## Authentication
+
+```
+Authorization: Bearer tmci_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+A bare `X-TMC-Integration: <token>` header is also accepted, for HTTP clients
+that cannot set `Authorization`.
+
+Integration tokens are prefixed `tmci_` — a **different namespace** from the
+content API's `tmc_`, deliberately, so a credential can never be presented to
+the wrong surface.
+
+[Signed Ed25519 assertions](/learn/api/authentication#signed-assertions-ed25519)
+are the stronger option and are available here too.
+
+## Scopes
+
+Every integration is bound to **exactly one content item** — an app or a server,
+in practice — and to a set of scopes:
+
+| Scope | Grants |
+| --- | --- |
+| `PARTY_READ` | Read a party, its roster and its rounds |
+| `PARTY_WRITE` | Create and end parties |
+| `PARTY_STATE` | Report the live map, mode and player list |
+| `PARTY_SESSION` | Report exact join / leave times |
+| `PARTY_STATS` | Report per-player and per-round scores |
+| `CHAT_READ` | Read the party or server chat |
+| `CHAT_WRITE` | Relay in-game chat into the site |
+| `USER_LOOKUP` | Resolve an in-game name to a member, **inside its own parties only** |
+| `ITEM_READ` | Read the item's own public metadata |
+| `SERVER_STATS` | Report the server's own live statistics |
+| `SERVER_USERS` | Report the server's current player list |
+
+A server-scoped credential may only touch parties **on that server**. An
+app-scoped one may only touch parties **for that app**. Anything else — a
+mod-scoped credential trying to report party state, say — is refused.
+
+Scopes are additive and deliberately fine-grained: a map-rotation reporter needs
+`PARTY_STATE` and nothing else, and should not be able to read the roster or
+post chat.
+
+<Callout type="info" title="SERVER_USERS is separate from SERVER_STATS on purpose">
+A player list is personal data about third parties. A plugin that reports a
+player *count* should not be able to name them as a side effect.
+</Callout>
+
+## The two hard rules
+
+These are worth reading before you write any code, because they are the two
+things most likely to surprise you.
+
+### 1. You cannot make somebody a member of a party
+
+A reporter sends what it knows: a display name, and a platform id if it has one.
+We match that against members who have **already joined the party themselves on
+the site**. A player we cannot match becomes an unlinked scoreboard entry —
+never a member.
+
+Letting a game server assert "player X is user Y" would hand it the ability to
+put any account into any party and attribute play time to it.
+
+Matching is, in order of confidence:
+
+1. **Steam id**, resolved through the player's own record on the party's server.
+   The only hint that is an identifier rather than a label.
+2. **The remembered in-game name** from a previous successful match.
+3. **The site display name or username**, case-insensitively.
+
+A name that matches more than one member resolves to **nobody**. Guessing
+between two candidates would credit one player's score to the other, and a wrong
+answer is worse than no answer.
+
+### 2. State is absolute, not incremental
+
+Send the **whole** player list every tick. We reconcile: players in the report
+are marked present, players absent from it are marked not-present.
+
+An incremental protocol would need you to guarantee delivery of every join and
+leave, and one dropped packet would leave somebody "in" a party forever.
+
+Being *in the party* (a lobby on our site) and being *connected to the game* are
+different things, and this API only ever reports the second. A player absent
+from a state report is marked as not in the game; they are **not** removed from
+the party.
+
+## `GET /me`
+
+<Endpoint method="GET" path="/api/integration/v1/me" auth="Integration">
+Identity and capability check. Needs **no scope**, which makes it the right
+first call when wiring a plugin up.
+</Endpoint>
+
+```json
+{
+  "ok": true,
+  "integrationId": "12",
+  "ownerId": "clx…",
+  "scopes": ["PARTY_READ", "PARTY_STATE"],
+  "target": { "kind": "server", "id": 4821 },
+  "rateLimit": 600,
+  "serverTime": 1753822800
+}
+```
+
+`serverTime` is there so you can check your clock against ours **before** you
+start sending timestamps.
+
+## Revoking
+
+**Account → Integrations → Revoke** kills the credential immediately and
+permanently. Revoking rotates the stored hash to a value nothing can produce, so
+the token is dead as a property of the credential rather than as a status
+somebody has to remember to check — flipping the row back will not bring it to
+life.
+
+Revoke keeps the request log. **Delete** removes both.
+
+<Related>
+- [Integrating a game](/learn/parties/integration) — the conceptual walk-through
+- [Authentication](/learn/api/authentication)
+- [Rate limits](/learn/api/rate-limits#integrations)
+</Related>

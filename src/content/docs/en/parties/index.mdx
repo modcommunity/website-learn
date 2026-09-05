@@ -1,0 +1,58 @@
+---
+title: Parties
+description: Play sessions people host and others join — how they are created, how they find a server, and how much of what you see is fact versus inference.
+order: 60
+badge: new
+source:
+  - prisma/models/party.prisma
+---
+
+A **party** is a play session: an app, a host, a roster, and — once one is found
+— a server to play on.
+
+<Cards>
+  <Card title="Joining and visibility" href="/learn/parties/joining">
+    The four visibility types, who can walk in, and what the roster shows.
+  </Card>
+  <Card title="Lifecycle" href="/learn/parties/lifecycle">
+    Lobby, searching, ready-up, playing, ended — and what ends a party.
+  </Card>
+  <Card title="Tech levels" href="/learn/parties/tech-levels">
+    Why some parties show scores as fact and others show them as a guess.
+  </Card>
+  <Card title="Matchmaking" href="/learn/parties/matchmaking">
+    The filters a host sets, and how a server is chosen.
+  </Card>
+  <Card title="Integrating a game" href="/learn/parties/integration">
+    What a mod or plugin reports, and what it earns by doing so.
+  </Card>
+</Cards>
+
+## Not a content item
+
+Parties are deliberately **not** part of the content-item family. They are
+ephemeral, have no owner-editable long-form body, take no ratings or reviews, and
+are not part of the granular permission system — so they carry their own small
+counters instead of writing rows into the shared view, favourite and rating
+tables.
+
+A party that lasted eleven minutes should not leave permanent rows in five
+shared tables.
+
+They are also created at *play-session* rate rather than content-creation rate:
+a busy game can produce more parties in a month than the site has ever had mods.
+
+## Availability
+
+An [app](/learn/content/apps) decides whether parties exist for it at all, and
+the maximum party size. Not every game has them.
+
+## The one thing to know up front
+
+How much of a party's state is **fact** versus **inference** depends entirely on
+how deeply the game is wired into us. For a game with no integration, the roster
+on the actual server is inferred by matching display names against the query
+server's player list — and the site flags it as a guess everywhere it shows it.
+
+That is [tech levels](/learn/parties/tech-levels), and it is the concept the
+rest of this section rests on.

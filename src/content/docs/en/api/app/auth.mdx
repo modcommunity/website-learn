@@ -1,0 +1,144 @@
+---
+title: App authentication
+description: The device flow — how a client with no credentials gets a token by asking a human — plus PKCE, rotation and revocation.
+order: 10
+source:
+  - src/app/api/app/v1/auth
+  - src/types/app-api/contract.ts
+---
+
+The app signs in with a **device flow**: it opens a login, shows the user a
+code, and polls until they approve it in a browser.
+
+## 1. Open a login
+
+<Endpoint method="POST" path="/api/app/v1/auth/device">
+Unauthenticated by necessity — the app has no credentials at this point.
+</Endpoint>
+
+```json
+{
+  "client": { "name": "TMC Desktop", "platform": "windows", "version": "1.4.0" },
+  "codeChallenge": "<PKCE S256 challenge, base64url>"
+}
+```
+
+```json
+{
+  "deviceCode": "…",
+  "userCode": "…",
+  "verificationUri": "https://moddingcommunity.com/login/device",
+  "verificationUriComplete": "https://moddingcommunity.com/login/device?code=…",
+  "expiresIn": 600,
+  "interval": 5
+}
+```
+
+The client info is **self-reported and untrusted** — it is a label for the
+approval screen, nothing more.
+
+`verificationUriComplete` is what the app actually opens; `verificationUri` is
+where the user goes when the code has to be typed.
+
+What bounds this endpoint is its rate limit (10/minute, counted **durably**
+because this is the front door) and the grant's own 10-minute lifetime: a flood
+of starts creates a flood of rows that expire on their own and that nobody can
+approve.
+
+## 2. Poll
+
+<Endpoint method="POST" path="/api/app/v1/auth/token">
+Returns the credential pair exactly once, on the first call after approval.
+</Endpoint>
+
+```json
+{ "deviceCode": "…", "codeVerifier": "<PKCE verifier>" }
+```
+
+Every other outcome is an error envelope whose `code` the app branches on:
+
+| `code` | Status | Means |
+| --- | :-: | --- |
+| `authorization_pending` | **202** | Waiting for the human. Not a failure |
+| `slow_down` | **202** | Polling too quickly |
+| `access_denied` | 400 | The device was not approved |
+| `expired_token` | 400 | The attempt expired. Start again |
+
+<Callout type="info" title="Pending and slow-down are 202, not 4xx">
+Waiting on a human is not a client error. Naming them as codes keeps the app
+from having to guess from a status code.
+</Callout>
+
+On success:
+
+```json
+{
+  "accessToken": "…",
+  "refreshToken": "…",
+  "expiresIn": 3600,
+  "user": { "id": "…", "name": "…", "username": "…", "avatar": "…", "role": "…" }
+}
+```
+
+### Two rules that make polling safe
+
+<Params>
+  <Param name="The grant is consumed atomically">
+    Redemption is a conditional update from *approved* to *claimed*; only the
+    update that actually changed a row mints a token. Two concurrent polls
+    therefore cannot both succeed — not a theoretical race, since the app polls
+    on a timer **and** on a deep-link wake.
+  </Param>
+  <Param name="PKCE is checked before anything is minted">
+    A device code alone is inert, so one read off a screen or scraped from a log
+    buys nothing.
+  </Param>
+</Params>
+
+## 3. Refresh
+
+<Endpoint method="POST" path="/api/app/v1/auth/refresh">
+Rotate the credential pair.
+</Endpoint>
+
+Unauthenticated in the bearer sense: **the refresh token is the credential**, and
+requiring a live access token alongside it would make refresh impossible in the
+one situation it exists for.
+
+<Callout type="warning" title="Reuse signs every device out">
+A retired refresh token coming back is reported as its own code, because it
+means something specific: the whole lineage is revoked and every device is
+signed out. The app shows that as a security notice rather than a generic
+"please sign in".
+</Callout>
+
+## 4. Revoke
+
+<Endpoint method="POST" path="/api/app/v1/auth/revoke" auth="Token">
+Sign this device out.
+</Endpoint>
+
+Revokes the **whole lineage** rather than the presented pair, so a sign-out is
+final: a refresh token the app still holds in its keychain cannot resurrect the
+session after the user asked for it to end.
+
+## Identity
+
+<Endpoint method="GET" path="/api/app/v1/me" auth="Token">
+Identity plus the settings that sync.
+</Endpoint>
+
+The app calls this on every launch. It is also how a **stale access token is
+discovered**: a `token_expired` here triggers one refresh-and-retry before the
+user is shown a signed-out state.
+
+The settings it carries are deliberately a subset of your account settings —
+ones that only mean something in a browser, or that the app has no interface
+for, would become dead fields the app is nonetheless responsible for
+round-tripping correctly. Everything in it is a plain boolean or a short string,
+so an update is a partial of exactly that shape.
+
+<Related>
+- [Keys and integrations](/learn/account/credentials)
+- [Security and sessions](/learn/account/security)
+</Related>

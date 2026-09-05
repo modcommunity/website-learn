@@ -1,0 +1,50 @@
+{
+  "name": "website-learn",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "check": "astro check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "astro preview",
+    "astro": "astro",
+    "shared:local": "npm install ../tmc-global/shared --no-save",
+    "shared:registry": "npm install @modcommunity/shared@^4.3.0 --no-save",
+    "shared:build": "npm --prefix ../tmc-global/shared run build",
+    "//shared:flush": "Escape hatch only. Vite no longer pre-bundles the shared package (see optimizeDeps.exclude in astro.config.mjs), so this should not be needed. Never run it while `npm run dev` is up: it deletes the cache underneath the server and every client module then 404s/504s until you restart.",
+    "shared:flush": "rm -rf node_modules/.vite",
+    "shared:watch": "npm --prefix ../tmc-global/shared run dev",
+    "shared:status": "node -e \"const p=require('path'),f=require('fs'),d='node_modules/@modcommunity/shared',r=f.realpathSync(d);console.log(f.lstatSync(d).isSymbolicLink()?'local  -> '+p.relative(process.cwd(),r):'registry -> '+require(p.join(r,'package.json')).version)\"",
+    "audit:overflow": "node scripts/overflow-audit.mjs",
+    "audit:overflow:bisect": "node scripts/overflow-bisect.mjs",
+    "docs:check": "node scripts/docs-lint.mjs"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^7.0.7",
+    "@astrojs/node": "^11.0.2",
+    "@astrojs/react": "^6.0.1",
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.2.5",
+    "@fontsource-variable/orbitron": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "@modcommunity/shared": "^4.3.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "astro": "^7.0.6",
+    "lucide-react": "^0.542.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "tailwindcss": "^4.1.11",
+    "tailwindcss-intersect": "^2.2.0",
+    "tailwindcss-motion": "^1.1.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

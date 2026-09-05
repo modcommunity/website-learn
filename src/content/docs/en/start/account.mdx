@@ -1,0 +1,79 @@
+---
+title: Creating an account
+description: The five ways to sign in, what each one gives us, and how to link them together on one account.
+order: 10
+source:
+  - prisma/models/user.prisma
+  - prisma/models/user-account.prisma
+---
+
+Browsing needs no account. Publishing, commenting, following, joining a party
+and using the API all do.
+
+## Ways to sign in
+
+| Method | What it needs | Notes |
+| --- | --- | --- |
+| Email | An address you can read | A short code is emailed to you — there is no password to forget |
+| Discord | Your Discord account | Returns an email only if it is verified and you grant the scope |
+| GitHub | Your GitHub account | Same caveat on the email |
+| Steam | Your Steam account | **Returns no email at all** — see below |
+| Google | Your Google account | |
+
+<Callout type="info" title="Steam gives us no email address">
+Steam's sign-in returns an identity and nothing else. An account created that
+way starts with no email on file, which is fine until you want notifications,
+or until you want to recover the account without Steam. You can add an address
+at any time under **Account → Security**.
+</Callout>
+
+## Linking several sign-ins to one account
+
+Signing in with a second provider whose email already belongs to an account
+does **not** create a second account, and it does not dead-end either.
+
+We stop one step short of a session and ask *"is this account yours?"*. If
+neither side's email was verified by its provider, you also have to read a code
+sent to the address before the link completes. Only then is the provider
+attached to the existing account.
+
+The half-finished attempt is stored briefly and deleted the moment you accept or
+refuse it. Nothing about the pending provider is sent to your browser while it
+waits.
+
+Manage the result under **Account → Connections**.
+
+## Your username and display name
+
+Every account gets a **username** — the stable handle in URLs — and a **display
+name**, which is what people read. Both are case-insensitively unique, so
+`Ashley` and `ashley` cannot be two different people.
+
+A brand-new account is given a generated username (`modder_1a2b3c4d`) so it is
+never in a state where it cannot be linked to. Change it under **Account →
+Profile**.
+
+## Roles
+
+| Role | What it means |
+| --- | --- |
+| `USER` | The default |
+| `SUPPORTER` | Backed the site — larger upload and API limits, faster scanning on their servers |
+| `CONTRIBUTOR` | Recognised for work on the platform |
+| `DEVELOPER`, `MODERATOR`, `STAFF`, `ADMIN` | Team roles, with progressively more of the moderation and admin surfaces |
+
+Roles change limits and access; they are not decoration. Where a limit differs
+by role, the page documenting it says so.
+
+## Deleting your account
+
+Under **Account → Security**. Deletion cascades: your items, comments, reviews,
+media and sessions go with it. That is not reversible, and a sensitive action
+like this asks you to prove a second factor first even if you are already
+signed in — see [Security](/learn/account/security).
+
+<Related>
+- [Security and sessions](/learn/account/security)
+- [Privacy and anonymity](/learn/account/privacy)
+- [Notifications](/learn/account/notifications)
+</Related>

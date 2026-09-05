@@ -1,0 +1,106 @@
+---
+title: Chat relay
+description: Relaying in-game chat into the site, and injecting the site's chat back into the game — the two halves of the loop.
+order: 20
+source:
+  - docs/api/integration-api.md
+---
+
+Without a relay, a party's conversation sits in a room none of the players in
+the match can see. These two endpoints close that loop.
+
+## In-game chat → the site
+
+<Endpoint method="POST" path="/api/integration/v1/chat" auth="Integration" scope="CHAT_WRITE">
+Relay a line of in-game chat.
+</Endpoint>
+
+```json
+{
+  "partyId": "4471",
+  "player": { "name": "Ashley", "steamId": "76561198000000000" },
+  "body": "nice shot",
+  "ts": 1753822850
+}
+```
+
+Omit `partyId` to post into the **server's own** in-game relay room instead.
+That form requires a server-scoped credential.
+
+<Callout type="warning" title="The body is plain text and is escaped on the way in">
+It is rendered through the same Markdown pipeline as the rest of the site, and
+anybody on your server can type into your chat box — so a player must not be
+able to post an image, an embed or a heading here by typing one in-game.
+</Callout>
+
+An author we cannot match keeps their in-game name and links nowhere. **A message
+is never rendered as though a site member said it unless we actually resolved
+one.**
+
+## The site → in-game
+
+<Endpoint method="GET" path="/api/integration/v1/chat/outbound" auth="Integration" scope="CHAT_READ">
+Lines typed on the site that should be injected into the game.
+</Endpoint>
+
+```
+GET /api/integration/v1/chat/outbound?since=8813&limit=50
+```
+
+```json
+{
+  "ok": true,
+  "messages": [
+    {
+      "id": "8814",
+      "at": "2026-07-29T20:41:02.000Z",
+      "author": "Ashley",
+      "authorId": "clx…",
+      "body": "rotating to B",
+      "muted": false
+    }
+  ],
+  "newest": "8814"
+}
+```
+
+**Server-scoped credentials only.** It serves the server's own relay room **plus**
+the room of any live party on that server.
+
+### The cursor is an id, not a timestamp
+
+Poll with the highest `id` you have already injected. Two messages can share a
+millisecond, and a timestamp cursor would either skip or re-deliver a line.
+
+Calling it with **no** `since` returns the most recent page, so a freshly
+restarted mod does not replay the whole history into the game.
+
+### What comes back
+
+Only site-authored messages. Lines that came *from* the game are excluded —
+echoing them would loop — and so are system lines, which are our own bookkeeping
+and mean nothing in-game. Deleted and hidden messages are excluded too.
+
+`author` is the writer's **site** name, so you can label the line in-game as
+coming from the website rather than from a player standing next to them.
+
+`muted: true` means the author was not in the party when they wrote it. The site
+renders those dimmed, and you may want to skip or de-emphasise them too.
+
+## Retention
+
+Relayed chat has **no per-report ceiling**, and that is not an oversight:
+relaying is what the endpoint is *for*, so the only honest bound on it is your
+request rate.
+
+It is bounded from the other end instead — a pruning job trims relayed lines on
+a retention window, 30 days by default.
+
+<Callout type="warning" title="Do not treat the chat relay as durable storage">
+If a line matters beyond the room it was said in, keep your own copy.
+</Callout>
+
+<Related>
+- [Parties](/learn/api/integration/parties)
+- [Integrating a game](/learn/parties/integration)
+</Related>

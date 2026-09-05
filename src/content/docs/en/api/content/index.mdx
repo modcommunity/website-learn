@@ -1,0 +1,78 @@
+---
+title: Public content API
+description: Script what you can already do in the browser — create and edit your own items with an API key instead of a session.
+order: 40
+source:
+  - docs/api/public-content-api.md
+---
+
+The public content API lets a user script the things they can already do in the
+browser: create and edit their assets, mods, servers, articles, communities,
+collections and groups, using an API key instead of a session.
+
+**Base URL:** `/api/content`. Everything is versionless and JSON unless noted.
+
+Manage your keys under **Account → API keys**.
+
+<Callout type="info" title="Reading a public item needs no key at all">
+`GET /api/content/<type>` and `GET /api/content/<type>/<id>` answer with **no
+`Authorization` header**, for items that are completely public. Everything else
+on this surface needs a key. See [Reading without a
+key](/learn/api/content/reading).
+</Callout>
+
+<Cards>
+  <Card title="Reading without a key" href="/learn/api/content/reading">
+    The anonymous surface: what answers, what comes back, quotas and CORS.
+  </Card>
+  <Card title="Items" href="/learn/api/content/items">
+    The content types, the endpoints, the fields each accepts, and bulk
+    semantics.
+  </Card>
+  <Card title="Relations" href="/learn/api/content/relations">
+    Tags, media, releases, links, sources and collection items as
+    sub-resources.
+  </Card>
+  <Card title="Files" href="/learn/api/content/files">
+    Uploading, attaching to releases, and the size limits.
+  </Card>
+</Cards>
+
+## Content types
+
+| Type | Path | Notes |
+| --- | --- | --- |
+| `asset` | `/api/content/asset` | Canonical writer |
+| `mod` | `/api/content/mod` | Canonical writer |
+| `server` | `/api/content/server` | Canonical writer |
+| `community` | `/api/content/community` | Canonical writer |
+| `article` | `/api/content/article` | Canonical writer |
+| `collection` | `/api/content/collection` | Canonical writer |
+| `group` | `/api/content/group` | Canonical writer; no relations |
+| `favorite` | `/api/content/favorite` | Simple owned row |
+| `filter` | `/api/content/filter` | Simple owned row |
+| `comment` | `/api/content/comment` | Simple owned row |
+| `review` | `/api/content/review` | Simple owned row |
+| `release` | `/api/content/release` | Prefer the relation sub-resource |
+| `media` | `/api/content/media` | Prefer the relation sub-resource |
+| `tag` | `/api/content/tag` | Staff-only write |
+
+**"Canonical writer"** means writes run through the same server-side function
+the website's own edit forms use — so an API edit performs slug-change
+redirects, cache busting and relation reconciliation identically to a UI edit.
+
+## Two rules worth internalising
+
+**Ownership is never taken from the body.** The owner column is injected from
+the key's user. Schemas are strict, so sending `ownerId` — or misspelling any
+field — is a `400` rather than a silent no-op.
+
+**Hidden items behave as if they do not exist.** Unless you own it or you are
+staff, reading a hidden item by id returns `404`, not `403` — a `403` would
+still confirm the id is real. The same applies to its relations.
+
+<Related>
+- [Authentication](/learn/api/authentication)
+- [Rate limits](/learn/api/rate-limits)
+- [Errors](/learn/api/errors)
+</Related>

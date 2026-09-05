@@ -1,0 +1,79 @@
+---
+title: Boards
+description: The five boards an item can run — discussions, feedback, bugs, roadmap and changelog — and what each one is actually for.
+order: 100
+source:
+  - prisma/models/discussion.prisma
+  - prisma/models/feedback.prisma
+  - prisma/models/bug.prisma
+  - prisma/models/roadmap.prisma
+  - prisma/models/changelog.prisma
+---
+
+A mod, asset, server or community can run up to five boards of its own. Each is
+separately switchable, and each answers a question the others do not.
+
+| Board | Answers |
+| --- | --- |
+| **Discussions** | "Let's talk about this" |
+| **Feedback** | "Please add / change this" |
+| **Bugs** | "This is broken" |
+| **Roadmap** | "What are you planning?" |
+| **Changelog** | "What changed?" |
+
+The site itself runs the same five at `/discussions`, `/feedback`, `/bugs`,
+`/roadmap` and `/changelog`, using the same models.
+
+## Discussions
+
+A forum for the item. It has **sections** (categories of its own), threaded
+posts, and per-section access grants — so a section can be private, read-only,
+or moderated by specific people. See [Permissions](/learn/content/relations/permissions#discussion-sections-are-a-special-case).
+
+## Feedback
+
+Suggestions, with voting. This is where "please add dark mode" goes.
+
+<Callout type="info" title="Bugs used to live here and no longer do">
+Defect reports were once a feedback type. They were separated because a report
+that needs steps to reproduce, a severity and a confirmed queue has nothing in
+common with a feature request that needs votes.
+</Callout>
+
+## Bugs
+
+The defect tracker: steps to reproduce, severity, a confirmation state, and
+replies.
+
+A bug report can additionally **name other items** as places the issue was seen
+— which is different from the item's own tracker. A bug filed against mod A that
+mentions mod B appears on A's tracker and as a mention on B's.
+
+## Roadmap
+
+What is planned. A roadmap holds items; items hold tasks. Followers can be
+notified when it moves (`notifyRoadmap`, on by default).
+
+An item can also have roadmap *items* attached to it without owning the whole
+roadmap, which is how a shared roadmap can track work across several mods.
+
+## Changelog
+
+What shipped. Entries belong to an item and appear on its changelog tab.
+
+An entry can also be **linked** to an item it does not belong to — listed under
+it without being its own. That is how a change to a shared library shows up on
+the changelogs of the things that depend on it.
+
+Followers can be notified (`notifyChangelogs`, on by default).
+
+## Switching them on and off
+
+Each board has its own config on the item, and the item's tab configuration
+decides which optional tabs appear on the view page at all. A board with nothing
+in it and no config is simply absent rather than showing an empty tab.
+
+<Related>
+- [Follows](/learn/content/relations/following)
+- [Permissions](/learn/content/relations/permissions)
+</Related>

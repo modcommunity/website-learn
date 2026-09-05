@@ -1,0 +1,9 @@
+@layer components {
+  /*
+   * Matches website-city's content-card treatment: a bordered surface panel
+   * that lifts and picks up an accent border + shadow on hover.
+   */
+  .card {
+    @apply flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg;
+  }
+}

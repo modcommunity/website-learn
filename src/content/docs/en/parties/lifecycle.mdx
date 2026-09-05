@@ -1,0 +1,122 @@
+---
+title: Lifecycle
+description: Lobby, searching, ready-up, playing — the four live stages, the ready-up round, and the six ways a party ends.
+order: 30
+source:
+  - prisma/models/party.prisma
+---
+
+## Live or not
+
+One question decides everything: **does the party have an end time?**
+
+Every listing and every access check reads that and nothing else. The stage
+below is a *sub-state* of a live party, never a replacement for it.
+
+## The four stages
+
+| Stage | Means |
+| --- | --- |
+| `LOBBY` | Created, gathering members, no game underway. The default |
+| `SEARCHING` | [Matchmaking](/learn/parties/matchmaking) is running |
+| `READY` | A server is assigned; everybody is asked to launch and press Ready |
+| `PLAYING` | Started — a server is assigned and the party is in-game |
+
+An **ended** party keeps whatever stage it was in when it stopped. Nothing reads
+the stage without also knowing whether the party is live, and freezing it
+preserves "it died while still looking for a server", which is exactly the thing
+a host wants to see afterwards.
+
+## Two different start times
+
+| | |
+| --- | --- |
+| **Start time** | When the *lobby* opened |
+| **Started at** | When the party actually *started* — matchmaking succeeded, or a pinned server and the host pressed start |
+
+The gap between them is the time people spent waiting to play. Collapsing the
+two would make every party look like it began the moment it was created.
+
+## The ready-up round
+
+Between "we have a server" and "we are playing" sits the part the members
+actually have to do: launch the game, connect, and say they are in.
+
+It is a **round**, not a flag. A party can start more than once — a second
+search, a different server — and somebody who readied for the first server has
+not thereby readied for the second. Opening a new round invalidates every
+previous answer without touching the roster at all.
+
+<Params>
+  <Param name="readyAutoPct" type="int" default="0">
+    Start automatically once this **percent** of the joined roster is ready.
+    `0` means off — the match only starts when everybody is ready, or a manager
+    forces it.
+
+    A percentage rather than a count because the roster moves while people are
+    connecting: somebody dropping out of an eight-player party should not make a
+    threshold of six unreachable.
+  </Param>
+  <Param name="readyAutoSec" type="int" default="30">
+    Grace period between the threshold being met and the match starting.
+  </Param>
+</Params>
+
+The countdown is **cleared if the roster falls back below the threshold** — a
+countdown that kept running after the people who triggered it left would start a
+match nobody is ready for.
+
+The client shows the countdown, but a background sweep is what guarantees it
+fires even if every browser tab closes.
+
+## Duration
+
+<Params>
+  <Param name="plannedEndTime" type="datetime">
+    When the host wants it to stop. Set at creation or edited later.
+
+    `null` — no limit — may only be chosen by a **supporter or above**. A plain
+    member's party is capped at a maximum duration from its start.
+  </Param>
+</Params>
+
+This is a **wish**, not the authority on liveness. A background job reads it and
+calls the same end-party path a host pressing Stop would.
+
+Keeping the two separate is what lets an auto-ended party still show what it was
+*scheduled* for, and what stops a clock skew from making a live party read as
+finished to half the site.
+
+## The six ways a party ends
+
+| Reason | |
+| --- | --- |
+| `HOST` | The host ended it deliberately |
+| `EMPTY` | Everybody left |
+| `IDLE` | No activity for the idle timeout; the auto-end job closed it |
+| `TIME_LIMIT` | The host set an end time and it arrived |
+| `SERVER` | The reserved server went away — **also what an integration's end call records** |
+| `MODERATION` | Staff action |
+
+The reason is purely informational; the end time is what actually decides "live
+or not".
+
+A host can also leave an **end note** — free text shown in the "party has ended"
+notification alongside the machine reason. It is optional on purpose: "the host
+ended it" is a complete answer on its own, and forcing a reason produces a field
+full of full stops.
+
+<Callout type="info" title="An integration ending a party records SERVER, not HOST">
+The party's own history should say what actually happened, and "the game side
+closed it" is not the same as the host pressing End.
+</Callout>
+
+## Activity and idling
+
+Every join, leave, chat message, state report and heartbeat updates the party's
+last-activity stamp. The idle auto-end job reads it. It is not a display field.
+
+<Related>
+- [Matchmaking](/learn/parties/matchmaking)
+- [Joining and visibility](/learn/parties/joining)
+</Related>

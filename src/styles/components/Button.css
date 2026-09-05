@@ -1,0 +1,28 @@
+@layer components {
+  .btn {
+    /* Font-family deliberately omitted so buttons inherit the body font (DM
+       Sans), matching website-city — which dropped its own .btn/!font-pjs rule
+       in the HeroUI migration. */
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-center font-bold text-foreground cursor-pointer transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-surface-secondary hover:bg-surface-hover ring-1 ring-border hover:ring-accent;
+  }
+
+  .btn-secondary {
+    @apply bg-btn-secondary hover:bg-btn-secondary-hover ring-1 ring-border-secondary hover:ring-border-primary;
+  }
+
+  .btn-special {
+    @apply bg-gradient-to-br from-accent to-[#5577f0] text-white shadow-lg shadow-accent/25 hover:brightness-110;
+  }
+
+  .btn-warning {
+    @apply bg-btn-warning hover:bg-btn-warning-hover ring-1 ring-border-secondary hover:ring-border-primary;
+  }
+
+  .btn-danger {
+    @apply bg-btn-danger hover:bg-btn-danger-hover ring-1 ring-border-secondary hover:ring-border-primary;
+  }
+}

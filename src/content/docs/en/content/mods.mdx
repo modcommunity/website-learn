@@ -1,0 +1,105 @@
+---
+title: Mods
+description: A modification for one specific app — what a mod carries that other items do not, and everything that can be attached to one.
+order: 10
+source:
+  - prisma/models/mod.prisma
+---
+
+A **mod** is a modification for one specific [app](/learn/content/apps). It is
+the most fully-featured content item on the site, and the one everything else
+was generalised from.
+
+## What only a mod does
+
+<Params>
+  <Param name="appId" type="int" required>
+    The app this mod is for. **Not optional**, unlike on an asset. A mod's URL
+    slug is unique *per app*, so `/gmod/m/vehicles` and `/rust/m/vehicles` are
+    two different mods, and moving a mod between apps changes its address.
+  </Param>
+  <Param name="install" type="markdown">
+    Installation instructions, kept separate from `content` so a reader who
+    already knows what your mod is can jump straight to how to install it.
+  </Param>
+  <Param name="license" type="enum" default="MIT">
+    The legal licence. Distinct from the [usage
+    policy](/learn/content/relations/permissions), which is the owner's own
+    statement about redistribution, modification and commercial use.
+  </Param>
+  <Param name="environment" type="ALL | SERVER | CLIENT" default="ALL">
+    Whether the mod is server-side, client-side, or both. Not decoration — it
+    decides which mods are offered for a given install target, since a dedicated
+    server and a player's game are the same files arranged differently.
+  </Param>
+  <Param name="virusScanLink" type="url">
+    An author-supplied link to a third-party scan report. See [the content
+    model](/learn/content/model#virus-scan-link) — it is a link the author is
+    vouching with, not a verdict we produced.
+  </Param>
+  <Param name="serverMaps" type="relation">
+    Maps this mod provides. Mods are the one item type that can contribute rows
+    to the map browser.
+  </Param>
+</Params>
+
+A mod may also belong to a **community**, which puts it on that community's
+pages and lets the community's team co-manage it.
+
+## What can be attached
+
+| Relation | Notes |
+| --- | --- |
+| [Releases](/learn/content/relations/releases) | Versions and their files — the download itself |
+| [Media](/learn/content/relations/media) | Screenshots and videos |
+| [Links](/learn/content/relations/links) | Website, Discord, GitHub, Steam and the rest |
+| [Sources](/learn/content/relations/sources) | Where this mod also lives — including the repo it is built from |
+| [Dependencies](/learn/content/relations/dependencies) | What it needs, recommends, or conflicts with |
+| [Contributors](/learn/content/relations/credits) | Who worked on it |
+| [Permissions](/learn/content/relations/permissions) | Usage policy, and access grants |
+| [Tags and categories](/learn/content/categories) | Taxonomy |
+| [Ratings, reviews, comments](/learn/content/relations/engagement) | Engagement |
+| [Follows and favourites](/learn/content/relations/following) | "Tell me when this changes" |
+| [Articles](/learn/content/articles) | Long-form writing filed under the mod |
+| [Discussions, feedback, bugs, roadmap, changelog](/learn/content/relations/boards) | A mod can run all five |
+
+## Build sources
+
+A mod can be **built automatically from a linked repository**: the repo is
+declared as a build source, and a push produces a release with files attached,
+without anybody uploading a zip by hand. The queued and finished work shows up
+as upload jobs on the item.
+
+The repository link itself is not a column on the mod — it is the source entry
+flagged as the primary git source. See
+[Sources](/learn/content/relations/sources).
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/mod" auth="API key" scope="canWrite">
+Create a mod. `name`, `content` and `appId` are required.
+</Endpoint>
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/mod \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "Better Vehicles",
+        "appId": 4,
+        "content": "# Better Vehicles\n\nAdds …",
+        "install": "Drop into `addons/`.",
+        "hidden": true,
+        "tags": ["vehicles", "sandbox"]
+      }'
+```
+
+Writes go through the same server-side function the website's own edit form
+uses, so an API edit performs slug-change redirects, cache busting and relation
+reconciliation identically to a UI edit. See [Items](/learn/api/content/items).
+
+<Related>
+- [The shared content model](/learn/content/model)
+- [Assets](/learn/content/assets) — the near-identical sibling
+- [Publishing your first item](/learn/start/publishing)
+</Related>

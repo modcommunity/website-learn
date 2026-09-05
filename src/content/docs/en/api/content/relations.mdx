@@ -1,0 +1,126 @@
+---
+title: Relations
+description: Managing tags, media, releases, links, sources and collection items as sub-resources — and exactly what the server checks before writing one.
+order: 30
+source:
+  - docs/api/public-content-api.md
+---
+
+Relations can be set inline on the item body **or** managed on their own
+sub-resource. The sub-resource is usually what you want, because an inline array
+is always the *complete* set — there is no way to say "add one" inline.
+
+## Endpoints
+
+```
+GET    /api/content/{type}/{id}/{relation}    read the current set
+PUT    /api/content/{type}/{id}/{relation}    replace the set with the body
+POST   /api/content/{type}/{id}/{relation}    add or merge a batch, keep the rest
+DELETE /api/content/{type}/{id}/{relation}    remove listed members (or all)
+```
+
+Bodies are a JSON array, or `{ "data": [ … ] }`. Up to **200 members** per
+request. The response is always the relation's new state, so you never have to
+re-read it.
+
+## Availability
+
+| Relation | asset | mod | server | community | article | collection | group |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| `tags` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `media` | ✓ | ✓ | ✓ | ✓ | ✓ | | |
+| `releases` | ✓ | ✓ | ✓ | | | | |
+| `links` | | ✓ | ✓ | ✓ | | | |
+| `sources` | ✓ | ✓ | | | | | |
+| `items` | | | | | | ✓ | |
+
+Requesting a relation a type does not have returns `404` **and lists the ones it
+does**.
+
+## Member shapes
+
+| Relation | Member |
+| --- | --- |
+| `tags` | A plain string. Names are case-insensitively unique and normalised; invalid ones are dropped |
+| `media` | `{ id?, type?: "IMAGE" \| "VIDEO", fileId?, externalUrl?, title?, description? }` |
+| `releases` | `{ id?, version, title?, description?, content?, hidden?, files?: string[] }` — `files` are file ids |
+| `links` | `{ id?, type?, url }` |
+| `sources` | `{ id?, sourceId, path, externalId?, externalFileId?, externalAdditional? }` |
+| `items` | `{ id?, title?, description?, externalUrl?, assetId?, articleId?, modId?, serverId? }` |
+
+For `sources`, `path` is the item's path on that source's site — an absolute URL
+is reduced to its path server-side. The external values fill the source's
+install template (`[id]`, `[file_id]`, `[additional]`) and only matter when the
+source defines one.
+
+## `id` is what distinguishes an update from a create
+
+A member **with** an `id` updates that existing row; one **without** creates a
+new row.
+
+| Verb | Behaviour |
+| --- | --- |
+| `PUT` | Any existing row you do not list is **deleted** |
+| `POST` | Members merge by identity — `id`, or `sourceId` for sources, or the folded name for tags — and everything else is left alone |
+| `DELETE` | The body names which members to drop. **No body clears the relation** |
+
+```
+DELETE /api/content/asset/10/media    { "ids": [11, 12] }
+DELETE /api/content/asset/10/tags     ["tooling"]
+DELETE /api/content/asset/10/tags     (no body → clears the relation)
+```
+
+## Examples
+
+```bash
+# Add two screenshots without disturbing the existing gallery.
+curl -X POST https://moddingcommunity.com/api/content/mod/5/media \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "externalUrl": "https://example.com/a.png", "title": "A" },
+       { "externalUrl": "https://example.com/b.png", "title": "B" }]'
+
+# Declare the gallery to be exactly these two, deleting anything else.
+curl -X PUT https://moddingcommunity.com/api/content/mod/5/media \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "id": 8, "title": "Renamed" }, { "externalUrl": "https://example.com/c.png" }]'
+
+# Cut a release with two uploaded files attached.
+curl -X PUT https://moddingcommunity.com/api/content/mod/5/releases \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "version": "1.2.0", "title": "Bug fixes", "files": ["<file-id>", "<file-id>"] }]'
+```
+
+## What the server checks
+
+Relation payloads are guarded before anything is written:
+
+<Params>
+  <Param name="A member's id must already belong to THIS item">
+    You cannot adopt — or, via the replace pass, quietly delete — another item's
+    rows by guessing an integer.
+  </Param>
+  <Param name="An id on a create is rejected outright">
+    There is no parent yet, so it could only refer to somebody else's row.
+  </Param>
+  <Param name="Every file id must be a file you own">
+    Applies to `fileId`, `files[]` and every image id.
+  </Param>
+  <Param name="Collection items must exist and be visible to you">
+    You cannot build a collection out of other people's drafts to discover what
+    they are.
+  </Param>
+  <Param name="A source must carry this item's kind">
+    `sources[].sourceId` must be a visible source that declares it carries mods
+    (or assets, respectively). A mods-only site rejects an asset.
+  </Param>
+</Params>
+
+The free-standing `/api/content/media` and `/api/content/release` endpoints apply
+the same rule from the other direction: owning the row is not enough — you must
+also have write access to the content item it names.
+
+<Related>
+- [Items](/learn/api/content/items)
+- [Files](/learn/api/content/files)
+- [Relations, conceptually](/learn/content/relations)
+</Related>

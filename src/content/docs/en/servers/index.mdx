@@ -1,0 +1,55 @@
+---
+title: Servers
+description: How a server gets onto the site, how it is tracked, and what you can take control of once it is yours.
+order: 50
+---
+
+A server listing has two halves. The **editorial** half is yours — name,
+description, rules, media, tags. The **measured** half is ours: a scanner
+queries the address every few minutes and records what it finds.
+
+Nearly everything surprising about servers comes from that split.
+
+<Cards>
+  <Card title="Getting listed and claiming" href="/learn/servers/listing">
+    How servers arrive here, how to add one, and how to claim a listing the
+    scanner found on its own.
+  </Card>
+  <Card title="How scanning works" href="/learn/servers/scanning">
+    Discovery, the query protocols, the scan queue and its tiers, the automated
+    detectors, and why your server is scanned as often as it is.
+  </Card>
+  <Card title="Reporting your own statistics" href="/learn/servers/reporting">
+    The two ways to take a measured field over from the scanner — and why you
+    cannot simply type your own player count.
+  </Card>
+  <Card title="Players and maps" href="/learn/servers/players">
+    Who has been on your server, for how long, and how maps become browsable
+    items.
+  </Card>
+</Cards>
+
+## The shape of it
+
+1. A server is **discovered** — by a seed, by somebody adding it, or by a sweep
+   of neighbouring ports.
+2. It is **queried** on a cadence that depends on how interesting it is. A
+   claimed, populated server is scanned every couple of minutes; an address that
+   has never answered is scanned twice a day.
+3. What comes back is written to the listing: online state, population, map,
+   game mode, version, platform flags and the player list.
+4. **Detectors** watch for listings that are lying — proxy farms, frozen player
+   counts, filtered names — and flag them.
+5. An owner can **claim** the listing, and from there switch individual measured
+   fields over to themselves.
+
+<Callout type="info" title="Being offline is not being removed">
+A server that has been dark for a month keeps its page, its articles, its
+comments and every inbound link. Removal from *listings* is a query-time
+decision about how long it has been quiet — it never destroys the page.
+</Callout>
+
+<Related>
+- [The server content item](/learn/content/servers)
+- [Server flags and penalties](/learn/community/penalties#server-flags)
+</Related>

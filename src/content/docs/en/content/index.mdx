@@ -1,0 +1,76 @@
+---
+title: Content items
+description: What each kind of item on the site is, what can be attached to it, and the shared machinery that makes all of them behave alike.
+order: 20
+---
+
+Nearly everything you can publish here is a **content item**. There are eight
+kinds, and they are built from the same parts on purpose: learn how one works
+and you have learned most of how all of them work.
+
+<Cards>
+  <Card title="The shared content model" href="/learn/content/model">
+    Ownership, visibility, engagement switches, archiving, API exposure — the
+    behaviour every item has. **Start here.**
+  </Card>
+  <Card title="Relations" href="/learn/content/relations">
+    Everything that can be attached to an item: releases, media, dependencies,
+    credits, tags, reviews, followers and the rest.
+  </Card>
+</Cards>
+
+## The eight kinds
+
+<Cards>
+  <Card title="Mods" href="/learn/content/mods">
+    A modification for one specific app. Carries install instructions, a
+    licence, and a client/server environment.
+  </Card>
+  <Card title="Assets" href="/learn/content/assets">
+    Game development material. Nearly identical to a mod, except the app is
+    optional — an asset can be engine-agnostic.
+  </Card>
+  <Card title="Servers" href="/learn/content/servers">
+    A live game server. The only item with a measured half: we query it, and
+    record who is on it.
+  </Card>
+  <Card title="Apps" href="/learn/content/apps">
+    A game or program. Everything else files itself under one, and an app
+    decides what its items may look like.
+  </Card>
+  <Card title="Communities" href="/learn/content/communities">
+    A user-run organisation that owns servers, mods and articles, and states a
+    minimum age for its spaces.
+  </Card>
+  <Card title="Collections" href="/learn/content/collections">
+    A curated list of other items, installable as a set through the app.
+  </Card>
+  <Card title="Groups" href="/learn/content/groups">
+    A roster of people — and, unusually, a permission principal that can be
+    granted access to other items.
+  </Card>
+  <Card title="Articles" href="/learn/content/articles">
+    Long-form writing, attachable to any of the above or standing alone.
+  </Card>
+</Cards>
+
+## And two things that are deliberately not content items
+
+**Parties** are play sessions. They are ephemeral, have no long-form body, take
+no ratings or reviews, and carry their own small counters instead of writing
+rows into the shared view / favourite / rating tables. A party that lasted
+eleven minutes should not leave permanent rows in five shared tables. See
+[Parties](/learn/parties).
+
+**Categories** are taxonomy rather than published work — they organise items,
+they are not items. See [Categories and tags](/learn/content/categories).
+
+## Reading this section
+
+Each item page is laid out the same way:
+
+1. **What it is** — the one-paragraph answer.
+2. **What only it does** — the fields and behaviour that are not shared.
+3. **What can be attached to it** — its relations, with links to the page for
+   each.
+4. **Through the API** — how to create and edit it programmatically.

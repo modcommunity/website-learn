@@ -1,0 +1,68 @@
+---
+title: Contributors and credits
+description: Who worked on an item — including the people who never signed up here.
+navTitle: Contributors
+order: 50
+source:
+  - prisma/models/contributor.prisma
+---
+
+A **contributor** is someone who helped make an item. They appear on the item's
+Contributors tab and in a short list in the sidebar.
+
+## A contributor does not need an account
+
+This is the point of the model. A contributor row carries **either** a linked
+account **or** a plain name — at least one, and it may have both:
+
+<Params>
+  <Param name="userId" type="string">
+    The platform account, when the person has one. Linking it means a later
+    rename follows automatically, and the credit links to their profile.
+  </Param>
+  <Param name="name" type="string">
+    A plain credit for somebody off-platform — a Discord handle, a studio, a
+    person who never signed up. Ignored for display when `userId` is set: the
+    linked account's name wins.
+  </Param>
+  <Param name="role" type="string" required>
+    What they did on the project — `Developer`, `Artist`, `Translator`.
+  </Param>
+  <Param name="contributionType" type="string" required>
+    What kind of work it was — `Code`, `Art`, `Design`, `Testing`.
+
+    Kept free-form rather than an enum on purpose: every project credits
+    differently, and an enum would need a schema change per community
+    convention.
+  </Param>
+  <Param name="contributionDescription" type="markdown">
+    The detail, where the role and type do not cover it.
+  </Param>
+  <Param name="contributionUrl" type="url">
+    A link to the work — a pull request, a portfolio piece.
+  </Param>
+  <Param name="contributionDate" type="datetime">
+    When the work happened.
+  </Param>
+  <Param name="weight" type="int" default="0">
+    Ordering. Higher sorts first, which is what the sidebar's short list reads;
+    ties fall back to when the credit was added.
+  </Param>
+</Params>
+
+## Credit is not access
+
+Crediting somebody does **not** give them any ability to edit the item. That is
+a [permission grant](/learn/content/relations/permissions), which is a separate
+thing with a separate tab. A credit is a statement about the past; a grant is a
+capability in the present.
+
+## Notifications
+
+Members notified about credits (on by default, under **Account →
+Notifications**) hear about it when they are credited on something.
+
+<Related>
+- [Permissions and usage policy](/learn/content/relations/permissions)
+- [Notifications](/learn/account/notifications)
+</Related>

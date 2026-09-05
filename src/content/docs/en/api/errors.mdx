@@ -1,0 +1,131 @@
+---
+title: Errors
+description: The response envelopes, every status code and what it means, and why some failures are deliberately vague.
+order: 20
+keywords:
+  - "400"
+  - "401"
+  - "403"
+  - "404"
+  - "409"
+  - "429"
+  - "500"
+  - "status code"
+  - "error code"
+  - "envelope"
+source:
+  - docs/api/public-content-api.md
+  - docs/api/integration-api.md
+---
+
+## Response shape
+
+Success wraps the payload in `data`:
+
+```json
+{ "data": { "id": 42, "name": "My Asset" } }
+```
+
+List endpoints add `pagination`:
+
+```json
+{
+  "data": [ ],
+  "pagination": { "page": 1, "limit": 25, "total": 130, "totalPages": 6 }
+}
+```
+
+Errors return a message, plus `issues` when validation failed and `index` when
+one element of a bulk request was at fault:
+
+```json
+{
+  "error": "Validation failed.",
+  "index": 1,
+  "issues": { "fieldErrors": { "name": ["Required"] } }
+}
+```
+
+The [app API](/learn/api/app) uses a different envelope — `{ ok, data }` and
+`{ ok: false, code, message }` — because an installed client branches on a
+stable `code` rather than parsing prose.
+
+## Status codes
+
+| Status | Meaning |
+| --- | --- |
+| `200` | OK |
+| `201` | Created |
+| `202` | Waiting on a human — the app's device poll only |
+| `400` | Bad JSON, failed validation, an id that does not resolve, or a timestamp outside the window |
+| `401` | Missing, unknown, revoked or expired credential |
+| `403` | The credential lacks the permission or scope, or you cannot touch that item |
+| `404` | Unknown type or relation, or the item is not visible to you |
+| `405` | Method not allowed |
+| `409` | Conflict — for parties, "it has already ended" |
+| `413` | Upload exceeds the size limit |
+| `429` | Rate limited. See `retry-after` |
+| `500` | Our fault. Never carries internal detail |
+| `503` | Uploads unavailable (object storage not configured) |
+
+## Anonymous-read error codes
+
+The unauthenticated content surface carries a machine-readable `code` beside the
+human sentence, plus a pointer to where a key is minted:
+
+```json
+{
+  "error": "Rate limit exceeded for unauthenticated requests. Try again in 42s, or use an API key for a much larger quota.",
+  "code": "rate_limited",
+  "apiKeys": "/account/api"
+}
+```
+
+| `code` | Status | Means |
+| --- | :-: | --- |
+| `auth_required` | 401 | This type, or this whole surface, needs a key |
+| `unknown_type` | 404 | No such content type |
+| `not_found` | 404 | No such item, **or** it is not publicly readable |
+| `api_disabled` | 403 | The item exists and is public on the website, but its team turned key-free API access off |
+| `rate_limited` | 429 | Out of budget. See `retry-after` |
+
+<Callout type="info" title="Two of those are deliberately shaped">
+`not_found` covers both "no such item" and "not readable by you", and the two
+are **indistinguishable on purpose** — otherwise the endpoint would enumerate
+unpublished work.
+
+`api_disabled` is said plainly rather than 404'd, because confirming a page
+anybody can open leaks nothing, and a 404 would send you hunting for a bug in
+your own code.
+</Callout>
+
+## Hidden items behave as if they do not exist
+
+A hidden item is a draft or a moderation hold. Unless you own it or you are
+staff, reading it by id returns `404` — **not** `403`, which would still confirm
+the id is real. The same applies to its relations.
+
+## Integration failures are deliberately vague
+
+Authentication and authorisation failures on the integration API all return the
+same `Unauthorized.` regardless of whether the token was unknown, revoked, out
+of scope, or blocked by the IP allowlist. Distinguishing them would let somebody
+with a stolen credential map out what it can do.
+
+The specific reason **is** recorded — in the credential owner's own request log,
+under **Account → Integrations → request log**. If your plugin is being refused
+and you cannot tell why, that log is where the answer is.
+
+Validation errors are the exception and are returned in full, because they help
+you and reveal nothing.
+
+## Ownership is never taken from the body
+
+The owner column is injected from the credential's user. Schemas are **strict**,
+so sending `ownerId` — or misspelling any field — is a `400` rather than a
+silent no-op.
+
+<Related>
+- [Authentication](/learn/api/authentication)
+- [Rate limits](/learn/api/rate-limits)
+</Related>

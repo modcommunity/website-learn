@@ -1,0 +1,80 @@
+---
+title: Collections
+description: A curated list of other items — a modpack, a starter kit, a "what I run" list — installable as a set through the official app.
+order: 60
+source:
+  - prisma/models/collection.prisma
+  - prisma/models/collection-item.prisma
+---
+
+A **collection** is a curated list of other content items: a modpack, an asset
+starter kit, a "these are the twelve mods I run" list. It is a content item in
+its own right, and it is the one people subscribe to when they want a *set*
+rather than a thing.
+
+## What only a collection does
+
+<Params>
+  <Param name="items" type="relation">
+    The members of the collection. Each entry points at an asset, a mod, a
+    server or an article — or carries an external URL and a title, for something
+    that does not live here at all.
+  </Param>
+  <Param name="includeItemMedia" type="boolean" default="false">
+    Pull the gallery entries of the collection's own items into its slideshow.
+
+    Off by default: a curator who has set a banner and a couple of screenshots
+    has already said what they want the top of the page to look like, and
+    silently appending every screenshot from every tied mod would bury it. When
+    it is on, the item entries are **merged after** the collection's own
+    imagery, so turning it on adds to the slideshow rather than replacing it.
+  </Param>
+</Params>
+
+## No ratings
+
+A collection has `allowReviews`, `allowComments` and `allowMedia` like every
+other item — but **no `allowRatings`**. Collections cannot be rated at all, so
+the switch would be a control that silently does nothing.
+
+## Subscribing to a collection
+
+The official app can subscribe to a collection, and doing so creates item
+subscriptions on the subscriber's behalf for everything in it. Those child
+subscriptions remember which collection created them, so removing an item from
+the collection — or unsubscribing from the collection — cleans up correctly
+rather than leaving orphans installed.
+
+An individual item in a collection can still opt out of one-click installs with
+`subDisabled`; the collection installs everything else and says so.
+
+## Groups on a collection
+
+A collection's **groups** are its *curators* — people co-managing what is in it
+— as opposed to the `contributors` credit list, which records who made the
+things inside. The two are separate on purpose.
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/collection" auth="API key" scope="canWrite">
+Only `name` is required. `items` may be set inline on create.
+</Endpoint>
+
+<Endpoint method="PUT" path="/api/content/collection/{id}/items" auth="API key" scope="canWrite">
+Replace the membership wholesale. `POST` to the same path merges instead.
+</Endpoint>
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/collection/17/items \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "modId": 123 }, { "assetId": 88, "title": "Optional but nice" }]'
+```
+
+Collection items must point at content that **exists and is visible to you** —
+you cannot build a collection out of other people's drafts to discover what they
+are.
+
+<Related>
+- [Relations — items](/learn/content/relations)
+- [Subscriptions and the app](/learn/account/subscriptions)
+</Related>

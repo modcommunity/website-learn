@@ -1,0 +1,103 @@
+---
+title: Categories and tags
+description: The two taxonomies — a curated tree that staff maintain, and free-form labels anybody can attach. What each is for, and why they are not the same feature.
+navTitle: Categories and tags
+order: 90
+source:
+  - prisma/models/category.prisma
+  - prisma/models/tag.prisma
+  - prisma/models/tag-assignment.prisma
+---
+
+There are two ways to classify something here, and they exist for different
+reasons.
+
+## Categories — the curated tree
+
+A **category** is a maintained node in a hierarchy: one level of parent, and
+children under it. `Vehicles` → `Cars`. They are **staff-maintained** — a member
+picks a category for their item; they do not invent one.
+
+That is the point. A curated tree is what makes a browser's left-hand filter
+usable, and what stops the same idea existing eleven times under eleven
+spellings.
+
+### What can be categorised
+
+Every content item, plus server maps:
+
+`ASSET` · `MOD` · `SERVER` · `SERVER_MAP` · `COMMUNITY` · `COLLECTION` ·
+`ARTICLE` · `GROUP` · `APP`
+
+A category declares which of those it applies to, so a mods-only category never
+appears in the community browser.
+
+### Scoping to an app
+
+A category can be **scoped to particular apps**, which is how a category tree
+stays sane across dozens of games: a Garry's Mod category does not clutter the
+Rust browser.
+
+<Callout type="info">
+Do not confuse the two app relations a category has. **Scoping** limits which
+games' content may use the category. **Filing** is the app being categorised
+as a content item in its own right. They are different relations and mean
+opposite things.
+</Callout>
+
+### Auto-detection patterns
+
+A category can carry **matching rules** the scanner uses to file servers
+automatically, against three fields:
+
+| Rule set | Matches against |
+| --- | --- |
+| `srvName*` | The server's name |
+| `srvMap*` | The current map |
+| `srvMode*` | The reported game mode |
+
+Each supports *starts-with*, *exact*, *case-sensitive* and *regex* variants. So
+a "Deathrun" category can claim every server whose map starts with `deathrun_`
+without anybody categorising them by hand. A server owner who has set the
+category correctly can switch auto-detection off with `autoDetectCat`.
+
+### Counters
+
+Categories carry denormalised counts per item type plus a total, refreshed
+periodically. They are what the category cards and the browser facets read
+without running nine counting queries per page.
+
+## Tags — free-form labels
+
+A **tag** is a plain label anybody can attach: `pvp`, `vanilla`, `lowpoly`.
+Names are case-insensitively unique and normalised, so `PvP` and `pvp` are one
+tag.
+
+Tags attach to far more than categories do — not only content items but also
+media, roadmaps, roadmap items, changelogs, discussion posts and categories,
+feedback and bug reports.
+
+A tag can carry its own description, body, card image and a two-colour gradient,
+which is what gives popular tags a real landing page rather than a bare filter.
+`showOnPopular` controls whether it appears in the popular-tags rail; `hidden`
+and `nsfw` behave as they do everywhere else.
+
+## Through the API
+
+Tags are set as an array of plain strings — invalid ones are dropped rather than
+failing the write:
+
+```bash
+curl -X PUT https://moddingcommunity.com/api/content/mod/5/tags \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '["pvp", "vanilla"]'
+```
+
+Categories are set by id on the item body (`categoryId`), and can be filtered on
+in list queries (`?categoryIds=3,7`). Creating a **tag** row directly is
+staff-only; attaching one to your own item is not.
+
+<Related>
+- [Relations](/learn/content/relations)
+- [Scanning — auto-detection](/learn/servers/scanning)
+</Related>

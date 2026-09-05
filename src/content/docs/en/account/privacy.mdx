@@ -1,0 +1,88 @@
+---
+title: Privacy and anonymity
+description: Nine switches, two of which override the rest. What each one hides, from whom, and what anonymity cannot do.
+order: 30
+source:
+  - prisma/models/user.prisma
+---
+
+Privacy here is a **layered** system: a handful of narrow switches, and two
+broad ones that override them. Reading the broad ones first will save you
+setting seven switches you did not need.
+
+## The two broad switches
+
+<Params>
+  <Param name="anonymous" type="boolean" default="false">
+    **The master anonymity switch.** With it on, non-staff viewers get "this
+    member is anonymous" instead of a profile, and you become unlinkable from
+    anywhere on the site.
+  </Param>
+  <Param name="fullAnonymous" type="boolean" default="false">
+    **Full anonymous.** Implies every other privacy opt-out below, regardless of
+    how each is individually set.
+
+    It is stored **separately** from `anonymous` rather than overwriting the
+    other switches, so turning full-anonymous back off restores your own
+    choices instead of leaving you with everything hidden.
+  </Param>
+</Params>
+
+<Callout type="info" title="Anonymity applies to strangers, not friends — unless you say so">
+By default, accepted friends still see you normally. `anonApplyToFriends` makes
+anonymity apply to them too. The common case is "hide from strangers, not from
+friends", which is why it is off.
+</Callout>
+
+## The narrow switches
+
+All default to **on** — the site is public by default:
+
+| Switch | Hides |
+| --- | --- |
+| `showProfile` | Your profile page |
+| `showPublic` | You in the member browser |
+| `hideFromLists` | You from listings generally — stronger than `showPublic`, which only governs the browser |
+| `showActivity` | Your activity feed |
+| `showFriends` | Your friends list |
+| `showFollowers` | Your followers list |
+| `showStatusUpdates` | Your status posts |
+| `showMedia` | Your gallery contributions |
+| `showGameHistory` | Which servers and parties you have played on |
+
+## What anonymity does not do
+
+**It is not deletion.** Your items still exist and are still yours; they just
+stop being attributable to a visible profile.
+
+**It does not hide you from staff.** Moderators can always see who authored
+what — a site where a moderator cannot identify the account behind a report is
+a site with no moderation.
+
+**It does not reach the game server you deliberately connected to.** There is
+one place a party roster is served without anonymity applied: the [integration
+API's party read](/learn/api/integration/parties#reading-a-party), served to a
+credential belonging to the server the party is being played on.
+
+The reason is worth stating plainly: that credential's whole job is to reconcile
+our roster against the game's player list, and a member hidden from it could
+never be matched — so their play time and score would silently never be
+recorded. Site *visitors* see the anonymised roster; the server you chose to
+connect to sees that you are there. It returns display names and ids and nothing
+else — no email, no profile.
+
+## Party anonymity
+
+A party has its own `showUsers` switch, which decides whether its roster is
+disclosed at all. Your personal anonymity is applied **on top** of that, so a
+party that shows its roster still does not show you if you are anonymous.
+
+## Blocking
+
+Blocking a member is separate from all of the above. It is under **Account →
+Blocked**, and it governs interaction rather than visibility.
+
+<Related>
+- [Profile](/learn/account/profile)
+- [Parties — joining and visibility](/learn/parties/joining)
+</Related>

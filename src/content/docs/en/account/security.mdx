@@ -1,0 +1,89 @@
+---
+title: Security and sessions
+description: Two-factor authentication, step-up prompts, the device list, and what each connected sign-in can and cannot do.
+order: 20
+keywords:
+  - "2fa"
+  - "mfa"
+  - "totp"
+  - "authenticator"
+  - "password"
+  - "login"
+  - "sign in"
+  - "device"
+  - "logout"
+source:
+  - prisma/models/user-auth.prisma
+  - prisma/models/user-account.prisma
+---
+
+## Sessions
+
+Every signed-in device has its own session, listed under **Account → Sessions**
+newest first. Each row shows:
+
+| Column | |
+| --- | --- |
+| Created | When you signed in on that device |
+| Last seen | The most recent request from it, updated at most once a minute |
+| Address | Where it signed in from, and where it was last seen |
+| Device | Parsed from the browser's user-agent string |
+
+<Callout type="warning" title="The device and address columns are untrusted">
+A client picks its own user-agent, and the address is whatever the edge
+reported. Nothing on the site *authorises* off either of them. They exist for
+exactly one purpose: so you can recognise a session you do not know and revoke
+it.
+</Callout>
+
+Revoking a session signs that device out immediately.
+
+Note that "last seen" on a session is per **device**, while the last-visit time
+on your account is per **account**. Somebody signed in on a phone and a laptop
+has one account timestamp and two session timestamps — telling those apart is
+the whole point of the page.
+
+## Two-factor authentication
+
+Set up under **Account → Security**. Once enabled, signing in asks for a second
+factor.
+
+### Step-up prompts
+
+Some actions ask you to prove a factor **again**, even though you are already
+signed in — deleting your account, for one.
+
+That grace window is tracked **per session, not per account**, and that is
+deliberate: signing in on a laptop must not silently satisfy a step-up prompt on
+a phone. It also means the window dies with the session — signing out ends it,
+and so does revoking the session from another device.
+
+Proving a factor to *get in* and proving one to *delete your account* are
+different questions. Signing in with MFA does not start the step-up window.
+
+## Connected sign-ins
+
+**Account → Connections** lists the providers linked to your account. You can
+sign in with any of them and land on the same account.
+
+Linking a new provider whose email already belongs to your account goes through
+a confirmation step rather than failing — see [Creating an
+account](/learn/start/account#linking-several-sign-ins-to-one-account).
+
+<Callout type="info" title="Keep more than one way in">
+An account whose only sign-in is Steam has no email on file, because Steam
+returns none. That is fine until you lose access to Steam. Add an email address,
+or a second provider.
+</Callout>
+
+## Rate limiting on the auth endpoints
+
+Sign-in codes and MFA tickets are brute-force limited, and that limit is
+**durable** — it is counted in the database rather than only in the cache, so it
+does not weaken if the cache is unavailable. A short numeric code is burned
+after a handful of wrong guesses.
+
+<Related>
+- [Privacy and anonymity](/learn/account/privacy)
+- [Keys and integrations](/learn/account/credentials)
+</Related>

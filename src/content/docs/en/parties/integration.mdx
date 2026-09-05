@@ -1,0 +1,125 @@
+---
+title: Integrating a game
+description: What a server plugin or game mod reports, what the party gains by it, and the two rules that surprise everybody who writes one.
+navTitle: Integrating a game
+order: 50
+source:
+  - docs/api/integration-api.md
+---
+
+Reporting party state from inside the game is what moves a game from
+[`THIRD_PARTY` to `THIRD_PARTY_SUPPORTED`](/learn/parties/tech-levels). This
+page is the conceptual half; the endpoint reference is [the integration
+API](/learn/api/integration/parties).
+
+## What you gain
+
+| | Without an integration | With one |
+| --- | --- | --- |
+| Roster on the server | Guessed by name matching | Authoritative |
+| Presence | Flagged as inferred everywhere | Confirmed |
+| Scores | Members are asked afterwards | Reported per round |
+| Session times | Quantised to the scan interval | Exact |
+| Chat | Separate rooms | Relayed both ways |
+| Scan cadence | The party queue, ~15s | Not needed — you are the source |
+
+## What a reporter sends
+
+```
+# Once, at start-up: check the credential and the clock.
+GET  /me
+
+# Whenever a player joins or leaves the game.
+POST /party/session { partyId, event, player, ts, nonce }
+
+# Every 10-30 seconds, unconditionally.
+POST /party/state   { partyId, mapName, gameMode, players[], ts, nonce }
+
+# On round transitions.
+POST /party/match   { partyId, event: "start", mapName, gameMode, ts, nonce }
+POST /party/match   { partyId, event: "end",   players[], ts, nonce }
+
+# Optionally, per line of in-game chat.
+POST /chat          { partyId, player, body, ts, nonce }
+
+# And the other direction: inject what was typed on the site.
+GET  /chat/outbound?since=<last injected id>
+```
+
+You do **not** need session events for a correct roster — state reports alone
+keep it honest. Sessions are what make the *durations* exact.
+
+## The two rules that surprise everybody
+
+### 1. You cannot make somebody a member of a party
+
+A reporter sends what it knows: a display name, and a platform id if it has one.
+We match that against members who have **already joined the party themselves on
+the site**. A player we cannot match becomes an unlinked scoreboard entry —
+never a member.
+
+Letting a game server assert *"player X is user Y"* would hand it the ability to
+put any account into any party and attribute play time to it.
+
+Matching is, in order of confidence: platform id → remembered in-game name →
+site display name. **A name matching more than one member resolves to nobody.**
+
+### 2. State is absolute, not incremental
+
+Send the **whole** player list every tick. We reconcile: players in the report
+are present, players absent from it are not.
+
+An incremental protocol would need you to guarantee delivery of every join and
+leave, and one dropped packet would leave somebody "in" a party forever.
+
+<Callout type="warning" title="In the party and in the game are different things">
+This API only ever reports the second. A player absent from a state report is
+marked as not in the game; they are **not** removed from the party.
+</Callout>
+
+## Creating parties from the game side
+
+A credential with `PARTY_WRITE` can create a party. Two constraints follow from
+what a machine can be held to:
+
+- **The host is the credential's owner**, never a player you name. An
+  integration acts as the member who created it — that is the only account it
+  can be held to, and the only one that can revoke it.
+- The type is limited to `PUBLIC` or `FRIENDS`. A password party created by a
+  machine has a password only the machine knows; a private one has an invite
+  list nobody can manage.
+
+A server-scoped credential creates parties on its own server. An app-scoped one
+may name a server, validated against the app.
+
+## Clock and replay
+
+Every write endpoint accepts a timestamp and a nonce. The timestamp must be
+within five minutes of our clock, which bounds how long a captured request stays
+useful; the nonce is remembered for that window, so a captured request cannot be
+replayed inside it either.
+
+`GET /me` returns our server time — check your clock against it at start-up
+before you send anything.
+
+Also set an **IP allowlist** on the credential. It is the cheapest mitigation
+there is for a token that leaks, and a plugin runs on one known host.
+
+## Where to look when it is not working
+
+Authentication and authorisation failures all return the same vague
+`Unauthorized.` — distinguishing them would let somebody with a stolen
+credential map out what it can do.
+
+The **specific** reason is recorded in your own request log, under **Account →
+Integrations → request log**. That is where the answer is.
+
+A persistently high `matched: 0` in your state responses is the signature of a
+name-matching problem, and the same figures land in that log, so you can see it
+without instrumenting anything.
+
+<Related>
+- [Integration API — parties](/learn/api/integration/parties)
+- [Tech levels](/learn/parties/tech-levels)
+- [Reporting server statistics](/learn/servers/reporting)
+</Related>

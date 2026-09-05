@@ -1,0 +1,56 @@
+---
+title: Dependencies
+description: Directed edges between items — what this needs, what it recommends, and what it must never be installed alongside.
+order: 40
+source:
+  - prisma/models/dependency.prisma
+---
+
+A **dependency** is a directed edge from one content item to another: "A depends
+on B". Both ends can be a mod, an asset, a server, a community, a collection or
+a group.
+
+## The four kinds
+
+| Kind | Means |
+| --- | --- |
+| `Required` | The source does not function without the destination. The default. |
+| `Optional` | It works without it, but there is a reason to have both. |
+| `Recommended` | Stronger than optional — the author suggests it. |
+| `Conflict` | **The two must not be installed together.** |
+
+<Callout type="warning" title="Conflict is why this feature has a type at all">
+Collapsing every edge into "dependencies" turns *"these two must not be
+installed together"* into *"install this one too"* — the exact opposite of what
+the author wrote, delivered to somebody who is about to break their game.
+
+The official app acts on the edge type, so getting it right matters more than
+it looks.
+</Callout>
+
+Each edge can also carry **notes** — markdown, for the cases where the type is
+not the whole story ("required only if you are using the server build").
+
+## Collections as dependency carriers
+
+A collection can sit on either end, and that is deliberate: a collection exists
+to carry a mass list of dependencies. Rather than declaring twelve edges on a
+mod, declare one on a collection that holds twelve items.
+
+## Repeated edges are a no-op
+
+Adding the same edge twice updates it rather than duplicating it. Each
+(source kind, destination kind) combination is constrained separately, so a mod
+depending on both a mod and an asset is two edges, and neither collides with the
+other.
+
+## Through the API
+
+Dependencies are managed on the item's Dependencies tab. They are not currently
+exposed as an API relation sub-resource — see [the availability
+table](/learn/api/content/relations#availability) for what is.
+
+<Related>
+- [Collections](/learn/content/collections)
+- [Relations](/learn/content/relations)
+</Related>

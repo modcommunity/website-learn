@@ -1,0 +1,74 @@
+---
+title: Assets
+description: Game development material — models, textures, tools and scripts. Nearly identical to a mod, with one important difference.
+order: 20
+source:
+  - prisma/models/asset.prisma
+---
+
+An **asset** is game development material: a model, a texture pack, a tool, a
+script, a sound library. It carries almost exactly the same fields as a
+[mod](/learn/content/mods), and the difference is a deliberate one.
+
+## The difference from a mod
+
+<Params>
+  <Param name="appId" type="int">
+    **Optional**, where a mod requires it. An asset can be engine-agnostic — a
+    set of low-poly trees is not "for" any one game — so it may sit outside the
+    app taxonomy entirely, or be filed under an engine rather than a game.
+  </Param>
+  <Param name="content" type="markdown">
+    **Optional**, where a mod requires it. An asset is often adequately
+    described by its name, its category and its screenshots.
+  </Param>
+</Params>
+
+Everything else is the same: `license`, `environment`, `install`-less body,
+`virusScanLink`, the visibility switches, the engagement switches, and the full
+set of relations.
+
+<Callout type="info" title="Which should I publish it as?">
+If it changes how a specific game behaves, it is a mod. If it is raw material
+somebody builds *with*, it is an asset. A Unity editor extension is an asset; a
+Garry's Mod addon is a mod. When it is genuinely both, file it as whichever one
+its audience will search for.
+</Callout>
+
+## What can be attached
+
+The same set as a mod, minus server maps:
+
+| Relation | Notes |
+| --- | --- |
+| [Releases](/learn/content/relations/releases) | Versions and files |
+| [Media](/learn/content/relations/media) | Screenshots and videos |
+| [Sources](/learn/content/relations/sources) | Mirrors, and the repo it builds from |
+| [Dependencies](/learn/content/relations/dependencies) | Required, optional, recommended or conflicting |
+| [Contributors](/learn/content/relations/credits) | Credits |
+| [Permissions](/learn/content/relations/permissions) | Usage policy and access grants |
+| [Tags and categories](/learn/content/categories) | Taxonomy |
+| [Engagement](/learn/content/relations/engagement) | Ratings, reviews, comments |
+| [Follows and favourites](/learn/content/relations/following) | |
+| [Boards](/learn/content/relations/boards) | Discussions, feedback, bugs, roadmap, changelog |
+
+Assets do **not** take `links` — that relation exists on mods, servers and
+communities.
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/asset" auth="API key" scope="canWrite">
+Create an asset. Only `name` is required.
+</Endpoint>
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/asset \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Low-poly trees", "tags": ["nature", "lowpoly"] }'
+```
+
+<Related>
+- [Mods](/learn/content/mods)
+- [The shared content model](/learn/content/model)
+</Related>

@@ -1,0 +1,208 @@
+---
+import "../styles/Global.css"
+
+import ObserverProvider from '../components/Observer';
+import SiteHeader from "../components/SiteHeader";
+import SiteSidebar from "../components/SiteSidebar";
+import SiteFooter from "../components/SiteFooter";
+import { LOCALES, localizeUrl, stripLocale, type LocaleT } from "../i18n/config";
+
+import PlausibleAnalytics from "../components/helper/PlausibleAnalytics.astro";
+import UmamiAnalytics from "../components/helper/UmamiAnalytics.astro";
+
+// The *variable* fonts, not the static weight cuts. website-city loads these
+// families through next/font, which serves the variable font with the weight
+// axis; @fontsource's static files are cut at the 9pt optical size and render
+// as a visibly different design ("DM Sans 9pt Medium" is its own family), which
+// is why the two shells looked mismatched even at identical weights. One file
+// per family also covers every weight the shared components ask for.
+import '@fontsource-variable/dm-sans/index.css';
+import '@fontsource-variable/plus-jakarta-sans/index.css';
+
+// Orbitron powers the shared TMC logo wordmark.
+import '@fontsource-variable/orbitron/index.css';
+
+// JetBrains Mono for code — see the --font-mono note in Global.css. Loaded here
+// rather than lazily because every documentation page has code on it, and a
+// late-swapping monospace face reflows the tables it sits in.
+import '@fontsource-variable/jetbrains-mono/index.css';
+
+// Plausible Analytics
+const paSrc: string | undefined = import.meta.env.PUBLIC_PA_SRC
+const paDomain: string | undefined = import.meta.env.PUBLIC_PA_DOMAIN
+const paApi: string | undefined = import.meta.env.PUBLIC_PA_API
+
+// Umami Analytics
+const umamiSrc: string | undefined = import.meta.env.PUBLIC_UMAMI_SRC
+const umamiWebsiteId: string | undefined = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID
+
+type Props = {
+	pathName?: string
+	meta?: {
+		title?: string
+		titleMain?: string
+		desc?: string
+	}
+}
+
+const { pathName = "/", meta } = Astro.props as Props
+
+// Astro derives the locale from the URL's leading segment against the configured
+// i18n locales (`/es/...` -> "es"; bare domain -> the default "en").
+const locale = Astro.currentLocale ?? "en"
+
+const {
+	title: titleMeta,
+	titleMain: titleMainMeta,
+	desc: descMeta }
+= meta ?? {}
+
+// Website meta settings.
+const title = titleMeta ?? import.meta.env.PUBLIC_TITLE ?? "The Modding Community Docs"
+const titleMain = titleMainMeta ?? import.meta.env.PUBLIC_TITLE_MAIN ?? "Documentation - The Modding Community"
+const favIcon = import.meta.env.PUBLIC_FAV_ICON ?? "/favicon.ico"
+const socialMediaImg = import.meta.env.PUBLIC_SOCIAL_MEDIA_IMAGE ?? "/images/banner.png"
+const url = import.meta.env.PUBLIC_URL ?? "https://moddingcommunity.com"
+
+// Canonical + hreflang. Every locale serves the same page at its own prefix, so
+// without these the 9 copies compete as duplicate content and every page claims
+// to be the home page in Open Graph. Built off the real request path (Astro's
+// directory output means it always ends in "/"), stripped back to the bare
+// route and then re-localized for each language.
+const routePath = (Astro.url.pathname.endsWith("/") ? Astro.url.pathname : `${Astro.url.pathname}/`)
+const basePath = stripLocale(routePath)
+const canonical = new URL(localizeUrl(basePath, locale as LocaleT), url).href
+const alternates = LOCALES.map((l) => ({
+	locale: l,
+	href: new URL(localizeUrl(basePath, l), url).href
+}))
+// The mod workshop and the game-dev asset library are LIVE, not planned. This
+// string said "with plans to launch a mod workshop and more in the future",
+// which is what every search result and every social unfurl for the site was
+// still saying about features that shipped — the single worst place to
+// undersell them, since it is the copy people read before deciding to click.
+// Kept under 160 characters, which is roughly where a desktop SERP truncates.
+const desc = descMeta ?? import.meta.env.PUBLIC_DESCRIPTION ?? "Documentation for The Modding Community: guides for mods, assets, servers and parties, and the full reference for the content, integration and app APIs."
+---
+
+<!doctype html>
+<html lang={locale} class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+
+		<!--
+			Apply the stored/OS-default theme before first paint, so toggling to
+			light (via the shared <ThemeToggle/>) has no flash on the next load.
+			Defaults to dark (the site's identity) when no choice is stored; only
+			a stored "light" flips it. Uses the same `tmc:theme` key + `dark`
+			class / `data-theme` signals the shared ThemeToggle writes.
+		-->
+		<script is:inline>
+			(function () {
+				try {
+					var t = localStorage.getItem('tmc:theme')
+					if (t !== 'light' && t !== 'dark') t = 'dark'
+					document.documentElement.classList.toggle('dark', t === 'dark')
+					document.documentElement.setAttribute('data-theme', t)
+				} catch (e) {}
+			})()
+		</script>
+		<link rel="icon" type="image/svg+xml" href={favIcon} />
+		<meta name="generator" content={Astro.generator} />
+
+		<title>{titleMain}</title>
+		<meta name="description" content={desc} />
+
+		<!--
+			Canonical + one alternate per locale (plus x-default pointing at the
+			unprefixed English page), so search engines treat the 9 localized
+			copies of a page as one page in many languages.
+		-->
+		<link rel="canonical" href={canonical} />
+		{alternates.map(({ locale: l, href }) => (
+			<link rel="alternate" hreflang={l} href={href} />
+		))}
+		<link rel="alternate" hreflang="x-default" href={new URL(basePath, url).href} />
+
+		<!-- Open Graph -->
+		<meta property="og:site_name" content={title}>
+		<meta property="og:title" content={title}>
+		<meta property="og:description" content={desc}>
+		<meta property="og:image" content={url + socialMediaImg}>
+		<meta property="og:image:width" content="1200">
+		<meta property="og:image:height" content="675">
+		<meta property="og:url" content={canonical}>
+		<meta property="og:type" content="website">
+		<meta property="og:locale" content={locale}>
+		{alternates.filter(({ locale: l }) => l !== locale).map(({ locale: l }) => (
+			<meta property="og:locale:alternate" content={l}>
+		))}
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image">
+		<meta name="twitter:title" content={title}>
+		<meta name="twitter:description" content={desc}>
+		<meta name="twitter:image" content={url + socialMediaImg}>
+		<meta name="twitter:url" content={canonical}>
+		<meta name="twitter:site" content="@modcommunity_">
+
+		{(paSrc && paDomain) && (
+            <PlausibleAnalytics
+				src={paSrc}
+				domain={paDomain}
+				api={paApi}
+			/>
+        )}
+
+		{(umamiSrc && umamiWebsiteId) && (
+			<UmamiAnalytics
+				src={umamiSrc}
+				websiteId={umamiWebsiteId}
+				setOutboundClicks={true}
+			/>
+		)}
+	</head>
+	<body>
+		<ObserverProvider client:load>
+			<div class="relative flex min-h-screen flex-col bg-background text-foreground">
+				<SiteHeader pathName={pathName} locale={locale} client:load />
+
+				<div class="flex flex-1">
+					<SiteSidebar pathName={pathName} locale={locale} client:load />
+
+					<!--
+						`@container`: the page content sizes itself off THIS
+						element's width, not the viewport's. It has to, because
+						the two differ by the sidebar — <SiteSidebar/> appears
+						at `md` and takes 4rem resting (16rem once pinned open),
+						so a plain `lg:grid-cols-2` fires exactly when the space
+						to lay out in drops. That is how a 1100px window ended up
+						with four 180px columns and a horizontal scrollbar.
+						Sections use the `@…` variants (`@3xl:grid-cols-2`, …)
+						throughout.
+
+						Only the PINNED width is taken out of this element: a
+						hover peek opens the rail's panel OVER the page rather
+						than beside it, precisely so it cannot reflow what is
+						being read.
+					-->
+					<main class="@container relative z-20 min-w-0 grow">
+						<slot />
+					</main>
+				</div>
+
+				<SiteFooter locale={locale} client:load />
+			</div>
+		</ObserverProvider>
+	</body>
+</html>
+
+<style>
+	html,
+	body {
+		margin: 0;
+		width: 100%;
+		height: 100%;
+	}
+</style>

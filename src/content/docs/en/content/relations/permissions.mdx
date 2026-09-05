@@ -1,0 +1,115 @@
+---
+title: Permissions and usage policy
+description: Two features with confusingly similar names — what others may DO with your work, and who may EDIT it.
+navTitle: Permissions
+order: 60
+keywords:
+  - "licence"
+  - "license"
+  - "reuse"
+  - "redistribute"
+  - "collaborator"
+  - "editor"
+  - "access"
+  - "crediting"
+source:
+  - prisma/models/item-permission.prisma
+  - prisma/models/permission.prisma
+---
+
+There are two unrelated things called "permissions" here, and telling them apart
+is worth thirty seconds.
+
+| | Answers | Audience |
+| --- | --- | --- |
+| **Usage policy** | "May I redistribute this? Modify it? Sell it?" | Everybody reading the page |
+| **Access grants** | "Who may edit this item?" | You and your collaborators |
+
+## Usage policy
+
+Your publicly stated position on what others may do with your work. It appears
+on the item's Permissions tab as a grid, under whatever you write in the
+free-form policy body.
+
+<Params>
+  <Param name="policyAllowRedistribution" type="yes | no | not stated">
+    May somebody re-upload this elsewhere?
+  </Param>
+  <Param name="policyAllowModification" type="yes | no | not stated">
+    May somebody change it and publish the result?
+  </Param>
+  <Param name="policyAllowCommercialUse" type="yes | no | not stated">
+    May somebody use it in something they sell?
+  </Param>
+  <Param name="policyRequireCredit" type="yes | no | not stated">
+    Must they credit you?
+  </Param>
+  <Param name="policyRequireShareAlike" type="yes | no | not stated">
+    Must the result carry the same terms?
+  </Param>
+  <Param name="policyUseAi" type="yes | no | not stated">
+    May it be used to train a model?
+  </Param>
+  <Param name="policyUseNsfw" type="yes | no | not stated">
+    May it be used in adult work?
+  </Param>
+  <Param name="content" type="markdown">
+    A free-form policy, rendered under the grid — for everything the toggles
+    cannot express.
+  </Param>
+</Params>
+
+<Callout type="info" title="Not stated is not No">
+Every answer is a **three-state** value. `not stated` means the owner has not
+said, which is the honest default and what the UI renders in grey. Treating a
+blank as a refusal would put words in an author's mouth; treating it as
+permission would be worse.
+</Callout>
+
+The usage policy is **not** the licence. `license` is the legal instrument (MIT
+by default); the policy is the author's own plain-language answer, and the two
+are shown together precisely because a licence alone rarely settles the
+questions people actually ask.
+
+## Access grants
+
+Who may act on the item. Three levels:
+
+| Grant | Lets the holder |
+| --- | --- |
+| `READ` | See the item even when it is hidden |
+| `WRITE` | Edit it |
+| `DELETE` | Delete it |
+
+A grant goes to **exactly one** grantee: a member, or a **group** — in which
+case every member of that group inherits it. That is the main practical reason
+to make a group.
+
+### The rules that hold everywhere
+
+- The **owner** always has all three.
+- **Staff** can act on any item.
+- Every write — form, API, bulk API — resolves to the **same check**. There is
+  no path more permissive than the edit form.
+- A grant handed to a group as a *grantee* is not a grant over the group as a
+  *target*. See [Groups](/learn/content/groups#the-two-directions-of-a-grant).
+
+### Discussion sections are a special case
+
+A grant can also target one **section of a discussion board**, where the three
+levels mean something narrower:
+
+| Grant | On a discussion section |
+| --- | --- |
+| `READ` | Opens a private section |
+| `WRITE` | Lets somebody post in a restricted one |
+| `DELETE` | Makes them a moderator of that section |
+
+A section has no owner of its own, so who may manage its grants is a question
+about the item the board hangs off, not about the section.
+
+<Related>
+- [Groups](/learn/content/groups)
+- [The shared content model](/learn/content/model#ownership-and-access)
+- [Contributors](/learn/content/relations/credits) — credit, which is not access
+</Related>

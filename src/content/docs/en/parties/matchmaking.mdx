@@ -1,0 +1,119 @@
+---
+title: Matchmaking
+description: The filters a host sets, how the search widens when nothing matches, and why it runs in passes rather than in one shot.
+order: 40
+keywords:
+  - "lobby"
+  - "queue"
+  - "find a game"
+  - "filters"
+  - "join"
+  - "group"
+  - "session browser"
+source:
+  - prisma/models/party.prisma
+  - prisma/models/party-search.prisma
+---
+
+"Find us a server" is a filter over the server table. The criteria live on the
+**party**, not on each search, so the host sets them once, the members can see
+what is being looked for while the search runs, and a retry after a failed
+search does not make anybody type it all again.
+
+## Hard filters
+
+These **exclude** servers that do not match.
+
+| Criterion | Empty means |
+| --- | --- |
+| `matchRegions` | Anywhere |
+| `matchCountryIds` | Any country inside the chosen regions |
+| `matchCategoryIds` | The party's own category, if it has one; otherwise any |
+| `matchTags` | No tag filter. The server must carry **all** listed tags |
+| `matchKeyword` | No name filter |
+| `matchMinSlots` | `0` means "enough for this party" — resolved to the live member count at search time, so it stays correct as people join |
+| `matchMaxPlayers` | No upper bound on current population |
+| `matchEmptyOnly` | Off. When on, only servers with nobody on them |
+| `matchOfficialOnly` | Off |
+| `matchNoPassword` | **On** by default — a party cannot walk into a server it has no credential for, and the host has nowhere to put one |
+| `matchFreshOnly` | **On** by default — the candidate's query data must be recent |
+
+The app is not a criterion because a party already has one and it is immutable.
+The category defaults to the party's own; `matchCategoryIds` exists so a host
+can **widen** past it.
+
+<Callout type="info" title="Tags are matched by name, not by id">
+That is what a host types, and what the tag system resolves through. An id here
+would break the moment two apps spelled a tag the same.
+</Callout>
+
+`matchFreshOnly` is on because the whole point of picking a server is that it
+will have room when the party arrives, and a player count from four hours ago is
+not evidence about that.
+
+## Soft preferences
+
+These **rank** rather than exclude.
+
+<Params>
+  <Param name="matchPreferEmpty" type="boolean" default="true">
+    Rank quiet servers above busy ones.
+
+    On by default, because a party is a group that wants to play **together**,
+    and dropping eight people into a server with forty strangers on it is not
+    that. Turning it off restores the opposite preference — the right answer for
+    a host looking for a game to *join* rather than a room to fill.
+
+    Distinct from `matchEmptyOnly`, which **refuses** anything with a player on
+    it and regularly finds nothing at all.
+  </Param>
+  <Param name="matchMapName">
+    Preferred map, matched against the server's last reported value. Soft,
+    because a server that is between maps is still the right server.
+  </Param>
+  <Param name="matchGameMode">
+    Preferred game mode. Soft, for the same reason.
+  </Param>
+  <Param name="matchAutoAssign" type="boolean" default="true">
+    Assign the winning server automatically. Off means the search still runs and
+    reports what it found, and the host picks.
+  </Param>
+</Params>
+
+## The search runs in passes
+
+A search is not one query. It runs in **passes**, and each pass relaxes the
+host's criteria one notch.
+
+That is not padding to make a spinner look busy. A host who asked for an empty
+official server in one country with three tags will usually get nothing, and the
+honest answer is not "no servers" — it is *"none matching all of that; here is
+the closest thing"*. Stepping through the ladder makes the widening **visible**
+instead of silently ignoring what they typed.
+
+Every comfort filter, including `matchFreshOnly`, is relaxed by the ladder rather
+than being absolute. So a game whose servers are scanned rarely still gets an
+answer; it just gets a warning with it.
+
+## Why a search is a row
+
+A search has an elapsed time and a status, both of which have to be visible to
+**every member** of the party and have to outlive the browser tab that started
+it. So it is stored, not held in component state.
+
+Passes are driven by the **poll the modal is already making**, not by a
+background task. A background task would have to survive a process restart, and
+a party whose search silently died would sit in the searching stage forever with
+nothing to restart it. A poll-driven pass cannot outlive the thing watching it,
+and the idle sweep closes anything abandoned.
+
+## While the search runs
+
+The party's stage is `SEARCHING`. When it finishes, the party either moves to
+`READY` with a server assigned, or returns to `LOBBY` with a message saying what
+was found.
+
+<Related>
+- [Lifecycle](/learn/parties/lifecycle)
+- [How scanning works](/learn/servers/scanning) — where the freshness comes from
+</Related>

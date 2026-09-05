@@ -1,0 +1,87 @@
+---
+title: Ratings, reviews and comments
+description: The three ways people respond to an item, what each one is for, and the switches that govern them.
+navTitle: Ratings and reviews
+order: 70
+source:
+  - prisma/models/rating.prisma
+  - prisma/models/review.prisma
+  - prisma/models/comment.prisma
+---
+
+Three separate features, frequently lumped together.
+
+## Ratings
+
+A **rating** is a single bit: positive or negative. One per member per thing.
+
+They attach to almost everything — items, but also individual reviews, comments,
+media entries, bug replies, status updates, roadmap items, discussion posts and
+feedback. That is how a helpful review rises and an unhelpful one does not.
+
+Governed by `allowRatings` on the item. Collections have no such switch because
+they cannot be rated at all.
+
+## Reviews
+
+A **review** is a star score plus a written body. **One per member per item** —
+you can edit yours, you cannot leave a second.
+
+<Params>
+  <Param name="rating" type="0–5">
+    The star score.
+  </Param>
+  <Param name="content" type="markdown">
+    The body. Optional — a score with no words is a valid review.
+  </Param>
+  <Param name="hidden" type="boolean" default="false">
+    Hidden by a moderator or by the review's own author.
+  </Param>
+</Params>
+
+A review can itself be rated, commented on, reported, and can carry media of its
+own — so "here is a screenshot of the bug I am describing" works inside a
+review.
+
+Governed by `allowReviews`.
+
+## Comments
+
+A **comment** is a threaded reply. Comments carry a parent, so they nest.
+
+They attach to items and to almost everything else on the site: reviews,
+releases, media, reports, penalties, questions, roadmap items, feedback, bug
+reports, status updates, and directly to a member's profile.
+
+<Callout type="info" title="Comments are how appeals work">
+A [penalty](/learn/community/penalties) carries a comment thread, and that
+thread is the conversation between the penalised member and staff. Same for a
+[report](/learn/community/reporting). It is the same model doing a different
+job, which is why an appeal behaves like a thread and not like a form.
+</Callout>
+
+`isAnswer` marks a comment as the accepted answer, which is what turns a
+question thread into something useful to the next person reading it.
+
+Governed by `allowComments`.
+
+## The switches are enforced, not hidden
+
+`allowRatings`, `allowReviews` and `allowComments` are checked server-side on
+every write. Turning one off does not merely hide a button — a script posting
+directly to the API is refused too.
+
+When engagement is switched off, the item's page says so. The exception is items
+marked `isOfficial`, which are trusted and do not carry the notice.
+
+## Penalties suppress engagement
+
+A member under a **full** penalty cannot rate, review, comment, favourite or
+report anything. A **limited** penalty leaves all of that available — it only
+stops them creating new content. See [Penalties](/learn/community/penalties).
+
+<Related>
+- [Reporting](/learn/community/reporting)
+- [Penalties](/learn/community/penalties)
+- [The shared content model](/learn/content/model#engagement-switches)
+</Related>

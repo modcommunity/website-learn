@@ -1,0 +1,144 @@
+---
+title: Rate limits
+description: The budgets on each surface, the headers that report them, and what happens when the counter itself is unavailable.
+order: 30
+keywords:
+  - "throttle"
+  - "throttling"
+  - "429"
+  - "quota"
+  - "too many requests"
+  - "backoff"
+  - "retry-after"
+source:
+  - docs/api/public-content-api.md
+  - docs/api/integration-api.md
+---
+
+Every surface is metered, and every request — including the rejected ones — is
+logged.
+
+## Authenticated content keys
+
+Two **rolling windows**, and both must have budget or the request is rejected:
+
+| Window | Users | Supporters and above |
+| --- | --- | --- |
+| 5 hours | `API_RATE_5H_USER` | `API_RATE_5H_SUPPORTER` |
+| 7 days | `API_RATE_WEEK_USER` | `API_RATE_WEEK_SUPPORTER` |
+
+Live usage for both is shown under **Account → API keys**, alongside an audit
+log carrying every request's method, path, status, address and the item it
+touched.
+
+### List caching and limits
+
+List responses are cached briefly (30 seconds by default). `limit` defaults to
+1000; below 1 it clamps up, and above your role's maximum it clamps down —
+2500 for a standard account, 30000 for a supporter, by default.
+
+## Anonymous reads
+
+Per **source address**, in two windows, both of which must have budget:
+
+| Setting | Default | Window |
+| --- | --- | --- |
+| `api.anon.rateMin` | 30 | per minute |
+| `api.anon.rateDay` | 2000 | per day |
+
+The numbers are small on purpose. One address is a household, an office or a
+carrier NAT, so a generous per-IP budget is a generous budget for a botnet with
+one node behind each address.
+
+**The answer to wanting more is a key** — which is free, attributable and
+revocable, as an address is not.
+
+### Headers
+
+Every response carries `x-ratelimit-limit`, `x-ratelimit-remaining` and
+`x-ratelimit-reset` (plus `-day` variants) and `x-ratelimit-backend`. A `429`
+carries `retry-after`. Answers are cached for 60 seconds by default and carry
+`x-cache: HIT|MISS`.
+
+### It degrades rather than refusing
+
+The rule is that an anonymous request which cannot be counted is an unbounded
+public endpoint. But "cannot be counted in the cache" is not "cannot be
+counted":
+
+<Params>
+  <Param name="No cache available">
+    The quota is counted in each app process's own memory
+    (`x-ratelimit-backend: memory`). The bound survives; the exactness does not
+    — a deployment running *N* processes then allows up to *N* times the budget,
+    and the day window resets on deploy. Requests past it still cost no database
+    query.
+  </Param>
+  <Param name="No readable source address">
+    Every such request counts against one shared bucket, and the `429` says so.
+    This is a proxy misconfiguration, and it is logged once a minute rather than
+    per request.
+  </Param>
+</Params>
+
+<Callout type="info" title="A correction, if you integrated against the old behaviour">
+Both cases above used to be answered `429 rate_limited` with *"Unauthenticated
+requests are temporarily unavailable"*. Since the cache is optional and every
+other consumer treats a missing cache as a cache miss, a deployment that never
+configured one looked entirely healthy while refusing 100% of anonymous traffic,
+permanently — under a status code that sent integrators to look at their own
+call frequency.
+
+**A `429` now only ever means a `429`.**
+</Callout>
+
+## Integrations
+
+Two budgets, both enforced, both operator-configurable:
+
+| Budget | Scope | Setting |
+| --- | --- | --- |
+| Per credential | This integration | `integration.rate.max` |
+| Per source address | Every integration reporting from one host | `integration.rate.perIp` |
+
+You choose your own per-credential figure at creation (600/minute by default),
+and it is **clamped to the operator's current ceiling at request time** — so
+lowering the ceiling reins in credentials created under a higher one rather than
+grandfathering them.
+
+The per-address budget is what bounds a leaked-token farm: somebody holding
+fifty credentials still only gets one address's worth of budget.
+
+Over either limit is a `429` for the rest of the minute. Back off; do not retry
+immediately.
+
+There is also a cap on how many integrations may exist against one content item
+at a time (10 by default). Revoked ones do not count.
+
+### Row budgets are separate
+
+The limits above bound how **often** you may report. They say nothing about how
+much each report leaves behind, and for endpoints that append rather than
+overwrite that is the part that matters — a reporter inside its request budget
+can still write millions of rows a day.
+
+Those ceilings, and the fact that every one of them **degrades rather than
+refusing**, are documented on [Reporting server
+statistics](/learn/servers/reporting#row-budgets) and [Integration API —
+parties](/learn/api/integration/parties#row-budgets).
+
+## The app API
+
+Rate limits are per endpoint. The two on the device-login flow are **durable** —
+counted in the database rather than only in the cache — because that is the
+front door, and a cache outage must not turn it into an unmetered row factory.
+
+| Endpoint | Limit |
+| --- | --- |
+| `POST /auth/device` | 10 per minute |
+| `POST /auth/token` | 60 per minute — a well-behaved client polls about 12 times a minute |
+
+<Related>
+- [Errors](/learn/api/errors)
+- [Authentication](/learn/api/authentication)
+</Related>

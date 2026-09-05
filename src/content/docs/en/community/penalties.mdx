@@ -1,0 +1,138 @@
+---
+title: Penalties
+description: The four kinds of penalty, exactly what each blocks, how server flags are raised and lifted automatically, and how to appeal.
+order: 20
+source:
+  - prisma/models/penalty.prisma
+  - src/lib/penalty/enforce.ts
+---
+
+A **penalty** is a restriction attached to a member or to a content item. There
+are four kinds and they are **not a single ladder** — each restricts a different
+thing, and holding one does not imply another.
+
+| Type | Applies to | Restricts |
+| --- | --- | --- |
+| `FULL` | A member | Creating, editing **and** reacting |
+| `LIMITED` | A member | Creating only |
+| `CHAT_RESTRICT` | A member | Chat only |
+| `SPY_FLAG` | A server | Nothing the owner does — it flags the listing |
+
+## What each one actually blocks
+
+### Full
+
+The account is **read-only**.
+
+| Action | |
+| --- | --- |
+| Create a content item | ✗ |
+| Edit an item you already own | ✗ |
+| Comment, review, rate, favourite, report | ✗ |
+
+### Limited
+
+You keep your existing work and can maintain it. You cannot start anything new.
+
+| Action | |
+| --- | --- |
+| Create a content item | ✗ |
+| Edit an item you already own | ✓ |
+| Comment, review, rate, favourite, report | ✓ |
+
+That split is the point of the type: a member being told to stop publishing is
+not being told to abandon what they have already published, and forcing them to
+leave it unmaintained punishes their users rather than them.
+
+### Chat restriction
+
+You may use the rest of the site normally, but cannot send chat messages or open
+new conversations.
+
+<Callout type="info" title="A chat ban is deliberately not on the ladder">
+`CHAT_RESTRICT` is **not** part of the full/limited hierarchy, and the check
+that reads that hierarchy does not see it. That is what stops a chat ban
+silently becoming a site-wide content ban.
+</Callout>
+
+A chat restriction records the message it was issued in reference to.
+
+### When two penalties are active
+
+Only `FULL` and `LIMITED` gate a member's own actions, and when both are in
+force the **stricter one wins**.
+
+## Expiry
+
+A penalty may carry an expiry or may not. "Active" means no expiry, or an expiry
+still in the future — nothing has to run to lift a temporary penalty; it simply
+stops matching.
+
+## Appeals
+
+Every penalty carries a **comment thread**. That thread is the conversation
+between you and staff, and it is where an appeal happens. It is the same
+mechanism a [report](/learn/community/reporting) uses, which is why an appeal
+behaves like a discussion rather than a form.
+
+Your penalties, and their threads, are under **Account → Penalties**.
+
+## Server flags
+
+`SPY_FLAG` is different from the other three. It attaches to a **server
+listing**, and it is usually raised by an automated detector rather than by a
+person.
+
+A flagged server is not removed. It is moved to the **slowest scan tier** and
+excluded from the places a flagged listing should not appear — which means a
+server that fixes whatever got it flagged is unflagged automatically on a later
+scan, rather than needing somebody to notice.
+
+### Which detector raised it
+
+Each flag records **which check raised it**, and each detector may only lift its
+own:
+
+| Sub-type | Raised by |
+| --- | --- |
+| `SCAN` | The scanner's own filters — bad word, bad IP, bad ASN, master-list import |
+| `DUPLICATE` | Redirect and proxy farms: too many visible servers on one IPv4 |
+| `FAKE_USERS` | Fake player counts: a population that barely moves across thousands of scans |
+| *(none)* | A human moderator, by hand |
+
+<Callout type="warning" title="Why the sub-type exists">
+Without it, every detector shared one undifferentiated flag — so whichever ran
+next reconciled *all* of them. The scanner re-scans every server eventually, sees
+nothing wrong by its own filters, reports "not flagged", and silently lifts a
+flag raised by a completely different check.
+
+Each detector now owns exactly one sub-type. It may raise and lift its own and
+must leave the others alone. A flag with **no** sub-type was raised by a human,
+and no automated job ever touches it.
+</Callout>
+
+The **read** side does not care which detector raised it: visibility, statistics
+and scan tier treat every active flag the same.
+
+### If your server is flagged
+
+- Check what the flag is. A `DUPLICATE` flag means too many of your listings
+  share one address; a `FAKE_USERS` flag means your reported population does not
+  move like a real one.
+- Fix the cause, then wait for a scan. The automated flags lift themselves.
+- If it was raised by a moderator, or you believe a detector is wrong, use the
+  penalty's comment thread.
+
+<Callout type="danger" title="Reporting false statistics">
+Server statistics feed public rankings. If an [integration](/learn/api/integration)
+is found to have reported false or inflated figures we will revoke the
+credential and penalise the item — for a game server, being flagged, dropped
+from the server list and excluded from statistics for a period we set, up to and
+including permanently.
+</Callout>
+
+<Related>
+- [Reporting](/learn/community/reporting)
+- [How scanning works](/learn/servers/scanning)
+- [Reporting your own statistics](/learn/servers/reporting)
+</Related>

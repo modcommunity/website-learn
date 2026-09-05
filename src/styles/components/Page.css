@@ -1,0 +1,9 @@
+@layer components {
+  .page {
+    @apply text-sm cursor-pointer;
+  }
+
+  .page-active {
+    @apply font-bold text-white;
+  }
+}

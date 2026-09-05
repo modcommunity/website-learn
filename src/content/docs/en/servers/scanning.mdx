@@ -1,0 +1,255 @@
+---
+title: How scanning works
+description: Discovery, query protocols, the scan queue and its seven tiers, port repair, and the automated detectors that flag a listing.
+order: 20
+badge: new
+keywords:
+  - "a2s"
+  - "query port"
+  - "spy"
+  - "uptime"
+  - "offline"
+  - "player count"
+  - "heartbeat"
+  - "ping"
+source:
+  - prisma/models/spy.prisma
+  - prisma/models/spy-scanner.prisma
+  - prisma/models/spy-seed.prisma
+  - prisma/models/spy-protocol-port.prisma
+  - src/types/server/scan_tier.ts
+  - src/lib/server/scan-queue.ts
+---
+
+The scanner — internally, **Spy** — is what turns an address into a live
+listing. It runs continuously against roughly two million servers, and how often
+it gets to yours is not arbitrary.
+
+## The three processes
+
+A scanner deployment runs three independent things:
+
+<Params>
+  <Param name="Scanners">
+    Pull servers off the due-queue and query them. This is the bulk of the work
+    and the source of everything on a server's page.
+  </Param>
+  <Param name="Seeds">
+    Discovery. They find servers that are not in the database yet. Four kinds —
+    see below.
+  </Param>
+  <Param name="The party queue">
+    A short, separate queue for servers hosting a live third-party
+    [party](/learn/parties). It is separate from the scanners because it must
+    not compete with them for the rotation, it creates no servers so it is
+    unrelated to seeds, and it is bounded by the number of live parties rather
+    than the size of the fleet — which is what makes a much shorter interval
+    affordable.
+  </Param>
+</Params>
+
+## Discovery: the four seed types
+
+| Type | Finds servers by |
+| --- | --- |
+| `VMS` | Valve's master server list, over the Steam Web API |
+| `TS3` | Enumerating the virtual servers behind a TeamSpeak 3 ServerQuery port — one host fronts many virtual servers on unrelated voice ports, and only the query port can name them |
+| `WEB` | Scraping a public server list off a web page |
+| `SWEEP` | Probing neighbouring ports on addresses we already hold |
+
+`SWEEP` is the interesting one. Every other type finds servers **somebody
+published**. This one finds the ones nobody did: game servers come in blocks, so
+a box running one is usually running more on the ports next to it. It only ever
+visits addresses already in the database — there is no netblock field and
+deliberately no way to add one.
+
+### Enrichment
+
+Whatever a seed produces is a **claim**. A follow-up query replaces it with what
+the server itself reports, dropping candidates that answer nothing.
+
+A queried server can also correct which app it is filed under, from the game
+directory its own query answers with — the one identifier the person running it
+cannot casually change. That correction is **off by default**, because it is
+only right when the query is the more trustworthy source: a scraped listing that
+says "tf2" is a claim worth checking; Valve's master server already answered the
+question.
+
+## Query protocols
+
+| | |
+| --- | --- |
+| `A2S` | Source / GoldSrc |
+| `MINECRAFT`, `MINECRAFT_SLP` | |
+| `QUAKE3` | |
+| `GAMESPY1`–`GAMESPY4` | |
+| `FROSTBITE` | |
+| `SAMP`, `GTA_NETWORK`, `GTA_RAGE`, `FIVEM` | |
+| `SCUM`, `HYTALE_NITRADO` | |
+| `TEAMSPEAK3`, `DISCORD` | Voice platforms |
+| `PALWORLD_REST` | Palworld's own REST API |
+
+`PALWORLD_REST` is the odd one: it is the only protocol that needs a
+**credential** (the server's admin password), so the scanner holds those in its
+own local configuration and skips any server it has none for. Pair it *with*
+`A2S` rather than instead of it — A2S answers for every Palworld server but
+returns an empty player list, and the REST API is the only source of the roster,
+the real maximum player count and the settings.
+
+Which protocols are tried, on which ports, with what timeouts and retries, is
+configured **per app**. See [Apps](/learn/content/apps#server-configuration).
+
+## Finding the query port
+
+A server's *query* port is the one thing discovery cannot infer. The address is
+published, the game port usually is, and the query port is whatever the host's
+control panel handed out — which is also why a recorded query port is sometimes
+simply wrong, pointing at a neighbouring server or at nothing at all.
+
+There is plenty to go on: each protocol has a handful of ports it is nearly
+always on, because games ship a default and panels allocate in blocks from it.
+That knowledge is a table an operator can edit — so somebody who notices a new
+hosting company allocating Rust servers at 28080 can act on it without a
+scanner release.
+
+Two repair passes run over listings whose port looks wrong:
+
+<Params>
+  <Param name="The quick pass">
+    Tries the likely ports for the protocol. Repairs most rows.
+  </Param>
+  <Param name="The deep pass">
+    Walks the whole port space at **one probe every thirty seconds** — which is
+    the only thing separating a repair from a port scan of somebody else's box,
+    and which makes a full sweep of one address about 23 days.
+
+    No run lives that long, so the progress belongs to the **row**: each pass
+    covers a chunk, writes down where it stopped, and the next one carries on
+    from there.
+  </Param>
+</Params>
+
+Each pass keeps its own cursor. They are independent, and sharing one would mean
+an hour-long deep chunk registering as a quick check — hiding the row from the
+pass that repairs most rows — and every quick pass resetting the deep pass's
+rest period, so no deep sweep would ever advance.
+
+Both record their result **even when they found nothing**, which is what stops
+the same hopeless address being re-probed nightly.
+
+## The scan queue
+
+Every server carries its **own due time** and a **tier**. The queue reads "what
+is due, most urgent tier first".
+
+### Why not one flat queue
+
+The scanner used to pull from one list ordered by "least recently scanned". At
+two million rows that reduces "keep everything fresh" to "scan the entire table
+every cycle", which is not possible — so a set of counters periodically swapped
+the whole filter set to give a different slice of the table a turn. A server
+with 200 players and a claimed owner was scanned at exactly the same rate as a
+dead IP that had never once responded.
+
+Per-server due times replace that. The load stops being a race and becomes a
+knob.
+
+### The tiers
+
+Ordered by urgency. **These cadences are defaults and are operator-configurable**
+— what is fixed is the *lane* each class of server lands in.
+
+| Tier | Cadence | Holds |
+| :-: | --- | --- |
+| 0 | ASAP | A forced rescan (a claim, a moderator, somebody watching the add form) — and servers never scanned at all |
+| 1 | ~1m | A **supporter's** claimed server, and a server hosting a **live party** |
+| 2 | ~2m30s | Claimed and online |
+| 3 | ~3m30s | **Active** — players on now, or empty but usually in use |
+| 4 | ~5m | Claimed and offline; just went offline |
+| 5 | ~10m | Online and empty; offline but only recently |
+| 6 | ~30m | Offline for a long time |
+| 7 | ~12h | **Flagged** servers, and addresses that have never once answered |
+
+Ordering by due-time *alone* would treat "six hours overdue on a 24-hour
+cadence" as more urgent than "one minute overdue on a two-minute cadence" — so
+whenever the scanner fell behind, the slow junk crowded out precisely the
+servers the cadences exist to keep fresh. The tier column is what prevents that.
+
+<Callout type="info" title="Tier 3 is deliberately narrow">
+It holds exactly the servers that are **up and in use** — the ones a reader
+could join and find a game on. Anything merely *interesting* (a claim on a
+server that is dark, an address that dropped a minute ago) is tier 4 or below.
+Those shared this lane once, and it meant the lane had no name anybody could
+match themselves against.
+</Callout>
+
+Tier 0 holds two populations on purpose. A **forced** rescan is written there
+directly with a sentinel due-time. A **never-scanned** row lands there too,
+because "we have no idea what this address is" is the one question a scan answers
+instantly and permanently — one scan re-tiers it onto its true cadence, so tier 0
+drains and does not refill. Within the lane, a forced rescan still sorts ahead of
+the cold-start sweep.
+
+The honest cost: a bulk import of *N* addresses puts *N* rows ahead of the
+scheduled fleet until each has been looked at once.
+
+### Flagged servers are slowed, not excluded
+
+A [flagged](/learn/community/penalties#server-flags) server drops to the slowest
+tier rather than being filtered out. That is what makes flags **self-healing**:
+a server that fixes whatever got it flagged is re-examined eventually and
+unflagged automatically, with nobody having to notice.
+
+## Automated detectors
+
+Three checks run independently, and each owns exactly one flag sub-type:
+
+<Params>
+  <Param name="Scan filters">
+    Raised during a normal scan. A server's name matching a **bad-word** pattern,
+    its address inside a **bad-IP** range, or its network inside a **bad ASN**.
+
+    A **good-IP** list overrides these, and an **official-server** table
+    recognises company-run servers by name pattern, address range or ASN.
+  </Param>
+  <Param name="Duplicate detection">
+    Redirect and proxy farms: too many *visible* servers sharing one IPv4.
+  </Param>
+  <Param name="Fake-player detection">
+    A population that barely moves across thousands of scans. Bounds are
+    configured per app, since what counts as suspiciously flat differs between
+    a 64-slot shooter and a persistent survival server.
+  </Param>
+</Params>
+
+Each detector may raise and lift **its own** flag and must leave the others
+alone. A flag with no sub-type was raised by a human, and no automated job ever
+touches it. The reasoning is on [Penalties](/learn/community/penalties#server-flags).
+
+## Auto-detection
+
+Alongside the live state, the scanner works out:
+
+| What | Cooldown |
+| --- | --- |
+| Which **app** the server belongs to | Per scanner, default 5 minutes |
+| Which **category** it belongs to, by name / map / game-mode patterns | Default 5 minutes |
+| Which **country** it is in, by IP geolocation | Default 24 hours |
+
+Each can be switched off per server once you have set it correctly by hand
+(`autoDetectApp`, `autoDetectCat`, `autoDetectCountry`).
+
+Category matching uses the pattern rules on the category itself — see
+[Categories](/learn/content/categories#auto-detection-patterns).
+
+## What the scanner will not overwrite
+
+An owner can take a field over with a **query override**, and the scanner then
+stops writing it. See [Reporting your own
+statistics](/learn/servers/reporting).
+
+<Related>
+- [Reporting your own statistics](/learn/servers/reporting)
+- [Server flags and penalties](/learn/community/penalties#server-flags)
+- [Apps — server configuration](/learn/content/apps#server-configuration)
+</Related>

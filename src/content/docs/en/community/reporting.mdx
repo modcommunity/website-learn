@@ -1,0 +1,78 @@
+---
+title: Reporting
+description: What can be reported, what a report carries, and what happens after you file one.
+order: 10
+source:
+  - prisma/models/report.prisma
+---
+
+If something on the site breaks the rules, report it. The report button is on
+the thing itself rather than in a central form, so a report always arrives
+attached to what it is about.
+
+## What can be reported
+
+Content items — mods, assets, servers, communities, groups, articles — and also:
+
+| | |
+| --- | --- |
+| Comments | Individual replies |
+| Reviews | Including the score |
+| Server maps | |
+| Tags | A tag that should not exist |
+| Feedback and bug reports | Member-authored like anything else |
+| Status updates | |
+| Chat messages | See below |
+| Members | The account itself |
+
+## What a report carries
+
+<Params>
+  <Param name="type" type="SPAM | OTHER" default="OTHER">
+    A coarse classification. Deliberately coarse — a long list of categories
+    produces reports filed under the wrong one.
+  </Param>
+  <Param name="title" type="string" required>
+    A one-line summary.
+  </Param>
+  <Param name="content" type="markdown" required>
+    What is wrong, in your own words. This is the part that matters.
+  </Param>
+  <Param name="media" type="relation">
+    Screenshots. A report takes a gallery like a content item does, so
+    "here is what I saw" does not have to be described in prose.
+  </Param>
+</Params>
+
+## Reporting a chat message
+
+A report against a chat message **carries no copy of the text**.
+
+Moderators read the message through the moderation chat view, which decrypts and
+audits the access. That way reporting a message never creates a second plaintext
+copy of it in the database.
+
+## What happens next
+
+The report is queued for moderators. It carries a **comment thread**, which is
+the conversation between you and staff — that is how you get asked for detail,
+and how you are told the outcome.
+
+A report is `resolved` when staff close it. Your own reports and their state are
+listed under **Account → Reports**.
+
+## Reporting is gated by penalties
+
+A member under a **full** penalty cannot file reports, along with every other
+reaction. A limited penalty leaves reporting available.
+
+<Callout type="info" title="Report it, do not retaliate">
+Editing your own item to complain about somebody, or filing many reports about
+the same thing, makes the queue slower for everybody — including for your
+report. One report with a clear description is worth more than five.
+</Callout>
+
+<Related>
+- [Penalties](/learn/community/penalties)
+- [Ratings, reviews and comments](/learn/content/relations/engagement)
+</Related>

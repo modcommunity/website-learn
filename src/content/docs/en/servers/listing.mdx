@@ -1,0 +1,92 @@
+---
+title: Getting listed and claiming
+description: The four ways a server arrives on the site, how to add yours, and what claiming a listing gets you.
+order: 10
+---
+
+## How servers arrive
+
+<Params>
+  <Param name="Somebody adds it">
+    Anyone can add a server by address. The listing is created immediately and
+    put at the **front of the scan queue**, so the page fills in while you are
+    still looking at it.
+  </Param>
+  <Param name="A master-list seed">
+    For games that publish one — Valve's master server list, for example — we
+    import candidates and query each of them ourselves. What the listing claims
+    is replaced by what the server actually answers.
+  </Param>
+  <Param name="A web seed">
+    Public server lists are scraped, and every candidate is then queried
+    directly. Again: the listing is a claim, the query is the fact.
+  </Param>
+  <Param name="A port sweep">
+    Game servers come in blocks — a box running one is usually running more on
+    neighbouring ports, and we only ever heard about whichever got listed. A
+    sweep probes ports around addresses we already hold.
+
+    It only ever visits addresses already in the database. There is no netblock
+    field and deliberately no way to add one.
+  </Param>
+</Params>
+
+## Adding your own
+
+Use **Add server** from the Servers section. You need:
+
+- the **app** it runs;
+- the **address** — IPv4, IPv6, or a hostname;
+- the **game port**, and the **query port** if it differs.
+
+Everything else — name, map, population, country, category — is filled in by the
+first scan.
+
+<Callout type="info" title="Get the query port right">
+The single most common reason a live server shows as dead is a wrong query port.
+It is often not the game port, and a hosting panel frequently hands out
+something unrelated. If you are unsure, add the server anyway and let the
+[repair passes](/learn/servers/scanning#finding-the-query-port) find it — they
+will, given a little time.
+</Callout>
+
+## Claiming a listing
+
+A listing the scanner found has no owner. Claiming it makes it yours.
+
+What claiming gets you:
+
+| | |
+| --- | --- |
+| **Editorial control** | Name, description, body, rules, media, links, tags, categories |
+| **A faster scan cadence** | Claimed servers sit in faster tiers than unclaimed ones — and a supporter's claimed server sits in the fastest scheduled lane there is |
+| **Query overrides** | The ability to take individual measured fields over from the scanner |
+| **Integrations** | The ability to authorise a plugin to report first-hand |
+| **The full item feature set** | Followers, reviews, discussions, a roadmap, a changelog |
+
+A claim also triggers a **forced rescan** — the listing goes straight to the
+front of the queue with a sentinel due-time, ahead of even the cold-start
+backlog, so verification does not wait behind two million addresses.
+
+## Hostname or IP
+
+If your server lives behind a DNS name, set `hostName` and turn on
+`useHostName`. The hostname then becomes what is presented **everywhere**: the
+connect URL, the copy button, the general tab, the app API, the party hand-off
+and the page slug.
+
+The IP stays on the row because that is what the scanner dials, and what your
+hostname resolves to on each scan. This is a presentation choice, and the point
+of it is that moving hosts does not make every link and copied address on the
+site go stale.
+
+## Hiding your address
+
+`showNetInfo` off blurs the address on the page **and** nulls it out of the API,
+including for anonymous readers. The server is still listed, still queried and
+still ranked; people just cannot copy its address off the page.
+
+<Related>
+- [How scanning works](/learn/servers/scanning)
+- [The server content item](/learn/content/servers)
+</Related>

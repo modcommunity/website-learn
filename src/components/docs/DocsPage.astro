@@ -1,0 +1,53 @@
+---
+import { render } from 'astro:content'
+import DocsLayout from '../../layouts/DocsLayout.astro'
+import DocsEnhancements from './DocsEnhancements.astro'
+import { buildDocTree, resolveDoc } from '../../docs/tree'
+import { MDX_COMPONENTS } from './mdx'
+
+type Props = {
+    /** Locale-less doc path — `''` for the docs home. */
+    path: string
+    locale: string
+}
+
+const { path, locale } = Astro.props as Props
+
+/*
+ * Both `/learn/[...slug]` and `/[lang]/learn/[...slug]` render through here, so
+ * the nine language trees are one code path. If they were two copies, the
+ * English docs and the translated ones would drift the first time either grew a
+ * feature — and the drift would only show up in a language nobody on the team
+ * reads.
+ */
+const resolved = await resolveDoc(path, locale)
+
+if (!resolved) {
+    // getStaticPaths only ever emits paths that exist, so this is a programming
+    // error (a tree built from one collection, a page rendered from another),
+    // not a 404 a visitor can reach. Failing the build is the correct response.
+    throw new Error(
+        `No documentation entry for path "${path}" in locale "${locale}".`
+    )
+}
+
+const { entry, fallback } = resolved
+const { Content, headings } = await render(entry)
+
+const tree = await buildDocTree(locale)
+---
+
+<DocsLayout
+    path={path}
+    title={entry.data.title}
+    description={entry.data.description}
+    tree={tree}
+    headings={headings}
+    locale={locale}
+    badge={entry.data.badge}
+    fallback={fallback}
+    pager={path !== ''}
+>
+    <Content components={MDX_COMPONENTS} />
+    <DocsEnhancements locale={locale} />
+</DocsLayout>

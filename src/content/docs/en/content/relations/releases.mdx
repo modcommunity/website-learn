@@ -1,0 +1,123 @@
+---
+title: Releases and files
+description: Versions and the files people download — uploads, size limits, scan status, and building releases automatically from a repository.
+order: 10
+source:
+  - prisma/models/release.prisma
+  - prisma/models/file-upload.prisma
+---
+
+A **release** is a version of an item: a version string, optional notes, and a
+set of files. Mods, assets and servers can all cut them.
+
+## The release itself
+
+<Params>
+  <Param name="version" type="string" required>
+    The version string. Free text — we do not impose semver, because plenty of
+    projects do not use it.
+  </Param>
+  <Param name="title" type="string">
+    A headline for the release ("Bug fixes", "The Vehicles Update").
+  </Param>
+  <Param name="description" type="string">
+    One line, for lists.
+  </Param>
+  <Param name="content" type="markdown">
+    The full release notes.
+  </Param>
+  <Param name="hidden" type="boolean" default="false">
+    A draft release. Behaves like a hidden item: invisible to everybody without
+    access.
+  </Param>
+  <Param name="files" type="string[]">
+    File ids attached to this release.
+  </Param>
+</Params>
+
+Followers of the item can be notified when a release lands — it is on by default
+for anybody who follows something. See [Follows](/learn/content/relations/following).
+
+## Files
+
+Files are uploaded separately and attached by id. They are always owned by the
+uploader and live in a per-user namespace.
+
+| Limit | Standard account | Supporter and above |
+| --- | --- | --- |
+| Per file | 20 MB | 1 GB |
+| Files per API request | 20 | 20 |
+
+The browser uploader and the API apply the same allowance. They differ in
+mechanism: the browser presigns a direct upload to storage, while the **API
+takes the bytes itself**, so no upload credential is ever handed out to a
+script.
+
+### Scan status
+
+Every uploaded file carries a **scan status** — our scan, run on our side.
+
+That is separate from `virusScanLink` on the item, which is an **author-supplied**
+link to a third-party report. The item page renders the two separately, so a
+reader can tell "the author says they scanned it" from "we scanned it". Do not
+conflate them, and do not present one as the other.
+
+## Uploading through the API
+
+Raw bytes — the cheapest thing to call from a shell script:
+
+```bash
+curl -X POST "https://moddingcommunity.com/api/content/file?name=mod.zip" \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -H "Content-Type: application/zip" \
+  --data-binary @dist/mod.zip
+```
+
+Or multipart, which accepts several files at once:
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/file \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -F "file=@dist/mod.zip" \
+  -F "file=@dist/readme.txt"
+```
+
+<Callout type="info" title="The two forms respond differently">
+Multipart **always** responds with an array, even for one file. Raw bytes
+responds with a single object. That is not an inconsistency to work around — it
+is what lets a caller know which form it used.
+</Callout>
+
+### Attaching as you upload
+
+Pass `releaseId` to attach the upload to a release directly:
+
+```bash
+curl -X POST "https://moddingcommunity.com/api/content/file?releaseId=42" \
+  -H "Authorization: Bearer $TMC_TOKEN" -F "file=@dist/mod.zip"
+```
+
+A release belongs to a content item, so attaching to one is an **edit of that
+item**: you need write access to the parent mod, asset or server, not merely to
+have created the release. Access is checked *before* anything reaches storage.
+
+The alternative — upload first, then reference the ids — is the better fit when
+you are replacing a release's whole file set:
+
+```bash
+curl -X PUT https://moddingcommunity.com/api/content/asset/10/releases \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "id": 5, "version": "1.0.1", "files": ["<file-id>"] }]'
+```
+
+## Building from a repository
+
+A mod or asset can declare **build sources**: linked repositories that are built
+automatically into releases. A push produces a release with its files attached,
+with nobody uploading a zip by hand. The queued and finished work appears as
+upload jobs on the item.
+
+<Related>
+- [Sources](/learn/content/relations/sources) — where the repo link itself lives
+- [Files through the API](/learn/api/content/files)
+</Related>

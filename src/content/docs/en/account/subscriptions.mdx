@@ -1,0 +1,91 @@
+---
+title: Subscriptions and the app
+description: What the official app keeps installed, how the library syncs between devices, and why some items cannot be installed with one click.
+order: 60
+source:
+  - prisma/models/subscription.prisma
+  - prisma/models/app-install.prisma
+---
+
+A **subscription** is "keep this on my devices". The official app reads your
+subscriptions, downloads what they point at, and keeps them up to date.
+
+## What can be subscribed to
+
+Three of the eight content kinds, and the closed list is load-bearing:
+
+| Kind | |
+| --- | --- |
+| `asset` | ✓ |
+| `mod` | ✓ |
+| `collection` | ✓ — subscribes to everything in it |
+
+A server is not something you install. An article is not something a device
+holds a copy of.
+
+## Subscribing to a collection
+
+Subscribing to a [collection](/learn/content/collections) creates item
+subscriptions on your behalf for its members. Those remember which collection
+created them, so removing an item from the collection — or unsubscribing from
+the collection itself — cleans up correctly rather than leaving orphans
+installed.
+
+## Items that opt out
+
+An item can set `subDisabled`, which means the app offers only a manual download
+for it.
+
+It exists because the install path is per-**app** — a plugin describing where a
+mod file goes for that game — while the failure is per-**item**: a mod that
+ships an installer executable, or lays its archive out differently from
+everything else for the same game, cannot be placed correctly even though every
+other mod for that game can. Rather than let it install wrongly and break your
+game, its team can say so.
+
+## Syncing between devices
+
+The app polls with a **revision watermark** and gets back only what has changed
+since. That is what lets a device poll every minute without transferring the
+whole library, and what makes a subscription you created in the **browser** show
+up on the desktop within one poll.
+
+A response can also declare itself **full** rather than a delta, which tells the
+app to drop anything it is holding that is not in the list.
+
+<Callout type="info" title="An item can have a subscription and nothing to install">
+A subscription outlives the release it was made against. An item whose only
+release is later hidden still has a live subscription, and the app renders it as
+"nothing to install yet" rather than failing.
+</Callout>
+
+## Installs
+
+An **install** is a sandbox on one of your machines: a game, a set of subscribed
+items deployed into it, and launch options.
+
+| Concept | |
+| --- | --- |
+| **Deploy strategy** | How files are put in front of the game — copied directly (backing up whatever they displaced), or linked so the game folder is made of pointers |
+| **Environment** | Whether the sandbox is a player's game (`client`), a dedicated server (`server`), or accepts both (`shared`) |
+| **Launch options** | Declarative and entirely optional; what each key *means* is decided by that game's launch plugin |
+
+The environment is not decoration: a dedicated server and a player's game are
+the same files arranged differently, and a manager that cannot tell them apart
+offers everybody both halves of every list.
+
+## Downloads
+
+What a device is downloading is a **display snapshot**, not a queue we drive.
+The queue lives on the device and is the authority for everything; the snapshot
+exists so you can check on your phone whether the modpack your desktop started
+has finished.
+
+Note what a download row does **not** carry: no URL, no filesystem path, no
+device identifier beyond your own label for the machine. A path would put your
+username and drive layout into a row.
+
+<Related>
+- [Collections](/learn/content/collections)
+- [The app API](/learn/api/app)
+</Related>

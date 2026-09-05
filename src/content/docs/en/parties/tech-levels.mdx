@@ -1,0 +1,92 @@
+---
+title: Tech levels
+description: The three levels of game integration, and exactly what changes about a party at each.
+order: 10
+source:
+  - prisma/models/party.prisma
+  - prisma/models/app.prisma
+---
+
+Every party carries a **tech type**, and it decides how much of what you see is
+measured versus guessed.
+
+| Level | Roster on the server | Scores | Session times |
+| --- | --- | --- | --- |
+| `NATIVE` | Authoritative | Authoritative | Exact |
+| `THIRD_PARTY_SUPPORTED` | Authoritative | Authoritative | Exact |
+| `THIRD_PARTY` | **Inferred** | Self-reported after the fact | Quantised |
+
+## `NATIVE`
+
+Fully wired in. We can reserve a server, connect players automatically, run the
+game in the browser through the app's web loader, and receive authoritative
+join / leave / score state.
+
+## `THIRD_PARTY_SUPPORTED`
+
+Not natively integrated, but a **mod or plugin reports state to us** over the
+[integration API](/learn/api/integration). Membership and statistics are
+authoritative again, without the in-browser player half of `NATIVE`.
+
+Using the integration API is what moves a game from the bottom row to this one.
+See [Integrating a game](/learn/parties/integration).
+
+## `THIRD_PARTY`
+
+Nothing integrated. Who is actually in the game is **inferred** by matching
+member display names against the query server's player list.
+
+The site marks such a roster as a guess everywhere it shows it. Each member
+carries a **presence confidence**, and a supported party's members are always
+confirmed while a third-party party's may not be.
+
+### Name matching
+
+Because it is a guess, it is worth knowing how the guess is made. In order of
+confidence:
+
+1. **A platform id** (a Steam id), resolved through the player's own record on
+   the party's server. The only hint that is an identifier rather than a label.
+2. **The remembered in-game name** from a previous successful match.
+3. **The site display name or username**, case-insensitively.
+
+<Callout type="warning" title="An ambiguous name resolves to nobody">
+A name matching more than one member resolves to **nobody**. Guessing between
+two candidates would credit one player's score to the other, and a wrong answer
+is worse than no answer.
+</Callout>
+
+A member can state their in-game name explicitly, which is what turns a guess
+into a reliable match without any integration at all.
+
+### Faster scanning
+
+A third-party party's roster is only ever as fresh as the last scan of its
+server — and the ordinary [scan queue](/learn/servers/scanning#the-scan-queue)
+paces a server by its popularity, which for the small private box a party is
+played on means minutes. Members watched a roster ten minutes behind the game
+they were sitting in.
+
+So servers behind live third-party parties get their **own short queue**,
+polled every fifteen seconds or so.
+
+### Scores after the match
+
+A third-party party has no authoritative source for what anybody scored, so when
+it stops **each member is asked**.
+
+Before asking, the party's server is pushed to the front of the scan queue: the
+player list that comes back is the only evidence we will ever get, and it is
+worth a few seconds' wait. The score screen shows whether that scan has landed
+yet rather than presenting stale numbers as final.
+
+## The tech type is copied, not referenced
+
+A party's tech type is copied from its app **at creation**. A later change to the
+app does not silently rewrite the history of what we were actually able to
+observe while that party was live.
+
+<Related>
+- [Integrating a game](/learn/parties/integration)
+- [Integration API](/learn/api/integration)
+</Related>

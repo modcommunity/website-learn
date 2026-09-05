@@ -1,0 +1,117 @@
+---
+title: Files
+description: Uploading files through the API — the two request forms, size limits, and attaching to a release as you upload.
+order: 40
+source:
+  - docs/api/public-content-api.md
+---
+
+```
+POST   /api/content/file        upload
+GET    /api/content/file/{id}   metadata + CDN URL
+PUT    /api/content/file/{id}   update title / description
+PATCH  /api/content/file/{id}   same as PUT
+DELETE /api/content/file/{id}   delete the object and its row
+```
+
+Files are always owned by the key's user and live in a per-user namespace.
+
+| Limit | Standard account | Supporter and above |
+| --- | --- | --- |
+| Per file | 20 MB | 1 GB |
+| Files per request | 20 | 20 |
+
+That is the same allowance the browser uploader applies. The mechanism differs:
+the browser presigns a direct upload to storage, while **the API takes the bytes
+itself**, so no upload credential is ever handed out.
+
+## multipart/form-data
+
+The normal case. Any file part is picked up, whatever the field is called:
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/file \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -F "file=@dist/mod.zip" \
+  -F "file=@dist/readme.txt"
+```
+
+Multipart **always responds with an array**, even for one file:
+
+```json
+{
+  "data": [
+    {
+      "id": "…",
+      "key": "uploads/public/…/mod.zip",
+      "type": "FILE_ZIP",
+      "size": 1024,
+      "title": "mod.zip",
+      "description": null
+    }
+  ]
+}
+```
+
+With exactly one file part you may also send `title` and `description` fields.
+With several, each file keeps its own filename as its title — the fields would
+be ambiguous — and you set them afterwards with `PUT /api/content/file/{id}`.
+
+## Raw bytes
+
+The body **is** the file. Cheapest thing to call from a shell script:
+
+```bash
+curl -X POST "https://moddingcommunity.com/api/content/file?name=mod.zip" \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -H "Content-Type: application/zip" \
+  --data-binary @dist/mod.zip
+```
+
+The name comes from the `x-file-name` header or `?name=`; `?title=` and
+`?description=` are optional.
+
+This form responds with a **single object**, not an array. That difference is
+not an inconsistency to work around — it is what lets a caller know which form
+it used.
+
+## Attaching to a release
+
+Pass `releaseId` — as a query parameter in either encoding, or as a form field
+in multipart — to attach the upload to a release as it is created:
+
+```bash
+curl -X POST "https://moddingcommunity.com/api/content/file?releaseId=42" \
+  -H "Authorization: Bearer $TMC_TOKEN" -F "file=@dist/mod.zip"
+```
+
+<Callout type="warning" title="Attaching to a release is an edit of the parent item">
+A release belongs to a content item, so you need **write access to the parent
+asset, mod or server** — not merely to have created the release. Access is
+checked *before* anything reaches storage.
+</Callout>
+
+The alternative is to upload first and reference the ids from the release
+relation, which is the better fit when you are replacing a release's whole file
+set:
+
+```bash
+curl -X PUT https://moddingcommunity.com/api/content/asset/10/releases \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "id": 5, "version": "1.0.1", "files": ["<file-id>"] }]'
+```
+
+## Reading a file
+
+`GET /api/content/file/{id}` returns the row plus a `url` built from the CDN —
+`null` when no CDN is configured.
+
+## Storage unavailable
+
+A `503` means object storage is not configured on this deployment. It is not a
+problem with your request.
+
+<Related>
+- [Releases and files](/learn/content/relations/releases)
+- [Relations](/learn/api/content/relations)
+</Related>

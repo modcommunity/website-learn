@@ -1,0 +1,60 @@
+---
+title: Moderation
+description: What the moderation surfaces cover, and the limits deliberately built into them.
+order: 30
+---
+
+Moderation is handled by members holding the `MODERATOR`, `STAFF`, `DEVELOPER`
+or `ADMIN` role. This page describes what those surfaces do — not because most
+readers need to use them, but because knowing what a moderator can see is part
+of knowing what your privacy settings mean.
+
+## The queues
+
+| Surface | Holds |
+| --- | --- |
+| **Reports** | Everything members have reported, resolved and unresolved |
+| **Penalties** | Active and expired penalties, with their appeal threads |
+| **Chats** | The decrypting, audited view of reported conversations |
+| **Categories** and **Tags** | Taxonomy maintenance |
+| **Sources** | The external sites items may point at |
+| **Countries** | Geography used by the server browser |
+| **Redirects** | Slug-change redirects |
+| **Status** | Incidents shown on the public status page |
+| **Changelog** | What shipped |
+| **Log** | The moderation audit log |
+| **Activity** | Site-wide activity |
+
+## Limits that are built in, not conventions
+
+**Reading a reported chat message is audited.** The moderation chat view
+decrypts on read and records the access. A report against a message carries no
+copy of it, so reading it is a deliberate, logged act rather than a side effect
+of triage.
+
+**A penalty's appeal thread is visible to the penalised member.** It is a
+conversation, not a note about them.
+
+**An automated server flag can only be lifted by the detector that raised it**,
+or by a moderator. A moderator's own flag is never touched by an automated job.
+See [Penalties](/learn/community/penalties#server-flags).
+
+**Staff can see who authored what, regardless of anonymity.** A site where a
+moderator cannot identify the account behind a report is a site with no
+moderation. Anonymity governs what *visitors* see.
+
+**Privileged flags are rejected by the API for everybody else.** `isOfficial` on
+an article or a server, `primary` on a group, the flagged state on a community —
+none of them can be set through a content API key, whoever it belongs to.
+
+## Site status
+
+Incidents and live checks are published at `/status`. If something looks broken,
+that page is worth checking before filing a bug — it is placed directly under
+the bug tracker in the Resources menu for exactly that reason.
+
+<Related>
+- [Reporting](/learn/community/reporting)
+- [Penalties](/learn/community/penalties)
+- [Privacy and anonymity](/learn/account/privacy)
+</Related>

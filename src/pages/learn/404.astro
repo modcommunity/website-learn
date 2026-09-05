@@ -1,0 +1,30 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import NotFoundBody from '../../components/docs/NotFoundBody'
+
+/**
+ * The documentation's 404 page.
+ *
+ * Astro's directory output builds it to `dist/learn/404/index.html`, NOT
+ * `404.html` — the whole site is built in that format so every URL carries a
+ * trailing slash, and the canonical / hreflang / sitemap URLs all assume it.
+ * So nginx names the real file:
+ *
+ *     error_page 404 /learn/404/index.html;
+ *
+ * It is deliberately NOT the domain's 404 — website-processing owns the root,
+ * and a visitor who mistyped a marketing URL should not be dropped into the
+ * documentation shell.
+ *
+ * The body is an island because one static document is served for all nine
+ * languages; see the note on the component.
+ */
+---
+
+<Layout meta={{
+    title: '404',
+    titleMain: 'Page not found - The Modding Community Docs',
+    desc: 'The documentation page you are looking for does not exist or has moved.'
+}}>
+    <NotFoundBody client:load />
+</Layout>

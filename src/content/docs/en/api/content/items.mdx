@@ -1,0 +1,127 @@
+---
+title: Items
+description: Creating, reading, updating and deleting content items — the endpoints, the fields each type accepts, filters, and bulk semantics.
+order: 20
+source:
+  - docs/api/public-content-api.md
+---
+
+## Endpoints
+
+```
+GET    /api/content/{type}          list          ?page=1&limit=1000&mine=1&…
+POST   /api/content/{type}          create        one object, or an array (≤ 25)
+PUT    /api/content/{type}          bulk update   array of { id, … } (≤ 25)
+DELETE /api/content/{type}          bulk delete   [1,2,3] or { "ids": [1,2,3] } (≤ 100)
+
+GET    /api/content/{type}/{id}     read one
+PUT    /api/content/{type}/{id}     update one (partial)
+DELETE /api/content/{type}/{id}     delete one
+```
+
+## Listing
+
+<Endpoint method="GET" path="/api/content/{type}" auth="API key" scope="canRead">
+List items of a type.
+</Endpoint>
+
+`page` defaults to `1`; `limit` defaults to `1000`. A limit below 1 clamps up,
+and one above your role's maximum clamps down (2500 for a standard account,
+30000 for a supporter, by default). `pagination.total` is the full match count.
+
+`?mine=1` restricts a list to rows you own — and is **the only way to list your
+own hidden items**. Otherwise lists exclude hidden rows for non-staff.
+
+### Filters
+
+Content-item lists accept these optional query parameters, and only the ones the
+type supports are applied:
+
+| Param | Example | Meaning |
+| --- | --- | --- |
+| `search` | `?search=rust` | Name or title contains, case-insensitively |
+| `tags` | `?tags=pvp,vanilla` | Has **any** of these tag names |
+| `categoryIds` | `?categoryIds=3,7` | In any of these categories |
+| `communityId` | `?communityId=12` | Belongs to this community |
+| `nsfw` | `?nsfw=0` | NSFW flag |
+
+List responses are cached for 30 seconds by default.
+
+## Creating
+
+<Endpoint method="POST" path="/api/content/{type}" auth="API key" scope="canWrite">
+One object, or an array of up to 25.
+</Endpoint>
+
+```bash
+curl -X POST https://moddingcommunity.com/api/content/asset \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "My Tool",
+        "description": "Does a thing",
+        "hidden": true,
+        "tags": ["tooling", "gamedev"],
+        "media": [{ "externalUrl": "https://example.com/shot.png", "title": "Screenshot" }]
+      }'
+```
+
+## Fields
+
+`id`, `ownerId` / `userId`, and privileged flags — `isOfficial` on articles and
+servers, `primary` on groups, the flagged state on communities — are **rejected**.
+
+| Type | Required on create | Also accepts |
+| --- | --- | --- |
+| `asset` | `name` | `url`, `description`, `content`, `srcUrl`, `environment`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `appId`, `communityId`, `categoryId`, `tags`, `media`, `releases`, `sources` |
+| `mod` | `name`, `content`, `appId` | `url`, `description`, `install`, `srcUrl`, `license`, `environment`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `communityId`, `categoryId`, `tags`, `media`, `releases`, `links`, `sources` |
+| `server` | `appId` | `name`, `url`, `description`, `content`, `rules`, `srcUrl`, `hidden`, `nsfw`, `showNetInfo`, `showUsers`, `allowRatings`, `allowReviews`, `allowComments`, `ip4`, `ip6`, `port`, `portQuery`, `hostName`, `useHostName`, `icon`, `banner`, `card`, `communityId`, `categoryId`, `tags`, `media`, `links`, `releases` |
+| `community` | `name` | `url`, `description`, `content`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `categoryId`, `appIds`, `tags`, `media`, `links` |
+| `article` | `title`, `content` | `url`, `description`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `categoryId`, `appId`, `communityId`, `modId`, `serverId`, `assetId`, `userTargetId`, `tags`, `media` |
+| `collection` | `name` | `description`, `content`, `hidden`, `nsfw`, `bannerId`, `iconId`, `cardId`, `tags`, `items` |
+| `group` | `name` | `url`, `description`, `content`, `hidden`, `inviteOnly`, `bannerId`, `iconId`, `appId`, `communityId`, `modId`, `serverId`, `assetId`, `serverMapId`, `categoryId` |
+
+<Callout type="warning" title="Two spelling traps">
+**Servers** spell their image relations `icon` / `banner` / `card`; every other
+type uses `iconId` / `bannerId` / `cardId`.
+
+**Articles** use `title` where every other type uses `name`.
+</Callout>
+
+Server telemetry — `online`, `curUsers`, `lastScanned` and the rest — is
+measured by our query servers and is **not writable**. See [Reporting your own
+statistics](/learn/servers/reporting) for the two ways to take one over.
+
+## Updating
+
+<Endpoint method="PUT" path="/api/content/{type}/{id}" auth="API key" scope="canWrite">
+A **partial** update — omitted scalars keep their stored value.
+</Endpoint>
+
+**Relation arrays are the exception.** An inline relation array is always the
+*complete* set: a `PUT` with no `media` key leaves media alone, but one with
+`"media": [ … ]` replaces the gallery wholesale. There is no way to say "add
+one" inline — use [the relation sub-resource](/learn/api/content/relations).
+
+## Bulk semantics
+
+Bulk create and update **validate and authorize every element before writing any
+of them**, so a typo in the last item cannot leave the first nine half-created.
+
+The writes themselves run sequentially and are *not* wrapped in a transaction:
+the canonical writers fan out into relation sync and cache invalidation of their
+own. If a write fails partway through, the response reports the failure and
+returns what did land:
+
+```json
+{ "error": "…", "index": 3, "data": [ /* the items created before the failure */ ] }
+```
+
+**Bulk delete authorizes the whole batch first** and deletes nothing if any id
+is off-limits.
+
+<Related>
+- [Relations](/learn/api/content/relations)
+- [Files](/learn/api/content/files)
+- [Errors](/learn/api/errors)
+</Related>

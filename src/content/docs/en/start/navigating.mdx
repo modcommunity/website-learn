@@ -1,0 +1,81 @@
+---
+title: Finding your way around
+description: The four pillars, how the browsers work, and the URL shapes that get you where you are going without clicking through menus.
+navTitle: Navigating
+order: 20
+---
+
+## The four pillars
+
+The header and the sidebar are both organised around the same four:
+
+| Pillar | Holds |
+| --- | --- |
+| **Apps** | The games and programs everything else is filed under |
+| **Assets** | Game development material — models, textures, tools |
+| **Mods** | Modifications for a specific app |
+| **Servers** | Live game servers, tracked continuously |
+
+Everything else — communities, collections, groups, articles, media, parties —
+hangs off those, and is reached from **Explore**, **Community** or
+**Resources** in the header.
+
+## Landing page, browser, item
+
+Each pillar has the same three levels, and they are different pages on purpose:
+
+1. **The landing page** (`/mods`) — an introduction with highlights.
+2. **The browser** (`/mods/browse`) — the actual searchable, filterable list.
+3. **The item** (`/gmod/m/better-vehicles`) — one thing's own page.
+
+If you are looking for something specific, go straight to the browser. The
+landing page is for people who do not yet know what they want.
+
+## URL shapes
+
+These are worth knowing because they are short and stable:
+
+| Shape | Example | Is |
+| --- | --- | --- |
+| `/<app>/m/<mod>` | `/gmod/m/better-vehicles` | A mod |
+| `/a/<asset>` | `/a/12-low-poly-trees` | An asset |
+| `/<app>/s/<id>` | `/gmod/s/4821` | A server |
+| `/c/<community>` | `/c/9-my-community` | A community |
+| `/g/<group>` | `/g/3-my-team` | A group |
+| `/co/<id>` | `/co/17` | A collection |
+| `/u/<id>-<username>` | `/u/clx…-ashley` | A member's profile |
+| `/i/<kind>/<id>` | `/i/mod/123` | Any item by kind and id — the permalink shape |
+
+`/i/<kind>/<id>` is the one to use from outside the site: it never breaks when
+an item is renamed, because it does not carry the name at all.
+
+## Renames do not break links
+
+When an item's URL slug changes, the old address keeps working: a redirect is
+written and the old link continues to resolve. That applies to edits made
+through the API as well as through the edit form, because [both run the same
+code](/learn/api/content/items).
+
+## Languages
+
+The site is served in nine languages. English lives on the bare path; every
+other language sits under its own prefix:
+
+```
+https://moddingcommunity.com/mods/browse
+https://moddingcommunity.com/es/mods/browse
+https://moddingcommunity.com/ja/mods/browse
+```
+
+The language picker in the header keeps you on the same page. Your choice is
+remembered across the main site, the landing pages and this documentation,
+since all three read the same preference.
+
+## Keyboard shortcuts in these docs
+
+| Key | Does |
+| --- | --- |
+| <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> | Open search |
+| <kbd>/</kbd> | Open search |
+| <kbd>↑</kbd> <kbd>↓</kbd> | Move through results |
+| <kbd>Esc</kbd> | Close |

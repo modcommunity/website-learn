@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@import "tailwindcss-intersect";
+@plugin "tailwindcss-motion";
+
+/*
+ * Single source of truth: website-city's design tokens, shared via
+ * @modcommunity/shared. This replaces website-processing's old bespoke palette
+ * so the landing site renders the exact same theme as the main website.
+ */
+@import "@modcommunity/shared/theme.css";
+
+/* Let Tailwind generate the utility classes baked into the shared components. */
+@source "../../node_modules/@modcommunity/shared/dist";
+
+@theme {
+  --breakpoint-xs: 30rem;
+  --breakpoint-3xl: 125rem;
+  --breakpoint-sb-row-desktop: 22rem;
+
+  /* Star colours are unrelated to the shell theme — keep them literal. */
+  --color-star: #c2bc00;
+  --color-star-2: #b3ae00;
+}
+
+/*
+ * Backwards-compatibility aliases.
+ *
+ * website-processing's existing landing / legal components were written against
+ * an older token vocabulary (body, text-default, special-1, border-secondary,
+ * item, btn-*, …). Rather than rewrite every component, we re-point those names
+ * at the website-city tokens, so the whole site re-skins to the shared theme at
+ * once. New work should use the website-city names directly (surface, accent,
+ * foreground, border, …).
+ */
+@theme inline {
+  --color-body: var(--background);
+  --color-menu-1: var(--surface);
+
+  --color-text-default: var(--foreground);
+  --color-text-primary: var(--foreground);
+
+  --color-special-0: var(--accent);
+  --color-special-1: var(--accent);
+  --color-special-1-hover: var(--accent-hover);
+  /*
+   * Inline links (`.special`, `CLink`, the legal prose) used to flip to
+   * `--success` on hover, which reads as an unrelated green against an
+   * otherwise blue link. The hover is now the same link colour, lightened —
+   * matching the `p a` rule in Base.css, which already mixes 80% accent at
+   * rest and 70% on hover.
+   */
+  --color-special-1-light: color-mix(in srgb, var(--accent) 70%, white);
+  --color-special-1-ring: var(--accent);
+  --color-special-1-ring-hover: var(--accent-hover);
+  --color-special-2: var(--success);
+  --color-special-2-hover: var(--success);
+  --color-special-2-ring: var(--success);
+  --color-special-2-ring-hover: var(--success);
+  --color-special-3: var(--danger);
+
+  --color-heading-primary-1: var(--accent);
+  --color-heading-primary-2: var(--background);
+
+  --color-success-2: var(--success);
+  --color-success-3: var(--success);
+
+  --color-border-primary: var(--border);
+  --color-border-secondary: var(--border);
+  --color-border-selected: var(--accent);
+
+  --color-item: var(--surface);
+  --color-item-primary: var(--surface-secondary);
+  --color-item-secondary: var(--surface-secondary);
+  --color-item-hover: var(--surface-hover);
+
+  --color-btn-primary: var(--surface-secondary);
+  --color-btn-primary-hover: var(--surface-hover);
+  --color-btn-primary-ring: var(--border);
+  --color-btn-primary-ring-hover: var(--border);
+
+  --color-btn-secondary: var(--surface-secondary);
+  --color-btn-secondary-hover: var(--surface-hover);
+  --color-btn-secondary-ring: var(--border);
+  --color-btn-secondary-ring-hover: var(--border);
+
+  --color-btn-special: var(--accent);
+  --color-btn-special-hover: var(--accent-hover);
+  --color-btn-special-ring: var(--accent);
+  --color-btn-special-ring-hover: var(--accent-hover);
+
+  --color-btn-warning: var(--warning);
+  --color-btn-warning-hover: var(--warning);
+  --color-btn-warning-ring: var(--warning);
+  --color-btn-warning-ring-hover: var(--warning);
+
+  --color-btn-danger: var(--danger);
+  --color-btn-danger-hover: var(--danger-hover);
+  --color-btn-danger-ring: var(--danger);
+  --color-btn-danger-ring-hover: var(--danger-hover);
+
+  /*
+   * @fontsource-variable registers each family as "<Name> Variable" — the plain
+   * name matches nothing and the whole site silently falls back to the system
+   * sans. The unsuffixed name is kept as a fallback for the static packages.
+   */
+  --font-orbitron: "Orbitron Variable", "Orbitron", sans-serif;
+  --font-dm-sans: "DM Sans Variable", "DM Sans", sans-serif;
+  --font-pjs: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", sans-serif;
+
+  /*
+   * The docs' fourth family, which website-processing has no use for: this
+   * site is mostly code samples, endpoint paths, scope names and JSON, and the
+   * stack default (ui-monospace -> Menlo / Consolas / Liberation Mono) renders
+   * them at three visibly different widths and x-heights depending on the OS.
+   * Pinning one face is what keeps a table of `tmc_`-prefixed tokens aligned
+   * everywhere.
+   */
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@import "./Base.css";
+@import "./Components.css";
+@import "./Utilities.css";
+
+@custom-variant dark (&:is(.dark *));

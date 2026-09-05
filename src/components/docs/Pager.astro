@@ -1,0 +1,68 @@
+---
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import type { DocNode } from '../../docs/tree'
+import { getT } from '../../i18n/t'
+
+type Props = {
+    prev?: DocNode
+    next?: DocNode
+    locale?: string
+}
+
+const { prev, next, locale = 'en' } = Astro.props as Props
+
+const t = getT(locale)
+---
+
+{
+    (prev || next) && (
+        <nav
+            aria-label={t('docs.pager.label')}
+            class="mt-12 grid gap-3 border-t border-border pt-6 @2xl:grid-cols-2"
+        >
+            {/*
+                The two halves are placed by grid column, not by source order,
+                so a page with only a NEXT (every section index) still puts it
+                on the right where the eye is already looking for it, instead of
+                sliding it into the empty prev slot on the left.
+            */}
+            {prev ? (
+                <a
+                    href={prev.href}
+                    rel="prev"
+                    class="group col-start-1 flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-secondary p-4 transition-visual hover:border-accent/50 hover:bg-surface-hover"
+                >
+                    <ArrowLeft className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:-translate-x-0.5 group-hover:text-accent" />
+                    <span class="min-w-0">
+                        <span class="block text-xs text-muted">
+                            {t('docs.pager.prev')}
+                        </span>
+                        <span class="block truncate font-pjs font-semibold text-foreground">
+                            {prev.navLabel}
+                        </span>
+                    </span>
+                </a>
+            ) : (
+                <span class="hidden @2xl:block" />
+            )}
+
+            {next && (
+                <a
+                    href={next.href}
+                    rel="next"
+                    class="group col-start-1 flex min-w-0 items-center justify-end gap-3 rounded-xl border border-border bg-surface-secondary p-4 text-right transition-visual hover:border-accent/50 hover:bg-surface-hover @2xl:col-start-2"
+                >
+                    <span class="min-w-0">
+                        <span class="block text-xs text-muted">
+                            {t('docs.pager.next')}
+                        </span>
+                        <span class="block truncate font-pjs font-semibold text-foreground">
+                            {next.navLabel}
+                        </span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+                </a>
+            )}
+        </nav>
+    )
+}

@@ -1,0 +1,83 @@
+---
+title: Follows and favourites
+description: Telling the difference between “tell me when this changes” and “keep this on a list” — two features that look alike and are not.
+order: 80
+source:
+  - prisma/models/follow.prisma
+  - prisma/models/favorite.prisma
+  - prisma/models/user-follow.prisma
+---
+
+## Favourites
+
+A **favourite** is a bookmark. It puts an item on your list and does nothing
+else — no notifications, no state. Available on every content item.
+
+## Follows
+
+A **follow** is a subscription to an item's *lifecycle*: "tell me when this
+changes". It comes with a set of switches, and which switches exist depends on
+what kind of item it is — a server can go offline; a mod cannot.
+
+### The switches
+
+| Switch | Default | Fires when |
+| --- | :-: | --- |
+| `notifyReleases` | on | A new release is published |
+| `notifyChangelogs` | on | A changelog entry is added |
+| `notifyUpdates` | on | The item itself is edited |
+| `notifyRoadmap` | on | Its roadmap moves |
+| `notifyMedia` | off | Somebody adds to the gallery |
+| `notifyDependencies` | off | Its dependencies change |
+| `notifyComments` | off | Somebody comments |
+| `notifyDiscussions` | off | Somebody posts on its board |
+
+The defaults are the ones a new follower would pick: the low-volume lifecycle
+events on, the high-volume chatter off.
+
+### Server-only switches
+
+| Switch | Default | Fires when |
+| --- | :-: | --- |
+| `notifyServerOnline` | off | It comes back up |
+| `notifyServerOffline` | off | It goes down |
+| `notifyServerMapChange` | off | The map changes |
+| `notifyUsersAbove` | — | Population rises past a number you set |
+| `notifyUsersBelow` | — | Population drops below one |
+
+<Callout type="info" title="Following a server does not announce its current state">
+The notifier keeps its own snapshot of each followed server. A server you have
+just followed has no snapshot yet, so the first pass records the current state
+and emits nothing — you hear about the next *change*, not about whatever it
+happened to be doing when you pressed follow.
+
+That snapshot is also why these notifications cost nothing on the scanner's
+side: a job walks only the servers that actually have followers, rather than
+every scan paying for a comparison whether anyone follows the server or not.
+</Callout>
+
+### Account settings win
+
+Every switch is additionally gated by your account-wide notification settings
+and by the per-type preferences. A switch here says "I want this **kind** of
+event"; it cannot override "I want no notifications at all".
+
+## Following a person is a different feature
+
+Following a **member** is its own thing, with a fixed notification set — posts,
+comments, messages — because a person is followed for their activity rather than
+their lifecycle.
+
+It also has one behaviour item-follows do not: its switches are **tri-state**.
+Left unset, they inherit your global "from people I follow" defaults, so you can
+either flip one switch for everybody or tune individual people.
+
+`followNotifyMessages` defaults to **on**, unlike the other two, because it
+gates the notification for a *direct message* from somebody you follow — and
+defaulting it off would silently swallow messages. It exists so a follow can be
+muted per person, not so following somebody opts you into being messaged.
+
+<Related>
+- [Notifications](/learn/account/notifications)
+- [Servers](/learn/content/servers)
+</Related>

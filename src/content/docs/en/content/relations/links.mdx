@@ -1,0 +1,48 @@
+---
+title: Links
+description: The off-site destinations an item points at — its website, Discord, repository and social accounts.
+order: 30
+source:
+  - prisma/models/link.prisma
+---
+
+A **link** is an off-site destination attached to an item: its own website, its
+Discord, its repository, its Steam page.
+
+Available on **mods**, **servers** and **communities**. Assets, articles,
+collections and groups do not take them.
+
+## Types
+
+| Type | |
+| --- | --- |
+| `WEBSITE` | The default |
+| `DISCORD` | |
+| `GITHUB` | |
+| `STEAM` | |
+| `X` | |
+| `FACEBOOK` | |
+| `INSTAGRAM` | |
+| `YOUTUBE` | |
+
+The type decides the icon and the label; the URL is yours.
+
+<Callout type="info" title="A GitHub link is not a build source">
+Adding a `GITHUB` link puts an icon on the page. It does **not** connect the
+repository to anything. If you want releases built from a repo, that is a
+[source](/learn/content/relations/sources) flagged as the primary git source —
+a different relation with a different purpose.
+</Callout>
+
+## Through the API
+
+<Endpoint method="PUT" path="/api/content/{type}/{id}/links" auth="API key" scope="canWrite">
+Replace the link set. `POST` merges instead.
+</Endpoint>
+
+```bash
+curl -X PUT https://moddingcommunity.com/api/content/mod/5/links \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "type": "DISCORD", "url": "https://discord.gg/…" },
+       { "type": "GITHUB",  "url": "https://github.com/me/mod" }]'
+```

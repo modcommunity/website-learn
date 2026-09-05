@@ -1,0 +1,91 @@
+---
+title: Notifications
+description: Channels, categories and per-item switches — and the order in which they are applied.
+order: 40
+source:
+  - prisma/models/user-settings.prisma
+  - prisma/models/user-notify-pref.prisma
+---
+
+Notification settings are **layered**, and knowing the order stops a lot of
+confusion about why something did or did not arrive.
+
+## The order
+
+1. **Channel** — do you want notifications *here* at all?
+2. **Category** — do you want notifications about *this kind of thing*?
+3. **Per-item switch** — do you want notifications about *this specific item*?
+
+A later layer can only narrow, never widen. A follow switch that says "notify me
+about releases" cannot override a category switch that says "no release
+notifications", which cannot override a channel switch that says "no email".
+
+## Channels
+
+| Channel | Default |
+| --- | :-: |
+| On-site | Always |
+| Email | On |
+| Push | Off |
+
+## Categories
+
+| Category | Default | Covers |
+| --- | :-: | --- |
+| `notifySystem` | on | Announcements from us |
+| `notifyComments` | on | Replies to your things |
+| `notifyReviews` | on | Reviews on your items |
+| `notifyReleases` | on | Releases on things you follow |
+| `notifyMentions` | on | Being mentioned |
+| `notifyModeration` | on | Reports, penalties, appeals |
+| `notifyCredits` | on | Being credited on somebody's work |
+| `notifyFriends` | on | Friend requests and acceptances |
+| `notifyFollowers` | on | New followers |
+| `notifyMessages` | on | Direct messages |
+| `notifyStatus` | on | Status updates |
+| `notifyParties` | on | Party invites, a friend starting one, being removed |
+| `notifyGroups` | on | Group invitations and answers to yours |
+
+## From people you follow
+
+Three global defaults, which each followed member can override individually:
+
+| Switch | Default |
+| --- | :-: |
+| `followNotifyPosts` | on |
+| `followNotifyComments` | off |
+| `followNotifyMessages` | **on** |
+
+The last one defaults on, unlike the other two, because it gates the
+notification for a **direct message** from somebody you follow — defaulting it
+off would silently swallow messages. It exists so a follow can be muted per
+person, not so following somebody opts you into being messaged.
+
+Per-member overrides are **tri-state**: unset means "inherit the global". That
+is what lets you either flip one switch for everybody or tune individual people.
+
+## Per-item follow switches
+
+Each item you follow has its own set — releases, changelogs, updates, roadmap,
+media, dependencies, comments, discussions, and for servers the online / offline
+/ map-change / population-threshold alerts. See
+[Follows](/learn/content/relations/following).
+
+## Mentions
+
+You can mute mentions from specific places, which is what stops one busy thread
+turning into a notification per message.
+
+## Chat
+
+Two settings that are not really notifications:
+
+| Setting | Default | |
+| --- | :-: | --- |
+| `chatAutoOpen` | off | Open the chat widget automatically when there are unread messages. Off because an unread badge is enough for most people |
+| `chatSounds` | on | Play a sound on an incoming message |
+
+<Related>
+- [Follows and favourites](/learn/content/relations/following)
+- [Privacy](/learn/account/privacy)
+</Related>

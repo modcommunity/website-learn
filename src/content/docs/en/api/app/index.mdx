@@ -1,0 +1,141 @@
+---
+title: App API
+description: The desktop client's whole view of the site — a versioned, deliberately narrow surface, separate from everything the browser uses.
+navTitle: App API
+order: 60
+source:
+  - src/types/app-api/contract.ts
+  - src/app/api/app/v1
+---
+
+**Base URL:** `/api/app/v1`. Everything is JSON.
+
+This is the surface the official desktop app talks to. It is documented here
+because it is a real, stable HTTP API — but note that it is designed for a
+first-party client, and the endpoints assume one.
+
+<Cards>
+  <Card title="Authentication" href="/learn/api/app/auth">
+    The device flow: how an app with no credentials gets a token by asking a
+    human, and how the pair is rotated.
+  </Card>
+  <Card title="Browsing" href="/learn/api/app/browse">
+    One row shape for every content kind, cursor paging, and facets.
+  </Card>
+  <Card title="Library" href="/learn/api/app/library">
+    Subscriptions, installs and download snapshots.
+  </Card>
+</Cards>
+
+## Why a separate API exists
+
+The website's own data layer returns payloads shaped by **what a page renders**,
+and those change whenever a page does. An installed app is not redeployed with
+the server, so its wire format has to be **versioned and deliberately narrow** —
+`/v1` means something here in a way it does not for something the browser
+refetches on every deploy.
+
+Two more reasons, both concrete:
+
+- **Every content type is a different shape.** Assets, mods, servers and maps
+  have separate browsers with separate filters and separate row payloads. The
+  app draws **one grid**, so it wants one row type — and normalising server-side
+  is the only place that can be done once.
+- **The app's native layer calls it too.** Latency probing needs a server's
+  address without going through the app's UI layer.
+
+## The envelope
+
+Success:
+
+```json
+{ "ok": true, "data": { } }
+```
+
+Failure:
+
+```json
+{ "ok": false, "code": "token_expired", "message": "…", "retryAfter": 30 }
+```
+
+`code` is the stable thing clients branch on; `message` is for humans and may be
+reworded at any time. `retryAfter` appears on `429` and on the device poll's
+slow-down.
+
+<Callout type="info" title="The contract is mirrored in the app, verbatim">
+The app parses every response through the same schemas the server validates
+with. A drift between the two shows up as a loud validation error on the very
+first request, rather than as an `undefined` three screens deep.
+</Callout>
+
+## Content kinds
+
+One vocabulary across the whole surface:
+
+`asset` · `mod` · `server` · `serverMap` · `article` · `community` ·
+`collection` · `user`
+
+## Querying servers from the app
+
+The app queries game servers **itself**, so a player sees latency and player
+counts measured from *their* connection rather than from our scanner's. That is
+the whole reason the app can do something a browser tab cannot.
+
+`/facets` therefore exposes an app's **query configuration** — which protocols
+its servers speak, and the port rules. Those are the site's own scanner
+settings, exposed rather than reimplemented, because getting the query port
+wrong is the single most common reason a live server shows as dead and the site
+has already worked out the right answer per game.
+
+<Callout type="warning" title="One protocol is deliberately withheld">
+`PALWORLD_REST` is never offered to the app. It is the one protocol that needs a
+credential — the server's admin password — and the app has none and must never
+be handed one. An app configured with both simply receives `A2S`.
+</Callout>
+
+## Version checking
+
+<Endpoint method="GET" path="/api/app/v1/version" auth="Token">
+The newest desktop app there is.
+</Endpoint>
+
+This is **not** an updater endpoint. There is no artifact URL, no signature and
+no checksum, because the app does not update itself — it compares its own
+version against `latest` and, if it is behind, offers to open the download page
+in the user's real browser.
+
+That split is deliberate: a self-updater needs a signing key held by whoever cuts
+releases and a manifest this endpoint would have to serve, and shipping the
+client half against neither would be a switch naming a capability it does not
+have.
+
+## Reporting from inside the app
+
+<Endpoint method="POST" path="/api/app/v1/report" auth="Token">
+Report an item.
+</Endpoint>
+
+It writes a real report row, which is the whole point: a report filed in the app
+has to reach the same moderation queue as one filed on the website, or the app
+is a place where reporting something quietly does nothing.
+
+It also does two things the schema cannot: it **checks the item exists** (a
+report naming a missing id is a row a moderator has to open to discover is
+meaningless), and it **refuses a duplicate from the same person**.
+
+## Reviews
+
+<Endpoint method="POST" path="/api/app/v1/reviews/write" auth="Token">
+Leave, edit or vote on a review.
+</Endpoint>
+
+Every invariant here is the website's own, **called rather than copied** — the
+penalty check, the engagement check, the operator's configured text limits, the
+mention notifications, the activity log. A second implementation of "may this
+person review this thing" is one that drifts, and the half that drifts is always
+the one nobody is looking at.
+
+<Related>
+- [Authentication](/learn/api/app/auth)
+- [Subscriptions and the app](/learn/account/subscriptions)
+</Related>

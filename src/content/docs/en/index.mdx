@@ -1,0 +1,54 @@
+---
+title: Documentation
+description: Guides, references and the complete API documentation for The Modding Community — how the site works, what you can publish on it, and how to talk to it from your own code.
+order: 0
+---
+
+Welcome. This is the manual for [The Modding Community](/) — the site where
+people publish mods, game development assets, servers and the communities built
+around them.
+
+It is written for three different readers, and you probably only need one of
+them:
+
+<Cards>
+  <Card title="I want to use the site" href="/learn/start">
+    Start here. What an account gets you, how the site is laid out, and how to
+    publish your first item.
+  </Card>
+  <Card title="I want to understand a feature" href="/learn/content">
+    What each kind of item actually is, what can be attached to it, and how
+    servers, parties, reports and penalties work underneath.
+  </Card>
+  <Card title="I want to write code against it" href="/learn/api">
+    Three HTTP APIs: one for scripting your own content, one for game servers
+    and mods to report back, and one for the desktop app.
+  </Card>
+</Cards>
+
+## The short version
+
+The site is built around **content items**. A mod, an asset, a server, an app, a
+collection, a community, a group and an article are all content items, and they
+share the same machinery: the same permissions, the same tags and categories,
+the same ratings, comments, follows and reports. Learn how one of them works and
+you have learned most of how all of them work.
+
+Everything else hangs off that:
+
+- **[Accounts](/learn/account)** own items and hold the settings that decide who
+  may see what.
+- **[Servers](/learn/servers)** are content items with a live half — a scanner
+  queries them every few minutes and records who is playing.
+- **[Parties](/learn/parties)** are groups of people playing together,
+  optionally reported by the game itself through the integration API.
+- **[Community and moderation](/learn/community)** — reports and penalties —
+  applies to items and accounts alike.
+- **[The APIs](/learn/api)** expose the same objects and enforce the same rules
+  as the UI.
+
+<Callout type="info" title="This documentation is versionless">
+It describes the site as it is deployed right now. Where a behaviour is
+configurable by staff, the page says so rather than quoting a number that will
+drift.
+</Callout>

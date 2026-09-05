@@ -1,0 +1,100 @@
+---
+title: Media
+description: Screenshots and videos — uploaded or linked, contributed by the team or by anybody, promoted into the carousel or kept in the gallery.
+order: 20
+source:
+  - prisma/models/media.prisma
+---
+
+**Media** is the gallery: screenshots and videos attached to an item. Every
+content item takes them, and so do reviews, comments, reports and status
+updates.
+
+## An entry
+
+<Params>
+  <Param name="type" type="IMAGE | VIDEO">
+    What it is.
+  </Param>
+  <Param name="fileId" type="string">
+    An uploaded file. Use this **or** `externalUrl`, not both.
+  </Param>
+  <Param name="externalUrl" type="url">
+    A link to something hosted elsewhere. Useful for a YouTube video, or for
+    imagery you already host.
+  </Param>
+  <Param name="title" type="string">
+    A caption.
+  </Param>
+  <Param name="description" type="string">
+    Longer caption text, shown in the lightbox.
+  </Param>
+  <Param name="inCarousel" type="boolean" default="true">
+    Whether this entry appears in the item's main slideshow, as opposed to only
+    in the gallery below it. This is how a team curates the top of their page
+    without deleting anybody's contribution.
+  </Param>
+  <Param name="publicUpload" type="boolean" default="false">
+    Marks an entry contributed by somebody **without** edit rights on the item.
+    Set automatically, not by the uploader.
+  </Param>
+  <Param name="hidden" type="boolean" default="false">
+    Hides an entry. The item's team can hide any contribution.
+  </Param>
+  <Param name="nsfw" type="boolean" default="false">
+    Filters the entry for viewers who have not opted in.
+  </Param>
+</Params>
+
+Media entries can themselves take ratings and comments, governed by their own
+`allowRatings` / `allowComments`.
+
+## Who may contribute
+
+The item's `allowMedia` switch decides whether members *without* edit rights may
+add to the gallery. It is **on by default** — community screenshots are the
+point of having a gallery.
+
+The item's team keeps control regardless:
+
+- they choose which entries are promoted into the carousel (`inCarousel`);
+- they can hide or remove any contribution;
+- turning `allowMedia` off refuses new public contributions entirely.
+
+## Banner, icon and card are not media
+
+An item's **banner**, **icon** and **card** are separate fields, not gallery
+entries. They are cropped differently and used in different places — the card in
+listings, the icon in compact rows, the banner across the top of the page — so
+they are set individually rather than picked from the gallery.
+
+A **collection** can additionally merge the galleries of its own items into its
+slideshow with `includeItemMedia`, which appends after its own imagery rather
+than replacing it.
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/{type}/{id}/media" auth="API key" scope="canWrite">
+Add entries, leaving the existing gallery alone.
+</Endpoint>
+
+<Endpoint method="PUT" path="/api/content/{type}/{id}/media" auth="API key" scope="canWrite">
+Declare the gallery to be exactly this set. Anything not listed is deleted.
+</Endpoint>
+
+```bash
+# Add two screenshots without disturbing what is there.
+curl -X POST https://moddingcommunity.com/api/content/mod/5/media \
+  -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
+  -d '[{ "externalUrl": "https://example.com/a.png", "title": "A" },
+       { "externalUrl": "https://example.com/b.png", "title": "B" }]'
+```
+
+An entry with an `id` updates that row; one without creates a new one. An `id`
+must already belong to **this** item — you cannot adopt another item's rows by
+guessing an integer. Every `fileId` must be a file **you** own.
+
+<Related>
+- [Releases and files](/learn/content/relations/releases)
+- [Relations through the API](/learn/api/content/relations)
+</Related>

@@ -1,0 +1,61 @@
+---
+title: API reference
+description: The three HTTP APIs The Modding Community exposes — the public content API for scripting your own items, the integration API for game servers and mods, and the app API for the desktop client.
+order: 10
+source:
+  - src/app/api
+---
+
+There are three APIs, and which one you want depends on **who is calling**.
+
+<Cards>
+  <Card title="Public content API" href="/learn/api/content">
+    A person scripting what they could already do in the browser: create and
+    edit their own mods, assets, servers, articles, communities, collections and
+    groups with an API key instead of a session.
+  </Card>
+  <Card title="Integration API" href="/learn/api/integration">
+    A program — a game server plugin or a game mod — reporting facts about one
+    specific content item: who is in a party, what map is running, what was
+    said in chat.
+  </Card>
+  <Card title="App API" href="/learn/api/app">
+    The desktop client: device authorisation, browsing, installs, downloads and
+    reviews, signed in as a real member.
+  </Card>
+</Cards>
+
+## Choosing between them
+
+| You are… | Use | Credential |
+| --- | --- | --- |
+| A member automating your own uploads | Public content API | `tmc_…` key, or an Ed25519 keypair |
+| A game server or mod reporting play | Integration API | `tmci_…` token, or an Ed25519 keypair |
+| A first-party client acting for a user | App API | OAuth-style device token |
+| Anyone, reading a public item | Public content API | None — see below |
+
+The three token namespaces are deliberately distinct so that a credential can
+never be presented to the wrong surface: a content key sent to the integration
+API is rejected on its prefix, before anything looks it up.
+
+## Reading needs no credential
+
+`GET /api/content/<type>` and `GET /api/content/<type>/<id>` answer with no
+`Authorization` header at all, for items that are completely public:
+
+```bash
+curl "https://moddingcommunity.com/api/content/mod/123"
+```
+
+Everything else — every write, every relation, every read of a non-content type
+— needs a key. See [Reading without a key](/learn/api/content/reading).
+
+## What is the same everywhere
+
+Whichever API you are on:
+
+- **JSON in, JSON out.** There is no form-encoded or XML variant.
+- **A credential can never exceed what its owner could do in the UI.** Every
+  write resolves to the same access check the edit form uses.
+- **Every request is metered and logged**, including the rejected ones.
+- **Errors have one shape.** See [Errors](/learn/api/errors).

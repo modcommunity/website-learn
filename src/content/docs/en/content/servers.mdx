@@ -1,0 +1,168 @@
+---
+title: Servers
+description: The only content item with a live, measured half — how a server listing works, what we measure versus what you may assert, and how to take a field over.
+order: 30
+source:
+  - prisma/models/server.prisma
+  - prisma/models/spy-info-override.prisma
+---
+
+A **server** is a listing for a live game server. It is a content item like any
+other — it has an owner, a body, media, reviews, followers — and it is the only
+one with a **measured half**: a scanner queries the address every few minutes
+and records what it finds.
+
+That split runs through everything on this page.
+
+## Two kinds of field
+
+**Editorial fields** are yours. Name, description, body, rules, media, tags,
+categories, links, the usage policy — you write them, we never touch them.
+
+**Measured fields** are ours. Whether the server is online, how many players are
+on it, the current map, the game mode, the reported version, the platform flags,
+and the player list. These are things we **measure**, not things an owner may
+assert.
+
+<Callout type="warning" title="You cannot type your own player count">
+The public content API refuses to write `online`, `curUsers`, `maxUsers`,
+`bots`, `map`, `gameMode`, `version` and the platform flags — for everybody,
+including the owner and including staff. A server able to type its own player
+count would sit at the top of every "most popular" list for free.
+
+There are exactly two ways to become trusted with one. See [Reporting your own
+statistics](/learn/servers/reporting).
+</Callout>
+
+## Addressing
+
+<Params>
+  <Param name="ip4" type="string">
+    IPv4 address. Together with the ports, this is the server's identity.
+  </Param>
+  <Param name="ip6" type="string">
+    IPv6 address.
+  </Param>
+  <Param name="port" type="int">
+    The **game** port — what players connect to.
+  </Param>
+  <Param name="portQuery" type="int">
+    The **query** port — what the scanner asks. Frequently different from the
+    game port, and frequently wrong on a listing somebody typed by hand. See
+    [Scanning](/learn/servers/scanning#finding-the-query-port).
+  </Param>
+  <Param name="hostName" type="string">
+    A DNS name for the server.
+  </Param>
+  <Param name="useHostName" type="boolean" default="false">
+    "Address me by my hostname, not my IP."
+
+    A server behind a DNS name is the same server whatever address that name
+    resolves to today, and an operator who moves hosts should not have every
+    link, connect button and copied address on the site go stale. With this on,
+    the hostname is what is presented **everywhere** — the connect URL, the copy
+    button, the general tab, the app API, the party hand-off and the page slug.
+
+    It changes presentation only. The IP stays on the row because that is what
+    the scanner dials.
+  </Param>
+  <Param name="showNetInfo" type="boolean" default="true">
+    Whether the address is published at all. Turning it off blurs the address on
+    the page **and** nulls it out of the API — including for anonymous readers.
+  </Param>
+</Params>
+
+## Live state
+
+Written by the scanner, or by an integration you authorise:
+
+| Field | Means |
+| --- | --- |
+| `online` | Answered our last query |
+| `curUsers` / `maxUsers` / `bots` | Population |
+| `map` | Current map, resolved to a `ServerMap` row where we know it |
+| `gameMode`, `version` | As reported |
+| `password`, `secure`, `os`, `dedicated` | Platform facts |
+| `lastScanned` | When we last asked |
+| `lastOnline` | When it last answered |
+| `firstOnline` | The first time we ever found it online — set once, never rewritten |
+| `avgUsers` | Rolling average population over the last 24 hours |
+| `uptimePct` | Share of the last 24 hours of snapshots where it answered, 0–100 |
+
+<Callout type="info" title="`uptimePct` is null, not zero, when unmeasured">
+`null` means "never measured", and that is deliberately distinguishable from
+0%. A server we have not swept yet is judged on its other qualities rather than
+held out of the index for a measurement we simply have not taken.
+</Callout>
+
+## Being offline is not being deleted
+
+A server that has been dark for a month keeps its page, its articles, its
+comments and every inbound link to it. Removal from *listings* is a query-time
+decision about how long it has been quiet; it never destroys the page.
+
+## Query overrides
+
+An owner can take an individual measured field over from the scanner. Turning an
+override **on** means two things at once, because it is one decision:
+
+1. the scanner stops writing that field, and
+2. the content API starts accepting it.
+
+| Override | Covers |
+| --- | --- |
+| `NAME` | The server name |
+| `APP` | Which app it is filed under |
+| `QUERY_PORT` | The query port |
+| `CATEGORY` | Its category |
+| `TAGS` | Its tags |
+| `LOCATION` | Its country and coordinates |
+| `LIVE_STATS` | `online`, `curUsers`, `maxUsers`, `bots` |
+| `MAP` | The current map |
+| `GAME_MODE` | The reported game mode |
+| `VERSION` | The reported version |
+| `PLATFORM` | `password`, `secure`, `os`, `dedicated` |
+| `PLAYERS` | The in-game player list |
+
+Having the scanner and the API disagree about who owns a column is the only way
+to get a field that flickers between two sources every scan, which is why the
+switch is single.
+
+## Auto-detection
+
+By default the scanner also works out which app, category and country a server
+belongs to, and fills them in — each on its own cooldown. Any of the three can
+be switched off per server (`autoDetectApp`, `autoDetectCat`,
+`autoDetectCountry`), which is what you want once you have set them correctly by
+hand.
+
+## What can be attached
+
+| Relation | Notes |
+| --- | --- |
+| [Players](/learn/servers/players) | Who has been on it, and for how long |
+| [Maps](/learn/servers/players#maps) | Which maps it runs |
+| [Releases](/learn/content/relations/releases) | Yes, servers take releases |
+| [Media](/learn/content/relations/media), [Links](/learn/content/relations/links) | |
+| [Dependencies](/learn/content/relations/dependencies) | Usually "this server runs these mods" |
+| [Contributors](/learn/content/relations/credits), [Permissions](/learn/content/relations/permissions) | |
+| [Engagement](/learn/content/relations/engagement) | Ratings, reviews, comments |
+| [Follows](/learn/content/relations/following) | Including online / offline / map-change alerts |
+| [Boards](/learn/content/relations/boards) | Discussions, feedback, bugs, roadmap, changelog |
+| [Rules](#) | A free-text `rules` field, rendered on its own tab |
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/server" auth="API key" scope="canWrite">
+Create a server listing. Only `appId` is required — a listing with an address
+but no name is normal, since the name usually arrives from the first scan.
+</Endpoint>
+
+Note that servers spell their image relations `icon` / `banner` / `card`, where
+every other content type uses `iconId` / `bannerId` / `cardId`.
+
+<Related>
+- [How scanning works](/learn/servers/scanning)
+- [Claiming a listing](/learn/servers/listing)
+- [Reporting your own statistics](/learn/servers/reporting)
+</Related>

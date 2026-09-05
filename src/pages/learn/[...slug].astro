@@ -1,0 +1,25 @@
+---
+import DocsPage from '../../components/docs/DocsPage.astro'
+import { allDocPaths } from '../../docs/tree'
+
+/**
+ * The English documentation tree, unprefixed: `/learn`, `/learn/api`,
+ * `/learn/api/content/authentication`, …
+ *
+ * An empty `slug` is Astro's way of spelling the root of a rest route, so the
+ * docs home is generated from the same list as every other page rather than
+ * being a separate `index.astro` that could fall out of step with it.
+ */
+export async function getStaticPaths() {
+    const paths = await allDocPaths()
+
+    return paths.map((path) => ({
+        params: { slug: path || undefined },
+        props: { path },
+    }))
+}
+
+const { path } = Astro.props as { path: string }
+---
+
+<DocsPage path={path} locale="en" />

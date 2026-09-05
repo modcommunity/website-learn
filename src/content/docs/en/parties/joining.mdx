@@ -1,0 +1,130 @@
+---
+title: Joining and visibility
+description: The four visibility types, who may walk in before and after a match starts, and what the roster discloses.
+order: 20
+source:
+  - prisma/models/party.prisma
+  - prisma/models/party-member.prisma
+---
+
+## The four visibility types
+
+| Type | Who sees it | Who can join |
+| --- | --- | --- |
+| `PUBLIC` | Anybody | Anybody |
+| `PUBLIC_PASSWORD` | Anybody — it is listed | Anybody with the password |
+| `FRIENDS` | The host's accepted friends | Their friends |
+| `PRIVATE` | Only the host and the invited | Only the invited |
+
+`PRIVATE` never appears in a public listing at all. `FRIENDS` appears only to a
+viewer the host has accepted as a friend. Both rules are enforced server-side,
+never merely hidden in a component.
+
+The join password is stored as a hash, never in plaintext, and is never included
+in any read payload. It is cleared whenever the type changes away from
+`PUBLIC_PASSWORD`.
+
+## Walking in
+
+Before a party **starts**, anybody who can see it may walk in — that is what a
+lobby is for.
+
+Once it starts, a walk-in lands on a server mid-match with a roster that has
+already readied up, so the host decides:
+
+<Params>
+  <Param name="joinAfterStartPublic" type="boolean" default="false">
+    Strangers may still join after the party has started. **Off** by default — a
+    started match is a match, not a lobby.
+  </Param>
+  <Param name="joinAfterStartFriends" type="boolean" default="true">
+    The host's accepted friends may still join after it has started. **On** by
+    default: a friend turning up late is the case hosts actually want.
+  </Param>
+  <Param name="friendsCanJoin" type="boolean" default="true">
+    Whether friends can walk into a `FRIENDS` party without an explicit invite.
+    Only consulted for that type — `PUBLIC*` is always walk-in and `PRIVATE`
+    never is.
+  </Param>
+</Params>
+
+An explicit **invite bypasses both** of the after-start switches. The host
+inviting somebody into a running game *is* the host deciding, which is what the
+switches are for.
+
+## Roles inside a party
+
+| Role | |
+| --- | --- |
+| `HOST` | The creator |
+| Co-host / manager | Can start, end and manage the roster |
+| Member | Ordinary |
+
+## The roster
+
+<Params>
+  <Param name="showUsers" type="boolean" default="true">
+    Whether the roster is disclosed at all.
+  </Param>
+</Params>
+
+Each member's own [anonymity settings](/learn/account/privacy) are applied **on
+top** of that, so a party that shows its roster still does not show an anonymous
+member.
+
+There is exactly one place the roster is served without anonymity applied: the
+[integration API's party read](/learn/api/integration/parties#reading-a-party),
+to the credential belonging to the server the party is being played on. The
+reasoning is on the privacy page.
+
+## Membership versus visits
+
+A member has **one** membership row per party, however many times they join and
+leave. Repeat joins open a new **session** instead.
+
+Keeping membership unique is what makes "is this person in the party?" a single
+lookup rather than a scan of their history, and it means a kick or a ban has one
+row to write rather than a state that has to be re-derived from the newest
+visit.
+
+Only members in the `JOINED` state count toward the party's population.
+
+<Callout type="info" title="Being in the party and being in the game are different">
+The party is a lobby on this site. The game is a process on a server. An
+[integration](/learn/parties/integration) reports the second, never the first —
+a player absent from a state report is marked as not in the game; they are
+**not** removed from the party.
+</Callout>
+
+## Chat
+
+<Params>
+  <Param name="chatEnabled" type="boolean" default="true">
+    The party's chat room.
+  </Param>
+  <Param name="chatPublic" type="boolean" default="false">
+    Whether non-members may type in it. A non-member's message is stored
+    **muted**, so it renders dimmed rather than being silently dropped.
+  </Param>
+</Params>
+
+Where the game is integrated, in-game chat can be relayed into the room and the
+room's messages injected back into the game. See [Chat
+relay](/learn/api/integration/chat).
+
+## Media
+
+<Params>
+  <Param name="mediaEnabled" type="boolean" default="true">
+    Whether the party has a gallery at all. Off withdraws the section and
+    refuses every upload, including the host's.
+  </Param>
+  <Param name="mediaMembersUpload" type="boolean" default="true">
+    Whether members may upload to it, as opposed to the host and co-hosts only.
+  </Param>
+</Params>
+
+<Related>
+- [Lifecycle](/learn/parties/lifecycle)
+- [Privacy and anonymity](/learn/account/privacy)
+</Related>

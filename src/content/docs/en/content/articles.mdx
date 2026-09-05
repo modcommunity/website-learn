@@ -1,0 +1,76 @@
+---
+title: Articles
+description: Long-form writing — a guide, a write-up, a changelog post — that can stand alone or be filed under any other item.
+order: 80
+source:
+  - prisma/models/article.prisma
+---
+
+An **article** is long-form writing. It is a content item, so it has an owner, a
+body, media, tags, categories and the full engagement set — and it is the one
+item designed to be **filed under something else**.
+
+## Where an article can live
+
+An article may name a parent, and that decides where it appears:
+
+| Parent | Article appears at |
+| --- | --- |
+| Nothing | `/articles` — the site-wide article browser |
+| An app | The app's article section |
+| A community | `/c/<community>/articles` |
+| A mod | The mod's Articles tab |
+| A server | The server's Articles tab |
+| An asset | The asset's Articles tab |
+| A user | The member's own article section on their profile |
+
+An article always also appears in the global browser, filed under whatever
+category it carries.
+
+## Fields
+
+<Params>
+  <Param name="title" type="string" required>
+    The headline. Note this is `title`, not `name` — articles are the one item
+    type that spells it that way, on both the model and the API.
+  </Param>
+  <Param name="content" type="markdown" required>
+    The body.
+  </Param>
+  <Param name="description" type="string">
+    The standfirst — what shows on cards and in search results.
+  </Param>
+  <Param name="isOfficial" type="boolean">
+    Marks a first-party post. Staff-only, and rejected by the API for everybody
+    else.
+  </Param>
+</Params>
+
+## The blog
+
+`/blog` is the site's own article feed: the subset of articles published by the
+team. It is the same model, filtered.
+
+## What can be attached
+
+[Media](/learn/content/relations/media),
+[contributors](/learn/content/relations/credits),
+[permissions](/learn/content/relations/permissions),
+[tags and categories](/learn/content/categories), and the full
+[engagement](/learn/content/relations/engagement) and
+[follow](/learn/content/relations/following) set.
+
+Articles take no releases, no links and no dependencies.
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/article" auth="API key" scope="canWrite">
+`title` and `content` are required. Every parent is optional and at most one is
+meaningful: `appId`, `communityId`, `modId`, `serverId`, `assetId`,
+`userTargetId`.
+</Endpoint>
+
+<Related>
+- [The shared content model](/learn/content/model)
+- [Boards — changelogs and discussions](/learn/content/relations/boards)
+</Related>

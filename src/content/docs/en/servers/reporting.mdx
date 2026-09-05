@@ -1,0 +1,187 @@
+---
+title: Reporting your own statistics
+description: Why you cannot type your own player count, the two ways to become trusted with one, and the endpoints a server plugin uses.
+navTitle: Reporting statistics
+order: 30
+source:
+  - prisma/models/spy-info-override.prisma
+  - docs/api/integration-api.md
+---
+
+Player counts, the online flag, the current map, the game mode, the version and
+the platform flags are things we **measure**, not things an owner may assert.
+
+The public content API refuses to write them for **everybody**, including the
+owner and including staff. A server able to type its own `curUsers` would sit at
+the top of every "most popular" list for nothing.
+
+## The two ways to be trusted with a field
+
+### 1. A query override
+
+The server's edit form has a **Query overrides** section. Turning one on does two
+things at once, because it is one decision:
+
+1. the scanner **stops writing** that field, and
+2. the content API **starts accepting** it.
+
+You have taken responsibility for the value. Having the scanner and the API
+disagree about who owns a column is the only way to get a field that flickers
+between two sources every scan, which is why it is a single switch.
+
+| Override | Covers |
+| --- | --- |
+| `LIVE_STATS` | `online`, `curUsers`, `maxUsers`, `bots` |
+| `MAP` | The current map |
+| `GAME_MODE` | The reported game mode |
+| `VERSION` | The reported version |
+| `PLATFORM` | `password`, `secure`, `os`, `dedicated` |
+| `PLAYERS` | The in-game player list |
+| `NAME`, `APP`, `QUERY_PORT`, `CATEGORY`, `TAGS`, `LOCATION` | The editorial fields the scanner also fills in |
+
+### 2. An integration
+
+A plugin **on the machine**, reporting first-hand, revocable, with an audit
+trail. Create one under **Account → Integrations**, scoped to the server, holding
+`SERVER_STATS` and/or `SERVER_USERS`.
+
+This is the better option when you have a plugin, because it reports continuously
+and honestly rather than making you responsible for a field you then have to
+keep current by hand.
+
+Both routes are **deliberate acts recorded against the server**, which is what
+makes "this server has been reporting false numbers" an answerable question.
+
+## The two endpoints
+
+These live **outside** `/api/integration/v1` — at
+`/api/content/server/integration/*` — because they are how a server reports about
+**itself** rather than about a party running on it. Authentication, scopes,
+replay protection and rate limiting are identical to the rest of the [integration
+API](/learn/api/integration).
+
+Both accept `POST` and `PUT` and mean the same thing by either: the operation is
+idempotent, and which verb a game-server HTTP client happens to support should
+not decide whether it can report.
+
+The credential is bound to **one** server, so **no payload names a server**. A
+leaked token cannot be pointed at somebody else's listing.
+
+### Statistics
+
+<Endpoint method="POST" path="/api/content/server/integration/stats" auth="Integration" scope="SERVER_STATS">
+A **patch** — absent fields are left alone, so a plugin can send the two numbers
+that change every tick without re-sending the ones that do not.
+</Endpoint>
+
+```json
+{
+  "online": true,
+  "curUsers": 18,
+  "maxUsers": 32,
+  "bots": 2,
+  "map": "de_dust2",
+  "gameMode": "competitive",
+  "version": "1.39.5.4",
+  "password": false,
+  "secure": true,
+  "dedicated": true,
+  "os": "LINUX",
+  "vars": { "sv_gravity": "800" },
+  "ts": 1767225600,
+  "nonce": "b6f1c2"
+}
+```
+
+- `map` is resolved to — or created as — a map row for this server's app, the
+  same way a scan does it, so a self-reported map appears in the map browser like
+  any other.
+- `vars` replaces the whole rule set. `{}` clears it; omitting it leaves it
+  untouched.
+- `online: true` also refreshes `lastOnline`, so a server whose only source is
+  its own plugin is not treated as dead by the "online recently" filters.
+- `lastScanned` is deliberately **not** touched. That is the scan queue's
+  cursor: writing it from here would push the next scan out, so a reporter that
+  later went quiet would leave a server nothing was checking.
+
+A payload that sets no reportable field is a `400`, not a silent no-op.
+
+```json
+{ "ok": true, "applied": ["curUsers", "maxUsers"] }
+```
+
+### The roster
+
+<Endpoint method="POST" path="/api/content/server/integration/users" auth="Integration" scope="SERVER_USERS">
+The **whole current roster**, absolute rather than incremental.
+</Endpoint>
+
+```json
+{
+  "users": [
+    { "name": "Player One", "steamId": "76561198000000000", "score": 24, "seconds": 930 },
+    { "name": "Player Two", "score": 11, "seconds": 300 }
+  ],
+  "setCount": true,
+  "ts": 1767225600,
+  "nonce": "9ad3e1"
+}
+```
+
+<Callout type="warning" title="An empty list means the server is empty">
+Anyone missing from the list is disconnected. If you do not currently know your
+roster, **do not call this endpoint** — "I don't know" and "nobody is here" are
+different answers, and conflating them logs a whole server out and back in
+again.
+</Callout>
+
+Unlike the scan path there is **no grace window**. A scan tolerates one missing
+player because the query protocol drops them on a busy server; a plugin
+enumerating the real player list has no such failure mode.
+
+`setCount` also sets `curUsers` from the list length. It is **off by default**,
+because a protocol that truncates its player list would otherwise understate the
+count every tick.
+
+`SERVER_USERS` is a separate scope from `SERVER_STATS` on purpose: a player list
+is personal data about third parties, and a plugin that reports a player *count*
+should not be able to name them as a side effect.
+
+## Row budgets
+
+These bound how much each report leaves behind, and **every one of them degrades
+rather than refusing** — a real, long-lived server crosses some of these
+eventually, and turning that into an error would break a working deployment at
+the exact moment nobody is watching.
+
+| Limit | Default | At the ceiling |
+| --- | --- | --- |
+| Tracked players per server | 5,000 | Players already on file keep updating; **new** names are not filed. The response carries `dropped` |
+| Maps per game | 2,000 | A report naming an unknown map leaves the server on the map it was already on — it is **not** cleared. The response carries `mapSkipped: true` |
+| Gap between roster reports | 5s | Accepted (`200`) and applied to nothing: `applied: false`, `throttled: true`, `retryAfter` |
+
+<Callout type="info" title="The roster gap is not a rate limit">
+Every roster report opens and closes session rows, so a reporter alternating its
+player list every 100 ms writes tens of thousands of rows a minute while using a
+fraction of its request budget. The request budget counts requests; this bounds
+what one request costs.
+
+**Send your roster every few seconds, not every tick.**
+</Callout>
+
+Server **vars** need no ceiling: they are reconciled to the reported set on every
+write, so their count is bounded by the payload cap and cannot grow.
+
+<Callout type="danger" title="Report honestly">
+These figures feed public rankings. If we determine that an integration has
+reported false or inflated statistics we will revoke the credential and penalise
+the item — for a game server, being flagged, dropped from the server list and
+excluded from statistics for a period we set, up to and including permanently.
+See the terms of service.
+</Callout>
+
+<Related>
+- [Integration API](/learn/api/integration)
+- [How scanning works](/learn/servers/scanning)
+- [Penalties](/learn/community/penalties)
+</Related>

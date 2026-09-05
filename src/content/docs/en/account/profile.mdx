@@ -1,0 +1,67 @@
+---
+title: Profile
+description: Your display name, username and avatar — and the difference between the two names people will use for you.
+order: 10
+source:
+  - prisma/models/user.prisma
+---
+
+## Two names
+
+<Params>
+  <Param name="username">
+    The stable handle. It appears in your profile URL and is what people type
+    to find you. Case-insensitively unique — `Ashley` and `ashley` cannot be two
+    accounts.
+
+    A brand-new account is given a generated one (`modder_1a2b3c4d`) rather than
+    being left without, so there is never a state where your profile cannot be
+    linked to.
+  </Param>
+  <Param name="name">
+    The display name — what people read. Also unique, case-insensitively.
+  </Param>
+</Params>
+
+Your profile lives at `/u/<id>-<username>`. The id is what makes the link
+survive a rename.
+
+## Avatar
+
+Uploaded like any other file, and owned by you. Removing it falls back to a
+generated placeholder rather than a blank.
+
+## What your profile shows
+
+Each of these is a switch, on by default, under **Account → Privacy**:
+
+| Section | Switch |
+| --- | --- |
+| The profile at all | `showProfile` |
+| Your activity feed | `showActivity` |
+| Your friends | `showFriends` |
+| Your followers | `showFollowers` |
+| Your status updates | `showStatusUpdates` |
+| Your media | `showMedia` |
+| Your game history | `showGameHistory` |
+| You in the member browser | `showPublic` |
+
+They are explained in full on [Privacy and
+anonymity](/learn/account/privacy), including the two stronger switches that
+override all of them.
+
+## Your own sections
+
+A profile carries more than a bio:
+
+- **Articles** — anything you have published under your own name
+- **Content** — your mods, assets, servers, collections and groups
+- **Activity** — what you have been doing, if you show it
+- **Friends** and **Followers**
+- **Media** — your gallery contributions
+- **Status updates** — short posts, which take comments and ratings of their own
+
+<Related>
+- [Privacy and anonymity](/learn/account/privacy)
+- [Security](/learn/account/security)
+</Related>

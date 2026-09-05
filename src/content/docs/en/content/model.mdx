@@ -1,0 +1,172 @@
+---
+title: The shared content model
+description: Ownership, visibility, engagement switches, archiving and API exposure — the behaviour every content item has, in one place.
+order: 5
+source:
+  - prisma/models/mod.prisma
+  - prisma/models/permission.prisma
+---
+
+Every content item — mod, asset, server, app, community, collection, group,
+article — carries the fields on this page. They mean exactly the same thing on
+each of them, and they are enforced server-side rather than by whichever form
+happens to be showing.
+
+## Ownership and access
+
+An item has one **owner**, the account that created it. Beyond that, access is
+granted explicitly:
+
+| Grant | Lets the holder |
+| --- | --- |
+| `READ` | See the item even when it is hidden |
+| `WRITE` | Edit it |
+| `DELETE` | Delete it |
+
+A grant goes to **one member or one group**, never both at once. When it goes
+to a group, *every member of that group inherits it* — which is the main reason
+groups exist beyond being a roster.
+
+<Callout type="info" title="A group is both a grantee and a target">
+A group can hold a grant over somebody else's mod, and somebody can hold a grant
+over the group itself. Those are separate: handing a group `WRITE` over your mod
+does **not** hand its members `WRITE` over the group.
+</Callout>
+
+Staff can act on any item. Everything else — including every API write — resolves
+to the same check: **you own it, you hold a `WRITE` grant on it, or you are
+staff**. There is no path that is more permissive than the edit form.
+
+## Visibility
+
+Three independent switches, regularly confused:
+
+<Params>
+  <Param name="hidden" type="boolean" default="false">
+    A draft, or a moderation hold. The item is removed from view **entirely**.
+    For anyone without access it behaves as though it does not exist — reading
+    it by id through the API returns `404`, not `403`, because a `403` would
+    still confirm the id is real. Its relations are hidden with it.
+  </Param>
+  <Param name="nsfw" type="boolean" default="false">
+    Adult content. The item stays listed, but is filtered out for viewers who
+    have not opted in, and is excluded from the anonymous API surface.
+  </Param>
+  <Param name="archived" type="boolean" default="false">
+    Retired by its owner, but **kept readable**. It stays visible, keeps its
+    stats and its engagement history, and is simply flagged as no longer
+    maintained. This is the honest option when a project is finished — hiding it
+    breaks every link to it, and deleting it destroys the discussion around it.
+  </Param>
+</Params>
+
+Deletion is a fourth thing, and it is destructive: it cascades to media,
+releases, comments, reviews, ratings, follows and permissions.
+
+## Engagement switches
+
+Owner-controlled, on by default, and enforced server-side rather than by hiding
+a button:
+
+| Switch | Governs |
+| --- | --- |
+| `allowRatings` | Likes / dislikes on the item |
+| `allowReviews` | Written reviews with a star score |
+| `allowComments` | The comment thread |
+| `allowMedia` | Whether members *without* edit rights may contribute to the gallery |
+
+`allowMedia` is on by default because community screenshots are the point. Your
+team can still hide or remove any contribution, and chooses which ones are
+promoted into the main carousel.
+
+<Callout type="info">
+A **collection** has no `allowRatings`. Collections cannot be rated at all, so
+the switch would be a control that silently does nothing.
+</Callout>
+
+Turning engagement off shows a notice on the page — except on items marked
+`isOfficial`, which are trusted and do not get the warning.
+
+## Official items
+
+`isOfficial` marks a first-party or trusted item. It is **admin-only**: set from
+the admin panel, never by the owner. It suppresses the "engagement disabled"
+warning and adds an Official badge to the card.
+
+## API exposure
+
+<Params>
+  <Param name="apiPublic" type="boolean" default="true">
+    Whether this item may be read through the **anonymous**, unauthenticated
+    API.
+
+    On by default: a published item is already readable by anybody with a
+    browser, so refusing the same handful of facts to a script would be theatre
+    rather than privacy. It is a switch because "readable on our page" and
+    "harvestable in bulk by anybody" are not the same thing to everyone, and the
+    owner is the one who gets to say so.
+
+    It governs the **anonymous** surface only. An authenticated key belonging to
+    somebody who can already see the item is unaffected — this is a publication
+    choice, not a permission.
+  </Param>
+  <Param name="subDisabled" type="boolean" default="false">
+    Opt out of one-click subscribe/install through the official app, leaving
+    only a manual download.
+
+    It exists because the install path is per-**app** — a plugin describing where
+    a mod file goes for that game — while the failure is per-**item**: a mod that
+    ships an installer executable, or lays its archive out differently from
+    everything else for the same game, cannot be placed correctly even though
+    every other mod for that game can. Rather than let it install wrongly and
+    break somebody's game, its team can say so.
+  </Param>
+</Params>
+
+Anonymous reads are additionally gated on the item being *completely* public:
+not hidden, not NSFW, and not filed under a hidden parent. See [Reading without
+a key](/learn/api/content/reading).
+
+## Licence and usage policy
+
+Two separate things:
+
+- **`license`** — the legal licence (MIT by default).
+- **The usage policy** — the owner's plain-language answers to what others may
+  do: redistribute, modify, use commercially, require credit, require
+  share-alike, feed to an AI model, use in NSFW work.
+
+Every policy answer is a **three-state** value: yes, no, or **not stated**. Not
+stated is not "no" — it means the owner has not said, which is the honest
+default. See [Permissions and usage policy](/learn/content/relations/permissions).
+
+## Environment
+
+Mods and assets carry an **environment**: `ALL`, `SERVER` or `CLIENT`. It is not
+decoration — it decides which items are offered for a given install, since a
+dedicated server and a player's game are the same files arranged differently.
+
+## Virus scan link
+
+`virusScanLink` is an **author-supplied** link to a third-party scan report
+(VirusTotal, Hybrid Analysis). It is a link the author is vouching with, not a
+verdict we produced. Our own results live on the individual uploaded files, and
+the page renders the two separately so a reader can tell them apart.
+
+## Timestamps
+
+| Field | Means |
+| --- | --- |
+| `createdAt` | When the row was created |
+| `updatedAt` | Any write, including automatic ones |
+| `lastEdit` | The last *editorial* change — what "updated" means to a reader |
+
+`lastEdit` exists because `updatedAt` moves whenever anything touches the row,
+including background jobs, and an item that shows as "updated 4 minutes ago"
+because a counter rolled over is lying to the reader.
+
+<Related>
+- [Relations — what can be attached](/learn/content/relations)
+- [Permissions and usage policy](/learn/content/relations/permissions)
+- [Publishing through the API](/learn/api/content/items)
+</Related>

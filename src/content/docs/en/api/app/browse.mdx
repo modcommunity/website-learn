@@ -1,0 +1,137 @@
+---
+title: Browsing
+description: One row shape for every content kind, the full filter set, cursor paging, and the facets that populate a filter panel.
+order: 20
+source:
+  - src/types/app-api/contract.ts
+---
+
+<Endpoint method="GET" path="/api/app/v1/browse" auth="Token">
+Browse any content kind. One response shape, whatever the kind.
+</Endpoint>
+
+## One row for every kind
+
+The app draws one grid, so every kind — asset, mod, server, map, article,
+community, collection, user — comes back as the **same summary shape**.
+Normalising server-side is the only place that can be done once.
+
+A server additionally carries a live block; other kinds do not.
+
+## Filters
+
+Every filter is optional, and **filters a kind cannot express are ignored rather
+than rejected**. A filter panel that survives a kind switch is worth more than a
+`400`.
+
+### Everywhere
+
+| Param | |
+| --- | --- |
+| `kind` | Required |
+| `search` | Free text, up to 128 characters |
+| `apps` | App ids |
+| `categories` | Category ids |
+| `tags` | Tag ids |
+| `tagsOr` | **AND across tags by default**; `true` switches to ANY |
+| `communityId` | |
+| `ownerId` | |
+| `nsfw`, `archived` | |
+| `mine` | The signed-in user's own items. Resolved server-side from the token |
+| `environment` | `ALL` / `SERVER` / `CLIENT` — mods and assets |
+
+Tags are AND by default because the app's chips read as "all of these".
+
+### Servers only
+
+| Param | |
+| --- | --- |
+| `onlineOnly` | |
+| `mapName` | Substring match on the current map |
+| `countries` | Country ids, from `/facets` |
+| `os` | `WINDOWS` / `LINUX` / `MAC` |
+| `password`, `secure`, `isOfficial` | |
+| `hideEmpty`, `hideFull` | |
+| `minUsers`, `maxUsers` | Current **population** |
+| `minSlots`, `maxSlots` | **Capacity** — named differently to keep the two apart |
+| `wasOnline` | Seen online inside the inactivity window |
+| `adultAges` | Restrict to servers whose **community** states one of these minimum ages |
+
+<Callout type="warning" title="`wasOnline` is not `has ever been online`">
+It means "seen online inside the inactivity-removal window". The website's own
+field carries the same warning.
+</Callout>
+
+`adultAges` is **include-only, never a mute list**: an empty or absent array
+applies no restriction. Nothing here verifies anybody's age — it honours what a
+community says about itself. See
+[Communities](/learn/content/communities).
+
+### Sorting and paging
+
+| Param | Default |
+| --- | --- |
+| `sort` | `createdAt` |
+| `sortDir` | `desc` |
+| `timeRange` | `all` — also `24h`, `7d`, `30d` |
+| `limit` | 30, maximum 50 |
+| `cursor` | — |
+
+**Cursor paging only.** The app's grids are infinite, never numbered.
+
+```json
+{
+  "items": [ ],
+  "nextCursor": "…",
+  "total": 1284
+}
+```
+
+`nextCursor` is `null` at the end. `total` is present when the backend can
+produce one cheaply and `null` otherwise — it is a nicety, not a contract.
+
+### Booleans in a query string
+
+Every boolean flag here is **opt-in**, so anything that is not an affirmative
+reads as false. That is deliberate: a naive coercion would read the string
+`"false"` as `true`, which is exactly the wrong default for a filter.
+
+## Facets
+
+<Endpoint method="GET" path="/api/app/v1/facets" auth="Token">
+Sidebar facets, so the app's filters are populated from real data rather than a
+hard-coded list.
+</Endpoint>
+
+Returns apps, categories, tags and countries with counts — and, per app, the
+**query configuration** the app needs to probe that game's servers itself:
+which protocols they speak and the port rules.
+
+## One item
+
+<Endpoint method="GET" path="/api/app/v1/content/{kind}/{id}" auth="Token">
+A single item's full page.
+</Endpoint>
+
+The detail payload embeds a `summary` that is **byte-identical to that item's
+browser row**, so an app that navigated from a grid does not have to reconcile
+two versions of the same thing.
+
+Beyond the summary it carries releases, media, links and dependencies.
+
+### Dependencies come back narrow
+
+A dependency is a name, an id, something to draw, and the **edge type** — not a
+full summary. The app renders these as a list and uses them to answer one
+question (*what else do I need, and is anything going to fight?*), so a card row
+would be three times the payload for a screen that renders none of it. Tapping
+one navigates by kind and id, which fetches the real row.
+
+The edge type is on the wire precisely because collapsing every edge into
+"dependencies" turns *"these two must not be installed together"* into *"install
+this one too"*. See [Dependencies](/learn/content/relations/dependencies).
+
+<Related>
+- [Library](/learn/api/app/library)
+- [Content items](/learn/content)
+</Related>

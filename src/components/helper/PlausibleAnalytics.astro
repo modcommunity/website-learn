@@ -1,0 +1,32 @@
+---
+declare global {
+  interface Window {
+    plausible?: ((...args: any[]) => void) & { q?: any[] };
+  }
+}
+
+type Props = {
+    src: string
+    domain : string
+    api?: string
+}
+
+const { src, domain, api } = Astro.props as Props
+---
+
+<!-- is:inline is what Astro already does here, because the tag carries attributes.
+     Stating it silences the hint and keeps the tag from being bundled if the
+     attributes ever go away — this is a third-party snippet that has to load
+     from Plausible's origin, not something to process. -->
+<script
+    is:inline
+    defer
+    src={src}
+    data-domain={domain}
+    data-api={api ?? "https://plausible.io/api/event"}
+></script>
+<script>
+    window.plausible = window.plausible || function () {
+    (window.plausible!.q = window.plausible!.q || []).push(arguments);
+    }
+</script>

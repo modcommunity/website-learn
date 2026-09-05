@@ -1,0 +1,284 @@
+/*
+ * Documentation prose.
+ *
+ * Everything here is scoped under `.docs-prose`, which wraps ONLY the rendered
+ * body of a doc page — not the shell, not the sidebar, not the search dialog.
+ * That boundary is what lets these rules be blunt: inside a document, `h2`
+ * really does always want a rule above it and `code` really does always want a
+ * chip background, and nothing else on the page has to be defended from that.
+ *
+ * No typography plugin. The base heading sizes and link colours already come
+ * from `Base.css` (shared verbatim with website-processing and, through it,
+ * website-city), so a prose plugin would spend most of its weight overriding
+ * a house style we then override back.
+ */
+
+.docs-prose {
+    @apply text-[0.9375rem] leading-7 text-foreground/90;
+}
+
+/* -------------------------------------------------------------- The shell */
+
+/*
+ * Let the docs rail island's two halves be laid out independently.
+ *
+ * `<DocsNav/>` renders the wide-viewport rail AND the narrow-viewport trigger
+ * bar, because they share the drawer's open state. Astro wraps any island in a
+ * single `<astro-island>` element, which as a flex item would hold both — and
+ * a trigger bar sized by its content then competes with the article column for
+ * the row's width instead of sitting above it.
+ *
+ * `display: contents` removes the wrapper from layout entirely, so the rail and
+ * the bar become direct children of the shell row: the rail is a column, the
+ * bar is `basis-full` and takes its own line. Hydration is unaffected — Astro
+ * finds the element by reference, not by its box.
+ */
+.docs-shell > astro-island {
+    display: contents;
+}
+
+/* ------------------------------------------------------------- Block rhythm */
+
+.docs-prose > * + * {
+    @apply mt-4;
+}
+
+/*
+ * Headings claim their space from ABOVE. A heading belongs to the text under
+ * it, so the gap that separates it from the previous section has to be larger
+ * than the gap to its own first paragraph — otherwise a long page reads as one
+ * undifferentiated column no matter how many headings it has.
+ */
+.docs-prose h2 {
+    @apply mt-12 scroll-mt-24 border-t border-border pt-8 text-2xl;
+}
+
+.docs-prose h3 {
+    @apply mt-8 scroll-mt-24 text-xl;
+}
+
+.docs-prose h4 {
+    @apply mt-6 scroll-mt-24 text-base font-semibold;
+}
+
+.docs-prose h2 + *,
+.docs-prose h3 + *,
+.docs-prose h4 + * {
+    @apply mt-3;
+}
+
+/* The first heading on a page has no previous section to separate from. */
+.docs-prose > h2:first-child {
+    @apply mt-0 border-t-0 pt-0;
+}
+
+/* ---------------------------------------------------------- Section anchors */
+
+/*
+ * Added by `DocsEnhancements.astro` after render. Invisible until the heading
+ * is hovered or the link itself is focused — a permalink on every heading is
+ * useful roughly once per visit and visible for the whole of it otherwise.
+ */
+.docs-prose .heading-anchor {
+    @apply ml-2 align-middle text-accent no-underline opacity-0 transition-opacity;
+}
+
+.docs-prose :is(h2, h3, h4):hover .heading-anchor,
+.docs-prose .heading-anchor:focus-visible {
+    @apply opacity-100;
+}
+
+/* --------------------------------------------------------------- Body parts */
+
+.docs-prose :is(ul, ol) {
+    @apply my-4 space-y-1.5 pl-6;
+}
+
+.docs-prose ul {
+    @apply list-disc marker:text-muted;
+}
+
+.docs-prose ol {
+    @apply list-decimal marker:text-muted;
+}
+
+.docs-prose li > :is(ul, ol) {
+    @apply my-1.5;
+}
+
+.docs-prose a {
+    @apply text-accent underline decoration-accent/40 underline-offset-2 transition-colors hover:decoration-accent;
+}
+
+/*
+ * Cards carry their own link treatment from the shared <FeatureCard/> — a
+ * whole-card hit area with a heading that is already styled. The prose rule
+ * above would put an accent underline through that heading, which reads as a
+ * link inside a link.
+ */
+.docs-prose .docs-cards a {
+    @apply no-underline;
+}
+
+.docs-prose .docs-cards p {
+    @apply mt-0 text-sm;
+}
+
+.docs-prose .docs-cards > * > * + * {
+    @apply mt-2;
+}
+
+.docs-prose strong {
+    @apply font-semibold text-foreground;
+}
+
+.docs-prose hr {
+    @apply my-10 border-border;
+}
+
+.docs-prose blockquote {
+    @apply my-6 border-l-2 border-accent/50 pl-4 text-muted italic;
+}
+
+/* ------------------------------------------------------------------- Tables */
+
+/*
+ * The wrapper scrolls, not the page. A scope table with a prose "Grants"
+ * column is wider than the article column at every viewport under about
+ * 900px, and without this the whole document scrolls sideways to accommodate
+ * it — the single most common way a docs page ends up with a horizontal
+ * scrollbar.
+ */
+.docs-prose .table-wrap,
+.docs-prose table {
+    @apply my-6 w-full;
+}
+
+.docs-prose .table-wrap {
+    @apply overflow-x-auto;
+}
+
+.docs-prose table {
+    @apply border-collapse overflow-hidden rounded-xl text-sm;
+}
+
+.docs-prose thead {
+    @apply bg-surface-secondary;
+}
+
+.docs-prose :is(th, td) {
+    @apply border border-border px-3 py-2 text-left align-top;
+}
+
+.docs-prose th {
+    @apply font-pjs font-semibold text-foreground;
+}
+
+.docs-prose td {
+    @apply text-muted;
+}
+
+.docs-prose td code {
+    @apply whitespace-nowrap;
+}
+
+/* --------------------------------------------------------------------- Code */
+
+.docs-prose :not(pre) > code {
+    @apply rounded border border-border bg-surface-secondary px-1 py-px font-mono text-[0.85em] text-foreground;
+}
+
+/* Links whose whole label is code shouldn't get a second box outline. */
+.docs-prose a > code {
+    @apply border-accent/30 text-accent;
+}
+
+.docs-prose .code-block {
+    @apply relative my-6;
+}
+
+.docs-prose pre {
+    @apply overflow-x-auto rounded-xl border border-border p-4 font-mono text-[0.8125rem] leading-6;
+}
+
+.docs-prose pre code {
+    @apply bg-transparent p-0 font-mono;
+}
+
+/*
+ * Shiki's dual-theme output.
+ *
+ * `defaultColor: false` in `astro.config.mjs` makes Shiki emit BOTH palettes on
+ * every token as `--shiki-light` / `--shiki-dark` custom properties and paint
+ * neither. These two rules choose. Light is the bare default, so a block
+ * renders correctly before any theme class is applied; the `.dark` block is the
+ * same selector the shared <ThemeToggle/> writes, and `Layout.astro` sets it
+ * before first paint, so there is no flash of the wrong palette.
+ *
+ * The class is `.astro-code`, NOT `.shiki`. Astro renames the wrapper, and a
+ * `.shiki` selector matches nothing at all — which fails silently as
+ * unhighlighted code in the inherited prose colour, readable enough that it is
+ * easy to miss.
+ *
+ * Only the FOREGROUND is taken from Shiki. The background stays the theme's own
+ * surface: `github-light` paints `#fff` and `github-dark-default` `#0d1117`,
+ * neither of which is this site's surface colour, so honouring them would put a
+ * differently-coloured slab in the middle of every page.
+ */
+.docs-prose :is(pre, code).astro-code,
+.docs-prose .astro-code span {
+    color: var(--shiki-light);
+    font-style: var(--shiki-light-font-style);
+    font-weight: var(--shiki-light-font-weight);
+    text-decoration: var(--shiki-light-text-decoration);
+}
+
+.dark .docs-prose :is(pre, code).astro-code,
+.dark .docs-prose .astro-code span {
+    color: var(--shiki-dark);
+    font-style: var(--shiki-dark-font-style);
+    font-weight: var(--shiki-dark-font-weight);
+    text-decoration: var(--shiki-dark-text-decoration);
+}
+
+.docs-prose pre.astro-code {
+    @apply bg-surface-secondary;
+}
+
+/* --------------------------------------------------------- Copy-code button */
+
+.docs-prose .code-copy {
+    @apply absolute top-2 right-2 rounded-md border border-border bg-surface/90 px-2 py-1 font-pjs text-xs text-muted opacity-0 backdrop-blur transition;
+}
+
+.docs-prose .code-block:hover .code-copy,
+.docs-prose .code-copy:focus-visible {
+    @apply opacity-100;
+}
+
+.docs-prose .code-copy:hover {
+    @apply border-accent/50 text-foreground;
+}
+
+.docs-prose .code-copy.is-copied {
+    @apply border-success/50 text-success opacity-100;
+}
+
+/* ------------------------------------------------- Nested prose in MDX parts */
+
+/*
+ * `<Param>`, `<Endpoint>` and `<Related>` bodies are prose too, but they sit
+ * inside a bordered box where the top-level rhythm (12rem-tall heading gaps,
+ * ruled `h2`s) would be absurd. They get the inline treatment — links, code and
+ * lists — and nothing structural.
+ */
+.docs-param-body > * + *,
+.docs-endpoint-body > * + *,
+.docs-related > * + * {
+    @apply mt-2;
+}
+
+.docs-related ul {
+    @apply my-0 space-y-1 pl-5;
+    @apply list-disc marker:text-muted;
+}

@@ -1,0 +1,125 @@
+---
+title: Publishing your first item
+description: A walk-through from the empty form to a page with files, screenshots and a release on it — and the handful of switches worth setting before you make it visible.
+order: 30
+---
+
+This walks through a **mod**, because it is the type with the most moving parts.
+An asset, a server or a community is the same process with fewer required
+fields.
+
+## 1. Start it hidden
+
+Every content item has a `hidden` switch, and a new item is worth starting with
+it **on**. A hidden item behaves as if it does not exist for everybody except
+you, people you have granted access, and staff — including through the API,
+where reading one by id returns `404` rather than `403`, so its id cannot even
+be confirmed.
+
+That means you can build the whole page — description, screenshots, files,
+dependencies — without anybody watching, and publish it in one move.
+
+## 2. Fill in what is required
+
+A mod needs three things and nothing else:
+
+<Params>
+  <Param name="name" type="string" required>
+    What it is called. Also the basis of the URL slug, though you can override
+    that with `url`.
+  </Param>
+  <Param name="appId" type="int" required>
+    Which app this is a mod *for*. A mod belongs to exactly one app and cannot
+    be moved between them casually — the slug is unique per app, not globally.
+  </Param>
+  <Param name="content" type="markdown" required>
+    The body of the page. Markdown.
+  </Param>
+</Params>
+
+Everything else is optional, but two are worth doing now:
+
+- **`description`** — one line. It is what shows on cards and in search results,
+  and an item without one looks unfinished everywhere except its own page.
+- **`install`** — installation instructions, separate from `content` so a reader
+  who already knows what your mod is can skip straight to it.
+
+## 3. Pick a licence and state a policy
+
+These are two different things and both matter:
+
+- **`license`** is the legal licence your work is published under (MIT by
+  default).
+- The **usage policy** — on the item's Permissions tab — is your plain-language
+  answer to "may I redistribute this / modify it / sell it / train a model on
+  it / require credit". Every one of those is a **three-state** toggle: yes, no,
+  or **not stated**. Not stated is the honest default, and is what an item that
+  has never been asked shows.
+
+See [Permissions and usage policy](/learn/content/relations/permissions).
+
+## 4. Add media
+
+The Media tab takes screenshots and videos, either uploaded or by external URL.
+The first images people see are the **banner**, the **icon** and the **card** —
+set separately, because they are cropped differently and used in different
+places.
+
+By default other members may contribute screenshots to your gallery too
+(`allowMedia`). Your team still decides which ones get promoted into the main
+carousel, and can hide any of them.
+
+## 5. Cut a release
+
+A **release** is a version: a version string, optional notes, and a set of
+files.
+
+```bash
+# Upload the file, then attach it to a release.
+curl -X POST "https://moddingcommunity.com/api/content/file?name=mod.zip" \
+  -H "Authorization: Bearer $TMC_TOKEN" \
+  -H "Content-Type: application/zip" \
+  --data-binary @dist/mod.zip
+```
+
+The uploader in the browser does the same thing. Files carry a **scan status**
+of their own — that is our scan, and it is shown separately from any
+third-party scan report you link with `virusScanLink`, so a reader can tell
+"the author says they scanned it" from "we scanned it".
+
+See [Releases and files](/learn/content/relations/releases).
+
+## 6. Declare what it needs
+
+If your mod requires another mod, say so. A [dependency
+edge](/learn/content/relations/dependencies) is one of four kinds — **required**,
+**optional**, **recommended** or **conflict** — and the fourth is the one that
+earns the feature: "these two must not be installed together" is the opposite of
+"install this too", and a system that only modelled dependencies would render it
+as one.
+
+## 7. Credit people
+
+The [Contributors](/learn/content/relations/credits) tab credits everyone who
+worked on it. A contributor does not have to have an account here — a name, a
+role and a contribution type is enough, and where there *is* an account, linking
+it means a later rename follows automatically.
+
+## 8. Unhide it
+
+Turn `hidden` off. From that moment the item is in the browsers, in search, in
+the sitemap and readable through the anonymous API — unless you switch that last
+one off with `apiPublic`.
+
+<Callout type="warning" title="Two switches people confuse">
+**`hidden`** removes an item from view entirely — it is a draft or a moderation
+hold. **`archived`** keeps it visible and keeps its history, and just marks it
+as no longer maintained. Neither is deletion, which is destructive and cascades
+to everything attached.
+</Callout>
+
+<Related>
+- [The shared content model](/learn/content/model) — every switch above, explained
+- [Mods](/learn/content/mods)
+- [Publishing through the API](/learn/api/content/items)
+</Related>

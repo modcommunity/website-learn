@@ -1,0 +1,75 @@
+---
+title: Players and maps
+description: How play time is measured, what a player page shows, and how a map becomes a browsable item of its own.
+order: 40
+source:
+  - prisma/models/server-user.prisma
+  - prisma/models/server-user-session.prisma
+  - prisma/models/server-map.prisma
+---
+
+## Players
+
+Every player seen on a server gets a row: their in-game name, the platform id
+where the protocol gives us one, and their accumulated statistics on that
+server.
+
+### Sessions are separate from players
+
+A player who joins, leaves and re-joins has spent **two intervals** on the
+server. A single joined/left pair on the player row would either lose the first
+interval or report the gap between them as time played — so each visit is its
+own **session** row, and that is the only place play time is measured.
+
+Seconds are written when a session **closes** rather than derived on read, so
+"total time played" is a sum over an index rather than a date subtraction across
+every visit anybody has ever made.
+
+### The player browser
+
+Players are browsable in their own right at `/servers/players`, and each has a
+page showing where they have played and for how long.
+
+A member who has connected their game account can be linked to their player
+rows, which is what turns "somebody called Ashley" into "this member". That
+linkage is also what makes a member's game history a thing they can hide — see
+[`showGameHistory`](/learn/account/privacy).
+
+### Grace on a missing player
+
+A scan tolerates a player briefly disappearing from the query response, because
+the protocol drops them on a busy server. A plugin reporting through the
+[integration API](/learn/servers/reporting) gets **no** such grace, since it
+enumerates the real player list and has no equivalent failure mode.
+
+## Maps
+
+A **map** is a first-class item: it has a page, a browser, categories, tags,
+reviews, ratings, comments, media and favourites, exactly like other content.
+
+Maps arrive three ways:
+
+1. **From a scan** — the current map a server reports is resolved to a map row
+   for that app, creating it if we have not seen it before.
+2. **From an integration** — a self-reported map is resolved the same way, so it
+   appears in the browser like any other.
+3. **From a mod** — mods are the one content type that can contribute maps
+   directly.
+
+Maps are per-app: `de_dust2` on one game is not the same row as `de_dust2` on
+another.
+
+A map's page shows which servers are running it, which is the useful direction —
+"where can I play this right now".
+
+<Callout type="info" title="An unknown map does not clear the current one">
+When a server reports a map we do not have and the per-game map ceiling has been
+reached, the server stays on the map it was already on rather than being
+blanked. A missing row is not evidence that nothing is running.
+</Callout>
+
+<Related>
+- [How scanning works](/learn/servers/scanning)
+- [Reporting your own statistics](/learn/servers/reporting)
+- [Privacy](/learn/account/privacy)
+</Related>

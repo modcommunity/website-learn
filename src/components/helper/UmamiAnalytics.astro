@@ -1,0 +1,39 @@
+---
+type Props = {
+    src: string
+    websiteId: string
+    setOutboundClicks?: boolean
+}
+
+const {
+    src,
+    websiteId,
+    setOutboundClicks = true
+} = Astro.props as Props
+---
+
+<!-- is:inline is what Astro already does here, because the tag carries attributes.
+     Stating it silences the hint and keeps the tag from being bundled if the
+     attributes ever go away — this is a third-party snippet that has to load
+     from Umami's origin, not something to process. -->
+<script
+    is:inline
+    defer
+    src={src}
+    data-website-id={websiteId}
+/>
+{setOutboundClicks && (
+    <script>
+        (() => {
+            const name = 'outbound-link-click';
+
+            document.querySelectorAll('a').forEach(a => {
+
+                if (a.host !== window.location.host && !a.getAttribute('data-umami-event')) {
+                    a.setAttribute('data-umami-event', name);
+                    a.setAttribute('data-umami-event-url', a.href);
+                }
+            })
+        })()
+    </script>
+)}

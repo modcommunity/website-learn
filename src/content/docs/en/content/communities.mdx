@@ -1,0 +1,80 @@
+---
+title: Communities
+description: A user-run organisation that owns servers, mods and articles — and the one item that states a minimum age for its spaces.
+order: 50
+source:
+  - prisma/models/community.prisma
+---
+
+A **community** is a user-run gaming or modding organisation. It is the umbrella
+an operator puts their servers, mods, assets and articles under, and it gets its
+own landing page, article section and browsers.
+
+## What only a community does
+
+<Params>
+  <Param name="ageRequirement" type="NONE | ADULT_18 | ADULT_21" default="NONE">
+    The minimum age the community states its spaces are for.
+
+    This is a **claim by the community's owner, not an enforced gate**. Nothing
+    on this site verifies anybody's age, and pretending otherwise would be worse
+    than saying nothing. It exists so an operator running an adults-only server
+    can say so, and so a reader browsing servers can opt into — or out of —
+    seeing them.
+
+    It is an enum rather than a number because 18 and 21 are the two lines that
+    actually exist in the jurisdictions our operators run in; a free integer
+    would produce a filter with a dozen meaningless values in it.
+  </Param>
+  <Param name="name" type="string" required>
+    Globally unique, unlike a mod's name. So is the URL slug — a community is
+    not filed under an app, so there is no per-app namespace to disambiguate it.
+  </Param>
+  <Param name="apps" type="relation">
+    Which apps this community is about. A community may span several.
+  </Param>
+</Params>
+
+<Callout type="info" title="The age filter reaches servers through the community">
+A server's adult filter reads the age requirement of the community the server
+belongs to. That is why an operator who wants their servers filtered correctly
+sets it here rather than on each server.
+</Callout>
+
+## What a community owns
+
+A community can be named as the parent of:
+
+- **Servers** — they appear on the community's server browser
+- **Mods** and **assets**
+- **Articles** — the community gets its own article section at
+  `/c/<community>/articles`
+
+Naming a community on an item is what lets the community's team co-manage it,
+and puts the item on the community's pages.
+
+## What can be attached
+
+The full standard set: [media](/learn/content/relations/media),
+[links](/learn/content/relations/links),
+[dependencies](/learn/content/relations/dependencies),
+[contributors](/learn/content/relations/credits),
+[permissions](/learn/content/relations/permissions),
+[tags and categories](/learn/content/categories),
+[engagement](/learn/content/relations/engagement),
+[follows](/learn/content/relations/following) and the full set of
+[boards](/learn/content/relations/boards).
+
+Communities do **not** take releases — they publish nothing themselves; the
+items under them do.
+
+## Through the API
+
+<Endpoint method="POST" path="/api/content/community" auth="API key" scope="canWrite">
+Only `name` is required. `appIds` takes the apps the community covers.
+</Endpoint>
+
+<Related>
+- [Groups](/learn/content/groups) — a roster of people, which is a different thing
+- [The shared content model](/learn/content/model)
+</Related>

@@ -1,0 +1,122 @@
+---
+title: Library
+description: Subscriptions, installs and download snapshots — what the app keeps in sync, and what it deliberately never sends.
+order: 30
+source:
+  - src/types/app-api/contract.ts
+  - src/app/api/app/v1
+---
+
+## Subscriptions
+
+<Endpoint method="GET" path="/api/app/v1/subscriptions" auth="Token">
+The library, as a delta or a full list.
+</Endpoint>
+
+Three kinds can be subscribed to, and the closed list is load-bearing: `asset`,
+`mod`, `collection`. A server is not something you install; an article is not
+something a device holds a copy of.
+
+### Syncing with a revision watermark
+
+The response carries a monotonic **revision**, which the app sends back on its
+next poll. The server answers with everything changed since.
+
+That is what lets a device poll every minute without transferring the whole
+library, and what makes a subscription created in the **browser** show up on the
+desktop within one poll.
+
+A response can also declare itself **full** rather than a delta, which tells the
+app it may drop anything it holds that is not in the list.
+
+<Callout type="info" title="A subscription can point at nothing installable">
+The file a subscription resolves to is **nullable**, because a subscription
+outlives the release it was made against: an item whose only release is later
+hidden still has a live subscription, and the app has to render it as "nothing
+to install yet" rather than fail to parse the whole list.
+</Callout>
+
+<Endpoint method="POST" path="/api/app/v1/subscriptions" auth="Token">
+Subscribe or unsubscribe.
+</Endpoint>
+
+<Endpoint method="POST" path="/api/app/v1/subscriptions/prefs" auth="Token">
+Per-subscription preferences.
+</Endpoint>
+
+Subscribing to a collection creates item subscriptions on your behalf; those
+remember which collection created them, so cleanup is correct. An item can opt
+out of one-click installs entirely with `subDisabled` — see
+[Subscriptions](/learn/account/subscriptions).
+
+## Installs
+
+<Endpoint method="GET" path="/api/app/v1/installs" auth="Token">
+The sandboxes on this account's machines.
+</Endpoint>
+
+<Endpoint method="POST" path="/api/app/v1/installs/items" auth="Token">
+Add or remove items from an install.
+</Endpoint>
+
+An install is a game, a set of deployed items, and launch options.
+
+### Deploy strategy
+
+How the app puts a sandbox's files in front of the game:
+
+| Strategy | |
+| --- | --- |
+| `direct` | Copies into the game folder, backing up whatever it displaced |
+| Link strategies | Leave the game folder made of pointers |
+| `usvfs` | Runtime API hooking — declared, not yet implemented |
+
+The server stores this as a **string** and validates it against a list, but a
+value it does not recognise is **not fatal to the app** — it falls back to its
+own default. That is what lets a new strategy ship in the app before it ships
+here.
+
+### Environment
+
+`client`, `server` or `shared`. Not decoration: it decides which mods are
+offered for the sandbox and which of the game's own options are shown. A
+dedicated server and a player's game are the same files arranged differently,
+and a manager that cannot tell them apart offers everybody both halves of every
+list.
+
+`shared` accepts both, which is what a mod's `ALL` environment means.
+
+### Launch options
+
+Every field optional, every one with a "leave it alone" meaning. The
+overwhelmingly common install overrides nothing, and a launcher that silently
+forces 1920×1080 on somebody who never asked is worse than one with no settings
+at all.
+
+What each key **means** for a given game is decided by that game's launch
+plugin, not by this API.
+
+## Downloads
+
+<Endpoint method="GET" path="/api/app/v1/downloads" auth="Token">
+What each of this user's devices is downloading.
+</Endpoint>
+
+Somebody starts a 40 GB modpack on their desktop and then wants to know, from
+their phone, whether it has finished. There is no other way to answer that: the
+app is the only thing that knows, and it is not reachable from outside the
+machine it runs on. So it reports, and this holds the last thing it said.
+
+<Callout type="warning" title="This is a display snapshot, not a queue">
+It never drives a download. The queue lives on the device and is the authority
+for everything; this is overwritten on every report and safe to lose.
+</Callout>
+
+Note what a download row does **not** carry: no URL, no filesystem path, no
+device identifier beyond the user's own label for the machine. A path would put
+somebody's username and drive layout into a row.
+
+<Related>
+- [Subscriptions and the app](/learn/account/subscriptions)
+- [Collections](/learn/content/collections)
+</Related>

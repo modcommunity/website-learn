@@ -1,0 +1,161 @@
+---
+title: Reading without a key
+description: The anonymous surface — what answers, exactly what comes back, the quotas, and why the payload is a summary rather than the record.
+order: 10
+source:
+  - docs/api/public-content-api.md
+---
+
+`GET /api/content/<type>` and `GET /api/content/<type>/<id>` answer with **no
+`Authorization` header at all**, for items that are completely public.
+
+```bash
+curl "https://moddingcommunity.com/api/content/mod/123"
+```
+
+Nothing else on this surface does — every write, every relation, and every read
+of a non-content type still needs a key.
+
+## Three gates, all of which must pass
+
+<Params>
+  <Param name="The site allows it">
+    A single site-wide switch (`api.anon.enabled`).
+  </Param>
+  <Param name="The item is completely public">
+    Not hidden (a draft or a moderation hold), not NSFW, and not filed under a
+    hidden parent — the same rule the site's own listings apply.
+  </Param>
+  <Param name="The item's team has not opted out">
+    `apiPublic` on the item, on by default and editable from its edit form. It
+    governs this surface only: an authenticated key belonging to somebody who
+    can already see the item is unaffected.
+  </Param>
+</Params>
+
+## What answers
+
+The seven content items: `asset`, `mod`, `server`, `community`, `article`,
+`collection`, `group`.
+
+The relation types — `comment`, `review`, `media`, `release`, `tag`, `favorite`,
+`filter` — are **not** covered. A comment is a person's words attached to an
+account, and neither it nor a favourite is "basic information about a content
+item".
+
+## What comes back
+
+A **summary**, not the record:
+
+```json
+{
+  "data": {
+    "type": "mod",
+    "id": 123,
+    "name": "Better Vehicles",
+    "slug": "better-vehicles",
+    "path": "/gmod/m/better-vehicles",
+    "url": "https://moddingcommunity.com/gmod/m/better-vehicles",
+    "description": "…",
+    "createdAt": "2026-01-04T10:00:00.000Z",
+    "updatedAt": "2026-08-19T22:13:04.000Z",
+    "official": false,
+    "archived": false,
+    "app": { "id": 4, "name": "Garry's Mod", "slug": "gmod" },
+    "categories": [{ "id": 9, "name": "Vehicles", "slug": "vehicles" }],
+    "stats": {
+      "views": 10432,
+      "favorites": 218,
+      "likes": 190,
+      "dislikes": 4,
+      "comments": 61
+    }
+  }
+}
+```
+
+`path` is site-relative and always present. `url` is the same address made
+absolute, and is `null` on a deployment that has not configured its own origin —
+this endpoint has no other honest source for it, since answers are cached under
+a key with no origin in it and the first caller's `Host` would otherwise be
+served to everybody afterwards.
+
+### Servers carry a live block
+
+Present only for `server`, and its address fields are populated **only when that
+server publishes them** — the same `showNetInfo` switch that blurs the address
+on its page. Otherwise every one of them is `null`.
+
+```json
+"server": {
+  "online": true,
+  "players": 12,
+  "maxPlayers": 64,
+  "bots": 0,
+  "map": "Procedural",
+  "gameMode": "ffa",
+  "version": "1.0",
+  "password": false,
+  "secure": true,
+  "lastOnline": "2026-08-19T22:13:04.000Z",
+  "address": "203.0.113.7",
+  "port": 27015,
+  "connect": "203.0.113.7:27015"
+}
+```
+
+`connect` is the one string somebody pastes into a console, built by the same
+helper the site's own copy button uses — IPv6 comes back bracketed
+(`[2001:db8::1]:27015`), and a server presenting as a hostname comes back as
+that hostname.
+
+It is kept **alongside** `address` and `port` rather than replacing them: a
+caller assembling a connect URL wants the parts, and a caller displaying an
+address wants the label.
+
+### What is deliberately absent
+
+<Params>
+  <Param name="The owner">
+    A member has three separate anonymity switches, and an endpoint that
+    answered "who made this" would have to re-derive all of them and get it
+    wrong once.
+  </Param>
+  <Param name="Anything from a relation table except a count">
+    Media, files, releases, the roster. Those are the expensive half, and they
+    are what a key is for.
+  </Param>
+  <Param name="Engagement counts on the LIST endpoint">
+    A page of twenty items would be a hundred count queries for numbers nobody
+    asked for at that altitude. Fetch an item by id for its `stats` — the list
+    says so in a `note` field rather than leaving you to wonder whether the item
+    has none.
+  </Param>
+</Params>
+
+## Listing
+
+`GET /api/content/<type>` takes `?page`, `?limit` (capped at 20 by default) and
+— for `asset`, `mod`, `server` and `article` — `?appId`. Ordering is
+newest-first by id.
+
+There is deliberately **no search, no tag filter and no `mine`**: the anonymous
+surface exists so an integrator can see the shape of the API, not so it can be
+used as a search engine.
+
+## Quotas
+
+Per source address, in two windows, both of which must have budget. See [Rate
+limits](/learn/api/rate-limits#anonymous-reads) for the numbers, the headers,
+and what happens when the counter itself is unavailable.
+
+## CORS
+
+`access-control-allow-origin: *`, and `OPTIONS` is answered. The surface carries
+no credential and sets no cookie, so a page on another site calling it from a
+browser is the intended use.
+
+<Related>
+- [Items](/learn/api/content/items) — the authenticated surface
+- [The content model — API exposure](/learn/content/model#api-exposure)
+</Related>

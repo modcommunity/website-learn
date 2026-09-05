@@ -1,0 +1,180 @@
+---
+title: Authentication
+description: The three token namespaces, bearer versus signed assertions, and how to sign a request without ever sending a secret.
+order: 10
+keywords:
+  - "api key"
+  - "token"
+  - "bearer"
+  - "hmac"
+  - "signature"
+  - "oauth"
+  - "secret"
+  - "credentials"
+source:
+  - docs/api/public-content-api.md
+  - docs/api/integration-api.md
+---
+
+## Three namespaces
+
+| Prefix | Surface | Represents |
+| --- | --- | --- |
+| `tmc_` | [Public content API](/learn/api/content) | A member scripting their own content |
+| `tmci_` | [Integration API](/learn/api/integration) | A program reporting about one item |
+| — | [App API](/learn/api/app) | The official client acting for a member |
+
+The prefixes are distinct **deliberately**, so a credential can never be
+presented to the wrong surface: a content key sent to the integration API is
+rejected on its prefix, before anything looks it up.
+
+## Bearer tokens
+
+The default, and what every existing key uses.
+
+```
+Authorization: Bearer tmc_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+The content API also accepts a bare token with no `Bearer ` prefix. The
+integration API additionally accepts `X-TMC-Integration: <token>`, for HTTP
+clients that cannot set `Authorization`.
+
+**The token is shown once, at creation.** Only its SHA-256 is stored, so a lost
+token is replaced rather than recovered.
+
+## Signed assertions (Ed25519)
+
+The stronger option, available for both content keys and integrations. A
+credential created in **JWT mode never sends a secret at all**: you hold the
+private key, we store only the public half, so a full dump of our database
+grants nothing.
+
+Each request carries a short-lived signed assertion instead:
+
+```
+header   { "alg": "EdDSA", "typ": "JWT", "kid": "<your key id>" }
+payload  { "iss": "<your key id>", "iat": <unix>, "exp": <unix>, "jti": "<random>" }
+
+Authorization: Bearer <base64url header>.<base64url payload>.<base64url signature>
+```
+
+Every one of these rules is enforced:
+
+<Params>
+  <Param name="alg" required>
+    **`EdDSA` is the only accepted algorithm.** It is not negotiable and the
+    token does not get to choose one — `alg: none` and every algorithm-confusion
+    attack are refused before a key is loaded.
+  </Param>
+  <Param name="iss" required>
+    Must equal `kid`, and `kid` must be the key id shown on your credential. It
+    is prefixed `tmcak_` and is **not** a secret.
+  </Param>
+  <Param name="iat" type="unix seconds" required>
+    Within 300 seconds of our clock.
+  </Param>
+  <Param name="exp" type="unix seconds" required>
+    `exp - iat` may not exceed **300 seconds**, whatever the token declares. The
+    point of the mode is that a captured request stops being useful quickly.
+  </Param>
+  <Param name="jti" required>
+    Unique per request, and remembered for the length of the window — so a
+    captured assertion cannot be replayed inside it either. Reusing one is a
+    `400`.
+  </Param>
+</Params>
+
+### Signing one
+
+```js
+import { createPrivateKey, randomBytes, sign } from 'node:crypto'
+
+const b64u = (v) => Buffer.from(JSON.stringify(v)).toString('base64url')
+const now = Math.floor(Date.now() / 1000)
+
+const head = b64u({ alg: 'EdDSA', typ: 'JWT', kid: KEY_ID })
+const body = b64u({
+    iss: KEY_ID,
+    iat: now,
+    exp: now + 60,
+    jti: randomBytes(16).toString('hex'),
+})
+const sig = sign(
+    null,
+    Buffer.from(`${head}.${body}`),
+    createPrivateKey(PRIVATE_KEY_PEM)
+).toString('base64url')
+
+const assertion = `${head}.${body}.${sig}`
+```
+
+The private key (PKCS#8 PEM) is shown once, at creation, and is not recoverable.
+Lose it and you regenerate the key, which mints a new keypair and a new key id.
+
+### The mode is fixed
+
+Which shape you sent is decided by its **syntax**, not by anything you declare:
+a bearer secret is the prefix plus hex; an assertion is three base64url
+segments.
+
+A credential can only ever be used in its own mode. Presenting a bearer secret
+for a JWT key, or an assertion for a bearer key, is a `401`. Switching modes
+means creating a new credential — the secret material differs.
+
+Everything after authentication is identical for both: the same permissions, the
+same scope binding, the same rate limits.
+
+## What a credential may do
+
+### Content keys
+
+| Setting | Governs |
+| --- | --- |
+| `canRead` | `GET` |
+| `canWrite` | `POST`, `PUT`, `PATCH` |
+| `canDelete` | `DELETE` |
+
+Beyond that, **a key can never exceed what its owner could do in the UI**. Every
+write resolves to the same access check the edit form uses: you must be the
+item's owner, hold a write grant on it, or be staff.
+
+Two further restrictions may apply:
+
+- **Scope.** A `CONTENT`-scoped key is pinned to one item. It answers for that
+  item's type and id and nothing else.
+- **IP whitelist.** Requests from other addresses are refused. An empty
+  whitelist allows all addresses.
+
+### Integrations
+
+An integration is bound to **exactly one content item** and to a set of
+[scopes](/learn/api/integration#scopes). A server-scoped credential may only
+touch parties on that server; an app-scoped one only parties for that app.
+
+An integration with an **empty** scope list can authenticate and read nothing —
+which is a useful connectivity check that hands over no access.
+
+## Replay protection on writes
+
+Integration write endpoints accept two optional fields:
+
+```json
+{ "ts": 1753822800, "nonce": "a1b2c3" }
+```
+
+- **`ts`** — Unix **seconds**, not milliseconds. Must be within five minutes of
+  our clock.
+- **`nonce`** — any string, unique per request. Remembered for the length of the
+  window.
+
+The nonce is optional so the simplest possible reporter still works, but a
+plugin that can generate one should. A timestamp without a nonce gives an
+attacker a five-minute replay window; a nonce without a timestamp would mean
+remembering every nonce forever.
+
+<Related>
+- [Rate limits](/learn/api/rate-limits)
+- [Errors](/learn/api/errors)
+- [Managing your credentials](/learn/account/credentials)
+</Related>

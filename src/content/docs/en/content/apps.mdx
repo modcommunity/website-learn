@@ -1,0 +1,90 @@
+---
+title: Apps
+description: A game or program that everything else is filed under — and the configuration that decides how its servers are queried and what its parties can do.
+order: 40
+source:
+  - prisma/models/app.prisma
+---
+
+An **app** is a game or program. Mods require one, assets and servers may have
+one, and it is the top of the taxonomy everything else hangs from.
+
+Apps are **staff-managed**. A member does not create one; the team adds it,
+because an app carries the scanner configuration for every server filed under it
+and the claims we make about how well we track it.
+
+## App types
+
+| Type | Servers? |
+| --- | --- |
+| `GAME` | Yes — a multiplayer game |
+| `GAME_SINGLEPLAYER` | No — servers are hidden everywhere for it |
+| `GAME_ENGINE` | Yes (Godot, Unity, …) |
+| `VOIP` | Yes (Discord, TeamSpeak 3, …) |
+| `OTHER` | No |
+
+The type is what decides whether an app can host servers at all — it replaced an
+older boolean that encoded the same thing and could disagree with the app's
+actual nature.
+
+## Integration levels
+
+An app carries zero or more **capability claims**, shown on its page and
+facetable in the browser:
+
+| Claim | Means |
+| --- | --- |
+| `TMC_APP_MANAGE` | Assets and mods install and update through the official app |
+| `TMC_APP_SRV_MANAGE` | …onto a **game server**, rather than onto a player's client |
+| `TMC_APP_TRACK` | We track general usage through the app itself |
+| `TMC_APP_SRV_TRACK` | Server/party tracking through the app — scores and play time come from the client, not only from a query |
+| `TMC_APP_WEB` | Players can launch straight from the browser, including into a specific server |
+| `TMC_APP_SRV_AUTH` | The app uses our authentication for servers and parties. Nothing supports this yet |
+
+<Callout type="info">
+These are claims about what an app supports, not switches that unlock anything.
+Whether a party's reported roster is treated as fact is decided by the app's
+**tech type** — see [Party tech levels](/learn/parties/tech-levels).
+</Callout>
+
+They are admin-settable only, for the same reason the tech type is: "we track
+this app's players accurately" is a claim about *us*, not about the app's owner.
+
+## Server configuration
+
+The bulk of an app row is scanner configuration, and it is why apps are
+staff-managed. It decides, for every server filed under this app:
+
+- **which query protocols** to speak and on which ports, including a query port
+  range and a deep sweep range;
+- **timeouts, retries and multi-packet delays**;
+- whether the game port and query port are **the same**, or offset by a fixed
+  amount;
+- whether the **simple info query** and the **player list query** are enabled,
+  required, and what population range each is trusted over;
+- whether the player list is used as the authoritative **player count**, and how
+  far it may disagree with the reported count before we distrust one of them;
+- **fake-player detection** bounds;
+- cooldowns for the player list and the server variables.
+
+Those knobs exist because every game answers a query slightly differently, and a
+setting that is right for one is wrong for the next. See
+[Scanning](/learn/servers/scanning).
+
+## Parties
+
+An app decides whether [parties](/learn/parties) are available for it at all
+(`partyEnabled`) and the maximum party size (`partyMaxUsers`, where 0 means the
+site default).
+
+## Counters
+
+Apps carry denormalised counts — mods, assets, servers, articles and servers
+currently online — refreshed periodically rather than computed per page load.
+They are what the app cards and the browser facets read.
+
+<Related>
+- [Mods](/learn/content/mods)
+- [Servers](/learn/content/servers)
+- [Parties](/learn/parties)
+</Related>

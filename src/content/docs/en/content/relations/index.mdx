@@ -1,0 +1,92 @@
+---
+title: Relations
+description: Everything that can be attached to a content item — what each attachment is, which items take it, and how to manage it.
+order: 100
+---
+
+A content item on its own is a name and a body. Everything else it carries is a
+**relation**: a row attached to it, of one of the kinds on this page.
+
+The relations are shared across item types — the same `media` table serves a
+mod's screenshots and a community's gallery — which is why an item's tabs look
+the same wherever you are.
+
+## The catalogue
+
+<Cards>
+  <Card title="Releases and files" href="/learn/content/relations/releases">
+    Versions, and the files people actually download. Plus how uploads,
+    scanning and size limits work.
+  </Card>
+  <Card title="Media" href="/learn/content/relations/media">
+    Screenshots and videos, uploaded or external — and who is allowed to
+    contribute them.
+  </Card>
+  <Card title="Links" href="/learn/content/relations/links">
+    Website, Discord, GitHub, Steam, YouTube and the rest.
+  </Card>
+  <Card title="Dependencies" href="/learn/content/relations/dependencies">
+    Required, optional, recommended — and conflicts, which are the reason the
+    feature is shaped this way.
+  </Card>
+  <Card title="Contributors and credits" href="/learn/content/relations/credits">
+    Who worked on it, including people who have no account here.
+  </Card>
+  <Card title="Permissions and usage policy" href="/learn/content/relations/permissions">
+    Two different things with similar names: what others may DO with your work,
+    and who may EDIT it.
+  </Card>
+  <Card title="Ratings, reviews and comments" href="/learn/content/relations/engagement">
+    The engagement set, and the switches that govern it.
+  </Card>
+  <Card title="Follows and favourites" href="/learn/content/relations/following">
+    "Tell me when this changes" versus "keep this on a list".
+  </Card>
+  <Card title="External sources" href="/learn/content/relations/sources">
+    Where else this item is published — and the repo it is built from.
+  </Card>
+  <Card title="Boards" href="/learn/content/relations/boards">
+    Discussions, feedback, bug tracker, roadmap and changelog — the five boards
+    an item can run.
+  </Card>
+</Cards>
+
+## Which items take which
+
+| Relation | Mod | Asset | Server | Community | Article | Collection | Group |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Tags | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Categories | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Media | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Releases | ✓ | ✓ | ✓ | | | | |
+| Links | ✓ | | ✓ | ✓ | | | |
+| Sources | ✓ | ✓ | | | | | |
+| Items | | | | | | ✓ | |
+| Dependencies | ✓ | ✓ | ✓ | ✓ | | ✓ | ✓ |
+| Contributors | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Usage policy | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ratings | ✓ | ✓ | ✓ | ✓ | ✓ | | ✓ |
+| Reviews | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Comments | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Follows | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Favourites | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Boards | ✓ | ✓ | ✓ | ✓ | | | |
+
+The **API** exposes a narrower set as sub-resources — `tags`, `media`,
+`releases`, `links`, `sources`, `items`. See [the availability
+table](/learn/api/content/relations#availability) for exactly which.
+
+## Managing them
+
+Through the browser, each relation is a tab on the item's edit form.
+
+Through the API there are two ways, and the difference matters:
+
+- **Inline on the item body.** The array you send is the *complete* set. Sending
+  `"media": [...]` replaces the gallery wholesale; omitting the key leaves it
+  alone. There is no way to say "add one" inline.
+- **On the relation's own sub-resource.** `POST` adds, `PUT` replaces, `DELETE`
+  removes named members.
+
+The sub-resource is usually what you want. See [Relations through the
+API](/learn/api/content/relations).

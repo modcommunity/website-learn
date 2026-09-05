@@ -1,0 +1,29 @@
+---
+import DocsPage from '../../../components/docs/DocsPage.astro'
+import { allDocPaths } from '../../../docs/tree'
+import { NON_DEFAULT_LOCALES } from '../../../i18n/config'
+
+/**
+ * The same tree under each non-default locale: `/es/learn/api/content`, … .
+ *
+ * The cross product is deliberate — every page exists in every language, even
+ * the ones nobody has translated yet (they render the English body behind a
+ * notice). A locale that only carried its translated pages would break the
+ * language picker on every page it was missing, which is precisely when a
+ * reader reaches for it.
+ */
+export async function getStaticPaths() {
+    const paths = await allDocPaths()
+
+    return NON_DEFAULT_LOCALES.flatMap((lang) =>
+        paths.map((path) => ({
+            params: { lang, slug: path || undefined },
+            props: { path, lang },
+        }))
+    )
+}
+
+const { path, lang } = Astro.props as { path: string; lang: string }
+---
+
+<DocsPage path={path} locale={lang} />
