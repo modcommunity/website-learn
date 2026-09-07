@@ -1,0 +1,32 @@
+# The build context is the repo itself — this stack lives in the root rather
+# than in an isolated deployment directory — so everything the image does not
+# need has to be named here rather than being absent by construction.
+
+.git/
+.github/
+
+# Reinstalled and rebuilt inside the image.
+node_modules/
+dist/
+.astro/
+
+# Reaches the build as a BuildKit secret mount, read straight from the host, so
+# it must never enter the build context. Same for the GitHub Packages token.
+.env
+.env.*
+!.env.ex
+secrets/
+
+# The deployment itself. The Dockerfile is read by the builder, not copied, and
+# docker/ is copied explicitly in the runtime stage — so keep that one.
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Editor and agent state.
+.vscode/
+.idea/
+.claude/
+
+**/*.log
+**/.DS_Store

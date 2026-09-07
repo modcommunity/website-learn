@@ -1,0 +1,22 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                INTERNAL_PORT: ${INTERNAL_PORT}
+            secrets:
+                - npmrc
+                - env
+        env_file:
+            - .env
+        environment:
+            NGINX_ENVSUBST_FILTER: INTERNAL_PORT
+        ports:
+            - ${BIND_ADDR}:${BIND_PORT}:${INTERNAL_PORT}
+        restart: unless-stopped
+secrets:
+    npmrc:
+        file: ./secrets/npmrc
+    env:
+        file: ./.env

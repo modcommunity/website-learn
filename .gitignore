@@ -24,3 +24,7 @@ pnpm-debug.log*
 .idea/
 
 .claude/
+
+# GitHub Packages token for the private @modcommunity/shared install. The
+# example (secrets/npmrc.ex) is committed; the real token file is not.
+secrets/npmrc
