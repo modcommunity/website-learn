@@ -47,6 +47,31 @@ export default defineConfig({
         },
     },
 
+    /*
+     * Hashed CSS/JS/fonts go to `/learn/_astro/`, not the default `/_astro/`.
+     *
+     * This is the same problem `base` would have solved and cannot (see above),
+     * from the other end. Everything else this build emits already lives under
+     * `/learn` or `/{lang}/learn`, so nginx routes the whole site with two
+     * prefix rules and a new page needs no config change at all. The asset
+     * directory was the one exception — and it is the one that COLLIDES:
+     * website-processing is also an Astro build, is also mounted on this
+     * domain, and also emits `/_astro/`. The host sends that prefix to
+     * processing's container, so every doc page loaded with its stylesheet and
+     * its islands 404ing while the HTML itself served fine.
+     *
+     * Under `/learn` the two builds cannot overlap, and the docs are reachable
+     * through exactly the prefixes nginx already forwards.
+     *
+     * `public/` is left where it is: favicon.ico and images/ are byte-identical
+     * to processing's copies and are already served from the domain root, so
+     * pointing at them costs nothing and moving them would just be a second
+     * copy of the same bytes.
+     */
+    build: {
+        assets: 'learn/_astro',
+    },
+
     markdown: {
         /*
          * Two Shiki themes, not one. The shared <ThemeToggle/> is in this

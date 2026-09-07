@@ -38,6 +38,13 @@ ARG INTERNAL_PORT
 # that has to be kept in step with the compose port mapping by hand.
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 
+# The image ships a web root with its own index.html (the "Welcome to nginx!"
+# page) and 50x.html in it, and COPY MERGES into a directory rather than
+# replacing it. Nothing in dist/ is named index.html at the top level — every
+# page on this site lives under /learn or /{lang}/learn — so the stock welcome
+# page survives the copy and is what `curl http://host:port/` answers with.
+RUN rm -rf /usr/share/nginx/html/*
+
 # Astro's directory output, so `learn/api/content/index.html` and friends. The
 # tree is served from its root: requests arrive already carrying /learn or
 # /{lang}/learn, which is the shape the files are in.

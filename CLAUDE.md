@@ -60,6 +60,18 @@ to `dist/learn/404/index.html`, not `404.html`. Every URL on this site carries a
 trailing slash and the canonical, hreflang and sitemap URLs all assume it, so
 the format is not worth changing for one page.
 
+Those two prefixes cover the **whole** build, and that is what
+`build.assets: 'learn/_astro'` in `astro.config.mjs` is for. Astro's default
+puts hashed CSS/JS/fonts at `/_astro/`, outside both of them — and
+website-processing is also an Astro build on this domain emitting the same
+prefix, which the host sends to *its* container. The result is a doc page whose
+HTML serves fine while its stylesheet and every island 404s. Under `/learn` the
+two builds cannot collide, and adding a page never needs an nginx change.
+
+`public/` is the deliberate exception: `favicon.ico` and `images/` stay at the
+root because they are byte-identical to website-processing's copies and are
+already served from there.
+
 The docs also publish their own sitemap at `/learn/sitemap.xml` — scoped there
 because website-processing owns `/robots.txt` and `/sitemap.xml` at the domain
 root. Reference it from that repo's robots.txt:
