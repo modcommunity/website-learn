@@ -122,6 +122,37 @@ Revokes the **whole lineage** rather than the presented pair, so a sign-out is
 final: a refresh token the app still holds in its keychain cannot resurrect the
 session after the user asked for it to end.
 
+## The web player handoff
+
+<Endpoint method="POST" path="/api/app/v1/auth/handoff">
+Turn a web-player handoff code into a game session. Unauthenticated in the
+bearer sense — **the code is the credential.**
+</Endpoint>
+
+This is the endpoint that ends "sign in again, inside the canvas". A member
+already signed into the site presses Play, the boot descriptor carries a
+single-use code, and the game's loader posts it here to get a credential for the
+player it is about to seat.
+
+What bounds it is what the code *is*: one use, sixty seconds, one member, one
+app — plus a durable rate limit, because it mints credentials and a cache outage
+must not turn it into an unmetered one.
+
+<Callout type="warning" title="What it mints is deliberately not a device token">
+The redeemer is a loader the app's operator uploaded, running on our origin —
+code we did not review. So the pair returned here is a **game** credential,
+bound to the app the code was minted for, and **every route refuses it unless it
+has explicitly opted in**.
+
+A member's installs, subscriptions, reviews and profile are all on the other
+side of that line. What a game token can do is learn who is playing, read and
+write that player's own avatar, and file their
+[statistics](/learn/api/integration/stats#self-reported-figures).
+</Callout>
+
+A game session is bound to one app, so an `app` it does not agree with in a body
+is **refused rather than obeyed**.
+
 ## Identity
 
 <Endpoint method="GET" path="/api/app/v1/me" auth="Token">

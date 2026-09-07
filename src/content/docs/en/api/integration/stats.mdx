@@ -1,0 +1,225 @@
+---
+title: Statistics
+description: Per-player figures a game keeps — declaring them, filing readings, and how a reading meets the value already held.
+navTitle: Statistics
+order: 40
+keywords:
+  - "counter"
+  - "gauge"
+  - "kills"
+  - "playtime"
+  - "metrics"
+  - "telemetry"
+  - "player stats"
+source:
+  - docs/api/integration-api.md
+  - src/app/api/integration/v1/stats
+  - src/app/api/app/v1/stats
+---
+
+Statistics are the numbers a game keeps **per player**: kills, jumps, metres
+run, seconds played, a level, a top speed.
+
+<Callout type="info" title="A stat is not a leaderboard">
+A [board](/learn/api/integration/leaderboards) is one number per player,
+ordered. A stat is many numbers per player, accumulated, and nothing here orders
+anything on write.
+
+"Most kills" is a board a game may declare over its `kills` stat, or the `top`
+read below. **The stat is the fact and the board is a view of it.**
+</Callout>
+
+As with leaderboards, nothing in the body names an app or a server: the token
+decides whose stats these are. An app-scoped credential holds the game's; a
+server-scoped one holds that server's own.
+
+## Declaring a stat
+
+<Endpoint method="POST" path="/api/integration/v1/stats/define" auth="Integration" scope="STATS_WRITE">
+Declare the statistics the game keeps. Idempotent — send the whole table at boot
+and only the changed ones move.
+</Endpoint>
+
+```json
+{
+  "stats": [
+    { "key": "kills",     "name": "Kills",     "kind": "COUNTER" },
+    { "key": "level",     "name": "Level",     "kind": "GAUGE" },
+    { "key": "top_speed", "name": "Top speed", "kind": "BEST", "unit": "m/s", "decimals": 1 },
+    { "key": "best_lap",  "name": "Best lap",  "kind": "LOWEST", "decimals": 3 }
+  ],
+  "ts": 1735689600,
+  "nonce": "…"
+}
+```
+
+```json
+{ "ok": true, "created": 4, "updated": 0 }
+```
+
+Ceilings: **25 stats per request, 200 per owner.**
+
+### The kind is the whole contract
+
+It says how a new reading meets the value already held, and it is the one thing
+the server that counts, the reporter that batches and this site all have to
+agree on:
+
+| Kind | On a new reading |
+| --- | --- |
+| `COUNTER` | **Adds** it. Kills, jumps, metres, seconds played |
+| `GAUGE` | **Replaces** the held value. A level, a rank, a rating |
+| `BEST` | Keeps the **higher**. Top speed, longest streak |
+| `LOWEST` | Keeps the **lower**. A personal best where lower wins |
+
+A first reading stands as it is whatever the kind — a counter's first delta is
+its first total, and a `LOWEST` compared against an implicit zero could never be
+beaten.
+
+<Callout type="danger" title="A kind never changes">
+A `define` that names an existing stat with a different kind is refused for that
+stat, in `refused[]`, and the rest applies.
+
+A counter redefined as a gauge would have every held total reread as a reading,
+and every value would be wrong from then on with **nothing failing**. Declare a
+new key instead.
+</Callout>
+
+## Filing readings
+
+<Endpoint method="POST" path="/api/integration/v1/stats/submit" auth="Integration" scope="STATS_WRITE">
+Up to fifty players per request, one reading per stat each.
+</Endpoint>
+
+```json
+{
+  "players": [
+    {
+      "player": "srv-scoped-pseudonym",
+      "name": "Christian",
+      "stats": { "kills": 3, "level": 5, "top_speed": 41.2, "best_lap": 40.117 }
+    }
+  ],
+  "ts": 1735689600,
+  "nonce": "…"
+}
+```
+
+```json
+{ "ok": true, "players": 1, "readings": 4 }
+```
+
+**What arrives is a delta, not a total.** A reporter coalesces everything that
+happened to a player since its last flush into one row, by the same kind rules —
+so `kills: 3` means "add three" and `top_speed: 41.2` means "the best since last
+time was 41.2". Each reading is then merged into the held value by its stat's
+kind.
+
+That is what lets two servers report the same player without one overwriting the
+other, and what makes the order batches land in irrelevant.
+
+**The stat must already exist.** A reading for an undeclared one is refused by
+name in `refused[]` — it has no kind, so nothing could merge the second reading
+— and the rest of the batch applies.
+
+A merged value past ±1e12 is **clamped rather than refused**, because the delta
+that pushed it over was individually fine. A stat keeps values for **50 000
+players** and prunes the worst by its own kind past that.
+
+`player` is never a site user id and is never resolved to one — the same rule as
+a [leaderboard entry](/learn/api/integration/leaderboards#player-is-never-a-site-account),
+for the same reason. Because the key is scoped to the *credential*, a player on
+two servers of one game is two keys nothing can join. **That is the privacy
+property, not a gap.**
+
+## Reading them back
+
+<Endpoint method="GET" path="/api/integration/v1/stats/player" auth="Integration" scope="STATS_READ">
+Every value one player holds under the credential's owner.
+</Endpoint>
+
+```
+GET /api/integration/v1/stats/player?player=srv-scoped-pseudonym
+```
+
+```json
+{
+  "ok": true,
+  "player": "…",
+  "name": "Christian",
+  "stats": [
+    { "key": "kills", "name": "Kills", "kind": "COUNTER", "unit": "", "decimals": 0, "value": 412 }
+  ]
+}
+```
+
+For a scoreboard that shows lifetime figures beside session ones.
+
+<Endpoint method="GET" path="/api/integration/v1/stats/top" auth="Integration" scope="STATS_READ">
+One stat read as a ranking.
+</Endpoint>
+
+```
+GET /api/integration/v1/stats/top?stat=kills&offset=0&limit=25&player=srv-scoped-pseudonym
+```
+
+```json
+{
+  "ok": true,
+  "stat": { "key": "kills", "name": "Kills", "kind": "COUNTER", "unit": "", "decimals": 0, "players": 1204 },
+  "rows": [ { "rank": 1, "player": "…", "name": "…", "value": 9130 } ],
+  "self": { "rank": 37, "player": "…", "name": "…", "value": 412 }
+}
+```
+
+A `LOWEST` ranks ascending, everything else descending. Ranks are derived and
+`self` is a count of strictly better values plus one, exactly as [the
+leaderboard read](/learn/api/integration/leaderboards#reading-a-board-back) does
+it.
+
+## Self-reported figures
+
+A player's **own client** may file readings about itself, with the player's own
+credential rather than an integration's:
+
+<Endpoint method="POST" path="/api/app/v1/stats/submit" auth="App token">
+`{ "app": 12, "stats": { "launches": 1 } }`
+</Endpoint>
+
+`GET /api/app/v1/stats/me?app=<id>` and `GET /api/app/v1/stats/top?app=<id>&stat=<key>`
+read them back. The `app` comes off a game session token where there is one and
+is required for a device token; a game session that names a different app is
+refused rather than obeyed.
+
+The stat must be one the app declared through `define` — **a client cannot
+define.**
+
+These land on the **same rows** an app-scoped integration files and reads,
+because the client's key is the member's key for the scope `app:<id>` — exactly
+what an app-scoped credential's target resolves to, and exactly what
+[`play/scope-key`](/learn/api/app/play#the-scoped-player-key) hands the client
+for that scope. So the app's own service reads a player's self-reported diary
+and its servers' figures with one `stats/player` call, and a server running the
+game sees that player under the same id.
+
+<Callout type="warning" title="Nothing proves a self-reported figure">
+A game keeps anything competitive on its server and uses this for launches, time
+in menus, preferences — **a diary, not a scoreboard.**
+</Callout>
+
+## Why this is not a column on a table
+
+The site's own roster table is past a hundred million rows, is closed to new
+indexes, and every column on it is charged to every roster row the scanner
+writes for ever. Its columns are what we *measure* about any server of any game;
+a game's stats are the game's to name, and a fixed set of nullable columns
+survives neither the second game nor the third year.
+
+A table per game is the other wrong answer — a migration per game, and no shared
+surface. So: **a declared schema, and rows keyed by it.**
+
+<Related>
+- [Leaderboards](/learn/api/integration/leaderboards)
+- [Avatars](/learn/api/integration/avatars) — where the scoped player key comes from
+- [Integration API](/learn/api/integration)
+</Related>

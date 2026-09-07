@@ -67,7 +67,7 @@ conflate them, and do not present one as the other.
 Raw bytes — the cheapest thing to call from a shell script:
 
 ```bash
-curl -X POST "https://moddingcommunity.com/api/content/file?name=mod.zip" \
+curl -X POST "https://api.moddingcommunity.com/api/content/file?name=mod.zip" \
   -H "Authorization: Bearer $TMC_TOKEN" \
   -H "Content-Type: application/zip" \
   --data-binary @dist/mod.zip
@@ -76,7 +76,7 @@ curl -X POST "https://moddingcommunity.com/api/content/file?name=mod.zip" \
 Or multipart, which accepts several files at once:
 
 ```bash
-curl -X POST https://moddingcommunity.com/api/content/file \
+curl -X POST https://api.moddingcommunity.com/api/content/file \
   -H "Authorization: Bearer $TMC_TOKEN" \
   -F "file=@dist/mod.zip" \
   -F "file=@dist/readme.txt"
@@ -93,7 +93,7 @@ is what lets a caller know which form it used.
 Pass `releaseId` to attach the upload to a release directly:
 
 ```bash
-curl -X POST "https://moddingcommunity.com/api/content/file?releaseId=42" \
+curl -X POST "https://api.moddingcommunity.com/api/content/file?releaseId=42" \
   -H "Authorization: Bearer $TMC_TOKEN" -F "file=@dist/mod.zip"
 ```
 
@@ -105,7 +105,7 @@ The alternative — upload first, then reference the ids — is the better fit w
 you are replacing a release's whole file set:
 
 ```bash
-curl -X PUT https://moddingcommunity.com/api/content/asset/10/releases \
+curl -X PUT https://api.moddingcommunity.com/api/content/asset/10/releases \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "id": 5, "version": "1.0.1", "files": ["<file-id>"] }]'
 ```

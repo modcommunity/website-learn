@@ -16,7 +16,9 @@ the browser. This one lets a *program* — running on a machine its owner does n
 necessarily control alone — report facts about **one specific content item**, and
 nothing else.
 
-**Base URL:** `/api/integration/v1`. Everything is JSON.
+**Base URL:** `https://api.moddingcommunity.com/api/integration/v1`. Everything
+is JSON. The apex address is proxied to the same service and still works — see
+[the API index](/learn/api#the-apis-live-on-their-own-origin).
 
 Manage your credentials under **Account → Integrations**.
 
@@ -30,6 +32,18 @@ Manage your credentials under **Account → Integrations**.
   </Card>
   <Card title="Chat" href="/learn/api/integration/chat">
     Relaying in-game chat in, and injecting site chat back into the game.
+  </Card>
+  <Card title="Leaderboards" href="/learn/api/integration/leaderboards">
+    Declaring the game's own boards, filing entries, and reading a page of one
+    back for an in-client HUD.
+  </Card>
+  <Card title="Statistics" href="/learn/api/integration/stats">
+    Per-player figures the game keeps — counters, gauges and bests — and how a
+    reading meets the value already held.
+  </Card>
+  <Card title="Avatars" href="/learn/api/integration/avatars">
+    Reading and publishing a player's avatar by their scoped key, so it follows
+    them onto your server.
   </Card>
 </Cards>
 
@@ -83,6 +97,12 @@ in practice — and to a set of scopes:
 | `ITEM_READ` | Read the item's own public metadata |
 | `SERVER_STATS` | Report the server's own live statistics |
 | `SERVER_USERS` | Report the server's current player list |
+| `LEADERBOARD_READ` | Read the item's own leaderboards |
+| `LEADERBOARD_WRITE` | Declare leaderboards, and file entries on them |
+| `STATS_READ` | Read the item's own per-player statistics |
+| `STATS_WRITE` | Declare statistics, and file readings on them |
+| `AVATAR_READ` | Read a player's avatar, by the scoped key this credential was given |
+| `AVATAR_WRITE` | Publish or erase a player's avatar on their behalf |
 
 A server-scoped credential may only touch parties **on that server**. An
 app-scoped one may only touch parties **for that app**. Anything else — a
@@ -91,6 +111,10 @@ mod-scoped credential trying to report party state, say — is refused.
 Scopes are additive and deliberately fine-grained: a map-rotation reporter needs
 `PARTY_STATE` and nothing else, and should not be able to read the roster or
 post chat.
+
+**Read and write are separate on every pair**, and always for the same reason: a
+HUD that shows the top ten must never be able to file, and a reporter that only
+files should not be able to enumerate every player who has ever scored.
 
 <Callout type="info" title="SERVER_USERS is separate from SERVER_STATS on purpose">
 A player list is personal data about third parties. A plugin that reports a
@@ -157,6 +181,23 @@ first call when wiring a plugin up.
 
 `serverTime` is there so you can check your clock against ours **before** you
 start sending timestamps.
+
+## There are no Discord endpoints
+
+There were four, under a `DISCORD_BOT` scope. They have been deleted, and so has
+the scope. The bot does not speak HTTP to the site at all any more — it connects
+to the worker directly over the same private transport the server scanner uses.
+
+The reason is worth knowing if you are designing a reporter of your own: the bot
+was the one credential here whose payload **named its own target**. Every other
+credential on this API is bound to a single item, so an id in the body would be
+one validation slip away from letting a leaked token rewrite the whole table.
+The bot could never work that way — one bot serves every guild that installs it,
+guilds are added and removed by people we never hear from, and it has nowhere to
+keep a per-guild secret.
+
+Listing a Discord server as a *user* is the guild picker on the add-a-server
+page, and that has not changed.
 
 ## Revoking
 

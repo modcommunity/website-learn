@@ -1,0 +1,166 @@
+---
+title: Avatars
+description: Reading and publishing a player's avatar by their scoped key, the document format, and why a server never learns an account id.
+order: 50
+keywords:
+  - "cosmetics"
+  - "skins"
+  - "character"
+  - "backbone"
+  - "dot-user-avatar"
+  - "godot"
+  - "scoped key"
+source:
+  - docs/api/avatar-protocol.md
+  - src/app/api/integration/v1/user/[key]/avatar
+  - src/app/api/avatar/v1
+---
+
+A player's avatar follows them between servers. These endpoints are how a game
+reads what a player looks like and — with a second scope — publishes a change on
+their behalf.
+
+They are what the open-source Godot addon
+[`dot-user-avatar`](https://github.com/modcommunity/dot-user-avatar) calls, and
+that addon is the reference implementation of the whole protocol: if it and this
+page disagree, the code is right and this is a bug. What follows is what an
+integrator on this site needs.
+
+## The endpoints
+
+<Endpoint method="GET" path="/api/integration/v1/user/{key}/avatar" auth="Integration" scope="AVATAR_READ">
+What this player looks like.
+</Endpoint>
+
+```json
+{
+  "avatar": {
+    "version": 1,
+    "schema_id": "builtin",
+    "parts": { "top": "top.jacket" },
+    "colours": { "top": ["2b4c7e"] }
+  },
+  "digest": "81ac5b2e0a82a697",
+  "schema": { "id": "builtin", "version": 1 },
+  "saved": true,
+  "twoD": { "url": "https://…/avatar-2d.png", "digest": "3f1c…", "width": 128, "height": 128 },
+  "updatedAt": "2026-08-27T10:04:00.000Z"
+}
+```
+
+`saved` is worth having. The document is never absent — a player who has never
+opened an editor gets the schema's defaults, which is a dressed figure rather
+than a hole — so this is the **only** way to tell "this is them" from "this is
+what anybody looks like".
+
+The `digest` is sixteen characters, and it is what lets a scoreboard of thirty
+players carry thirty digests and fetch only the documents it does not already
+hold.
+
+<Endpoint method="PUT" path="/api/integration/v1/user/{key}/avatar" auth="Integration" scope="AVATAR_WRITE">
+Publish a document on the player's behalf.
+</Endpoint>
+
+<Endpoint method="DELETE" path="/api/integration/v1/user/{key}/avatar" auth="Integration" scope="AVATAR_WRITE">
+Forget it. The next read falls back to the asset set's defaults.
+</Endpoint>
+
+Writing is a **separate scope from reading** because it changes how that member
+looks on the site and in every other game. Nearly every server needs to draw its
+players; almost none needs to dress them.
+
+Two public reads need no credential at all, because they describe content rather
+than a person:
+
+| | |
+| --- | --- |
+| `GET /api/avatar/v1/schema` | The asset set, as a `DotAvatarSchema` |
+| `GET /api/avatar/v1/manifest` | The same asset set in the website's own form |
+
+Cache the schema. It changes when an operator deploys new assets — weeks, not
+seconds — and the response says so in `Cache-Control`.
+
+## The player key
+
+<Callout type="danger" title="`{key}` is not a member id">
+It is a per-scope derivation, so **the same member is a different key on every
+server**. Two operators cannot compare logs and reconstruct somebody's movements
+across the platform.
+</Callout>
+
+```
+key = base64url(HMAC-SHA256(secret, scope + U+001F + account_id))[:22]
+```
+
+- **`scope`** identifies the server or the community. Here it is the
+  credential's own target — `server:412`, `app:7`.
+- **`secret`** never leaves us. That is the property the whole thing rests on: a
+  server able to compute the derivation could correlate players on its own, and
+  the scoping would be theatre.
+- It is a **keyed MAC, not a hash.** An unkeyed hash of an account id is
+  reversible by enumerating the population, which takes about a second.
+- **22 base64url characters** (132 bits), because a key is pasted into logs, ban
+  files and URLs, and 43 characters is unusable.
+
+A key is stable for that player on that server — so bans, profiles and avatars
+work — and different in every other scope.
+
+Your credential resolves keys **only in its own scope**. A key from another
+server's scope answers `404`, which is also what an unknown player answers.
+
+### How your server gets one
+
+**From a connect ticket (preferred).** `dot-auth`'s ticket flow mints a
+short-lived, audience-scoped, single-use signed token that a server verifies
+offline. The scoped key rides inside it, so the server learns the key **and**
+that the player really is who the key says.
+
+**From the client**, over
+[`POST /api/app/v1/play/scope-key`](/learn/api/app/play#the-scoped-player-key).
+Simpler, and enough for a friendly deployment — but a key is an **identifier,
+not a proof**: a client can present a key it was given by somebody else. What
+that buys is wearing another player's outfit, because everything behind the key
+is scoped to your own credential. Where it matters, use a ticket.
+
+## `404` is a normal answer
+
+A first-time player is the common case, and a client must treat `404` as "this
+player has no avatar yet" rather than as a failure. A server that treated it as
+an error would refuse to admit every new player.
+
+## What is repaired, and the one thing that is not
+
+On write, a document naming a **different `schema_id` is a `409`**: nothing in it
+means anything here, so there is nothing to repair — and quietly resetting the
+player to the defaults while reporting success is how somebody loses an avatar
+they spent ten minutes on.
+
+Everything else degrades rather than refusing: an unknown part falls back to the
+slot's default, a part filed under the wrong slot is dropped, a colour outside
+the palette is kept. Retiring a part or adding a required slot invalidates every
+existing document, and refusing those would mean a player who has not logged in
+for a month loads into an error instead of a slightly different hat.
+
+<Callout type="info" title="The player's own client uses a different address">
+`GET` and `PUT /api/app/v1/avatar` are the same documents addressed as "me",
+authenticated by the player's own app token. There is deliberately no scoped key
+in that address: the scoping exists so a *server* cannot correlate a player, and
+somebody asking about themselves has nothing to be protected from.
+</Callout>
+
+## Replay protection
+
+A write may carry `ts` (Unix **seconds**) and `nonce`, exactly as [every other
+integration write](/learn/api/authentication#replay-protection-on-writes) does.
+
+They are worth less here than on a stats endpoint — a replayed `PUT` rewrites
+the same avatar and a replayed `DELETE` erases an already-erased one, so both
+are idempotent. What they bound is how long a *captured* publish stays useful.
+
+They are **not part of the document**, and must never be treated as slots.
+
+<Related>
+- [Play and avatars](/learn/api/app/play) — the player's own half of this
+- [Statistics](/learn/api/integration/stats) — the same scoped key, used for figures
+- [Your profile](/learn/account/profile)
+</Related>

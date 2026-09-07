@@ -8,6 +8,9 @@ source:
 
 There are three APIs, and which one you want depends on **who is calling**.
 
+**Base URL: `https://api.moddingcommunity.com`.** All three live on their own
+origin, separate from the website.
+
 <Cards>
   <Card title="Public content API" href="/learn/api/content">
     A person scripting what they could already do in the browser: create and
@@ -24,6 +27,31 @@ There are three APIs, and which one you want depends on **who is calling**.
     reviews, signed in as a real member.
   </Card>
 </Cards>
+
+## The APIs live on their own origin
+
+Every path on this page — `/api/content`, `/api/integration/v1`, `/api/app/v1`
+and `/api/avatar/v1` — is served from `api.moddingcommunity.com`. Point new
+integrations there.
+
+`/api/avatar/v1` is the fourth surface and is not one of the three above: it is
+two public reads describing the [avatar asset
+set](/learn/api/integration/avatars), and needs no credential at all.
+
+<Callout type="info" title="The old website addresses still work">
+`https://moddingcommunity.com/api/…` is **proxied** to the same service, so no
+existing key, script, plugin or app has to change today.
+
+It is a proxy and **not a redirect**, deliberately: a cross-origin redirect
+strips the `Authorization` header — browsers do it per the fetch spec, `curl`
+does it unless you pass `--location-trusted`, and most Go and C# HTTP clients do
+it too — so a redirect would have worked perfectly for anonymous reads and
+silently `401`ed every keyed call at once.
+</Callout>
+
+If a deprecation window is ever opened on the apex paths, it will be announced
+here first, with a `Sunset` header on the responses well before anything stops
+answering.
 
 ## Choosing between them
 
@@ -44,7 +72,7 @@ API is rejected on its prefix, before anything looks it up.
 `Authorization` header at all, for items that are completely public:
 
 ```bash
-curl "https://moddingcommunity.com/api/content/mod/123"
+curl "https://api.moddingcommunity.com/api/content/mod/123"
 ```
 
 Everything else — every write, every relation, every read of a non-content type

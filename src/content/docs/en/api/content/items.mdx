@@ -25,9 +25,12 @@ DELETE /api/content/{type}/{id}     delete one
 List items of a type.
 </Endpoint>
 
-`page` defaults to `1`; `limit` defaults to `1000`. A limit below 1 clamps up,
-and one above your role's maximum clamps down (2500 for a standard account,
-30000 for a supporter, by default). `pagination.total` is the full match count.
+`page` defaults to `1`. `limit` defaults to `api.list.limitDefault` (25) and is
+clamped — up to 1, and **down** to `api.list.limitMax` (100) rather than
+refused. Both are operator settings, and the ceiling is **per role**, so an
+operator can give one role a larger page without a code change. Ask for what you
+want and read what comes back; `pagination.total` is the full match count either
+way.
 
 `?mine=1` restricts a list to rows you own — and is **the only way to list your
 own hidden items**. Otherwise lists exclude hidden rows for non-staff.
@@ -45,7 +48,7 @@ type supports are applied:
 | `communityId` | `?communityId=12` | Belongs to this community |
 | `nsfw` | `?nsfw=0` | NSFW flag |
 
-List responses are cached for 30 seconds by default.
+List responses are cached for `api.list.cacheSec` (30 seconds by default).
 
 ## Creating
 
@@ -54,7 +57,7 @@ One object, or an array of up to 25.
 </Endpoint>
 
 ```bash
-curl -X POST https://moddingcommunity.com/api/content/asset \
+curl -X POST https://api.moddingcommunity.com/api/content/asset \
   -H "Authorization: Bearer $TMC_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -68,29 +71,118 @@ curl -X POST https://moddingcommunity.com/api/content/asset \
 
 ## Fields
 
-`id`, `ownerId` / `userId`, and privileged flags — `isOfficial` on articles and
-servers, `primary` on groups, the flagged state on communities — are **rejected**.
+`id` and `ownerId` / `userId` are **rejected** — the owner column is injected
+from the key's user, and the id comes from the URL. Schemas are strict, so a
+misspelled field is a `400` rather than a silent no-op.
+
+A few fields are accepted by the schema and then resolved **against your role**:
+`isOfficial`, the backdating pair `createdAt` / `lastEdit`, `primary` on groups
+and a community's `flagged` state. A key that is not staff cannot set them.
+
+### Everywhere
+
+Every content item takes this set, so the per-type tables below only name what
+is particular to that type:
+
+| Field | |
+| --- | --- |
+| `url` | The slug. Changing it leaves a redirect behind |
+| `description`, `content` | The card blurb and the body |
+| `hidden` | A draft. Behaves as if it does not exist to everyone else |
+| `delist` | **Unlisted, but not hidden** — out of the browsers, carousels, search and the sitemap, while keeping its page and everything attached to it |
+| `nsfw` | |
+| `usesAi` | Self-declared "contains or was made with AI". Disclosure only — it filters nothing and gates nothing |
+| `archived` | Not on articles or collections |
+| `apiPublic` | Anonymous read access through this API. On by default — see [Reading without a key](/learn/api/content/reading) |
+| `allowRatings`, `allowReviews`, `allowComments`, `allowMedia` | The engagement toggles |
+| `bannerId`, `iconId`, `cardId` | File ids. **Servers spell these `banner` / `icon` / `card`** |
+| `categoryIds` | The taxonomy set. **Replaces the whole set** when present |
+| `tags` | Tag names, up to 100. `undefined` leaves them; `[]` clears them |
+
+<Callout type="warning" title="`categoryId` and `categoryIds` are different fields">
+`categoryId` is the single, often auto-detected category a type may carry;
+`categoryIds` is the owner's multi-select, and it replaces the whole set. Both
+exist because the edit form posts both. **Groups have only `categoryIds`** — a
+`categoryId` on a group used to be accepted and silently did nothing.
+</Callout>
+
+### Per type
 
 | Type | Required on create | Also accepts |
 | --- | --- | --- |
-| `asset` | `name` | `url`, `description`, `content`, `srcUrl`, `environment`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `appId`, `communityId`, `categoryId`, `tags`, `media`, `releases`, `sources` |
-| `mod` | `name`, `content`, `appId` | `url`, `description`, `install`, `srcUrl`, `license`, `environment`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `communityId`, `categoryId`, `tags`, `media`, `releases`, `links`, `sources` |
-| `server` | `appId` | `name`, `url`, `description`, `content`, `rules`, `srcUrl`, `hidden`, `nsfw`, `showNetInfo`, `showUsers`, `allowRatings`, `allowReviews`, `allowComments`, `ip4`, `ip6`, `port`, `portQuery`, `hostName`, `useHostName`, `icon`, `banner`, `card`, `communityId`, `categoryId`, `tags`, `media`, `links`, `releases` |
-| `community` | `name` | `url`, `description`, `content`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `categoryId`, `appIds`, `tags`, `media`, `links` |
-| `article` | `title`, `content` | `url`, `description`, `hidden`, `nsfw`, `allowRatings`, `allowReviews`, `allowComments`, `bannerId`, `iconId`, `cardId`, `categoryId`, `appId`, `communityId`, `modId`, `serverId`, `assetId`, `userTargetId`, `tags`, `media` |
-| `collection` | `name` | `description`, `content`, `hidden`, `nsfw`, `bannerId`, `iconId`, `cardId`, `tags`, `items` |
-| `group` | `name` | `url`, `description`, `content`, `hidden`, `inviteOnly`, `bannerId`, `iconId`, `appId`, `communityId`, `modId`, `serverId`, `assetId`, `serverMapId`, `categoryId` |
+| `asset` | `name` | `appId`, `communityId`, `categoryId`, `environment`, `license`, `virusScanLink`, `subDisabled`, `media`, `releases`, `sourceItems` |
+| `mod` | `name`, `content`, `appId` | `install`, `communityId`, `categoryId`, `environment`, `license`, `virusScanLink`, `subDisabled`, `media`, `releases`, `links`, `sourceItems`, `redirect` |
+| `server` | `appId` | See [servers](#servers-are-an-allow-list-in-three-tiers) below |
+| `community` | `name` | `ageRequirement`, `appIds`, `categoryId`, `media`, `links` |
+| `article` | `title`, `content` | `appId`, `communityId`, `categoryId`, `modId`, `serverId`, `assetId`, `userTargetId`, `media` |
+| `collection` | `name` | `items`, `includeItemMedia`, `subDisabled` |
+| `group` | `name` | `inviteOnly`, `appIds`, `appId`, `articleId`, `collectionId`, `communityId`, `modId`, `serverId`, `assetId`, `serverMapId` |
 
-<Callout type="warning" title="Two spelling traps">
+<Callout type="warning" title="Three spelling traps">
+**Articles** use `title` where every other type uses `name`.
+
 **Servers** spell their image relations `icon` / `banner` / `card`; every other
 type uses `iconId` / `bannerId` / `cardId`.
 
-**Articles** use `title` where every other type uses `name`.
+**The inline sources array is `sourceItems`**, not `sources` — [the relation
+sub-resource](/learn/api/content/relations) is the one called `sources`.
 </Callout>
 
-Server telemetry — `online`, `curUsers`, `lastScanned` and the rest — is
-measured by our query servers and is **not writable**. See [Reporting your own
-statistics](/learn/servers/reporting) for the two ways to take one over.
+A group's `appId`, `modId`, `serverId` and the rest say **what the group is
+about**; `appIds` is the separate many-to-many of games it covers. They are not
+the same field and setting one does not set the other.
+
+### Servers are an allow-list in three tiers
+
+A server is the one type the API **picks** fields from rather than omitting
+them. Its input is shared with the query scanner and carries all of that
+scanner's telemetry, so a new scanner field can never leak onto the public
+surface by being added upstream.
+
+<Params>
+  <Param name="Ordinary owner fields">
+    `name`, `description`, `content`, `rules`, `srcUrl`, `url`, the address
+    (`ip4`, `ip6`, `port`, `portQuery`, `hostName`, `useHostName`), `countryId`,
+    `appId`, `communityId`, `showNetInfo`, `showUsers`, `showVars`,
+    `showSlideshow`, `icon`, `banner`, `card`, `tags`, `media`, `links`,
+    `releases`.
+  </Param>
+  <Param name="Descriptive facts the owner may state">
+    `gameMode`, `version`, `password`, `secure`, `os`, `dedicated`. The edit
+    form has always rendered these, and none of them moves a server up a
+    ranking: correcting a mis-detected operating system is legitimate.
+  </Param>
+  <Param name="Gated telemetry">
+    `online`, `curUsers`, `maxUsers`, `bots`, `avgUsers`, `vars`, `map` and
+    `users`. Accepted by the schema and then checked, **at request time**,
+    against this server's own unlocks — because the answer depends on the row,
+    not on the payload.
+  </Param>
+</Params>
+
+<Callout type="warning" title="Telemetry is refused unless the server has unlocked it">
+Player counts, the online flag, the current map, the roster and the raw rule
+dump are **measured, not asserted** — the API refuses them for everybody, the
+owner and staff included. A server able to type its own `curUsers` would outrank
+every honest one for free.
+
+There are exactly two ways to be trusted with one: an **integration** on the
+server holding `SERVER_STATS` / `SERVER_USERS`, or the owner turning on the
+matching **query override**, which takes the field over from the scanner. The
+refusal names the fields it refused and both routes. See [Reporting your own
+statistics](/learn/servers/reporting).
+</Callout>
+
+Never writable at all, by anybody: `lastScanned`, `retryCnt`, `locLat` /
+`locLon`, `isOfficial` and the scanner's detection cursors. They are internal
+bookkeeping with no owner-facing meaning, and no unlock makes them writable.
+
+A server's **read** is the opposite of its write, deliberately: everything we
+know about a server is public on its page, so `GET /api/content/server/{id}`
+resolves the map, the country, the categories, the rule set and the roster (up
+to 512 rows) rather than making you scrape the page for the current map. The
+owner's `showUsers` and `showVars` switches still apply to the last two; the
+owner and staff always see both.
 
 ## Updating
 

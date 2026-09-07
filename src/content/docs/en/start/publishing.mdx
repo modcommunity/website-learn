@@ -76,7 +76,7 @@ files.
 
 ```bash
 # Upload the file, then attach it to a release.
-curl -X POST "https://moddingcommunity.com/api/content/file?name=mod.zip" \
+curl -X POST "https://api.moddingcommunity.com/api/content/file?name=mod.zip" \
   -H "Authorization: Bearer $TMC_TOKEN" \
   -H "Content-Type: application/zip" \
   --data-binary @dist/mod.zip

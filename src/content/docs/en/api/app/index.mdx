@@ -8,7 +8,9 @@ source:
   - src/app/api/app/v1
 ---
 
-**Base URL:** `/api/app/v1`. Everything is JSON.
+**Base URL:** `https://api.moddingcommunity.com/api/app/v1`. Everything is JSON.
+The apex address is proxied to the same service and still works — see [the API
+index](/learn/api#the-apis-live-on-their-own-origin).
 
 This is the surface the official desktop app talks to. It is documented here
 because it is a real, stable HTTP API — but note that it is designed for a
@@ -24,6 +26,10 @@ first-party client, and the endpoints assume one.
   </Card>
   <Card title="Library" href="/learn/api/app/library">
     Subscriptions, installs and download snapshots.
+  </Card>
+  <Card title="Play and avatars" href="/learn/api/app/play">
+    The app catalogue, resolving a launch, the scoped player key, and the
+    player's own avatar.
   </Card>
 </Cards>
 
@@ -74,6 +80,16 @@ One vocabulary across the whole surface:
 
 `asset` · `mod` · `server` · `serverMap` · `article` · `community` ·
 `collection` · `user`
+
+## Two kinds of credential
+
+A **device** token is what the [device flow](/learn/api/app/auth) mints for an
+installed client, and it reaches the whole surface its owner does.
+
+A **game** token is what a web player's loader redeems, and it reaches almost
+none of it: it is third-party code running on our origin, so a route has to opt
+in before it will accept one. See [the
+handoff](/learn/api/app/auth#the-web-player-handoff).
 
 ## Querying servers from the app
 

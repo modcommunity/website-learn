@@ -10,7 +10,7 @@ source:
 `Authorization` header at all**, for items that are completely public.
 
 ```bash
-curl "https://moddingcommunity.com/api/content/mod/123"
+curl "https://api.moddingcommunity.com/api/content/mod/123"
 ```
 
 Nothing else on this surface does — every write, every relation, and every read
@@ -63,6 +63,7 @@ A **summary**, not the record:
     "archived": false,
     "app": { "id": 4, "name": "Garry's Mod", "slug": "gmod" },
     "categories": [{ "id": 9, "name": "Vehicles", "slug": "vehicles" }],
+    "tags": [{ "id": 812, "name": "vehicles" }],
     "stats": {
       "views": 10432,
       "favorites": 218,
@@ -74,11 +75,27 @@ A **summary**, not the record:
 }
 ```
 
-`path` is site-relative and always present. `url` is the same address made
-absolute, and is `null` on a deployment that has not configured its own origin —
-this endpoint has no other honest source for it, since answers are cached under
-a key with no origin in it and the first caller's `Host` would otherwise be
-served to everybody afterwards.
+`path` is site-relative. `url` is the same address made absolute, and is `null`
+on a deployment that has not configured its own origin — this endpoint has no
+other honest source for it, since answers are cached under a key with no origin
+in it and the first caller's `Host` would otherwise be served to everybody
+afterwards. `path` is `null` only when the item genuinely cannot be placed: an
+article belonging to nothing but its author, whose URL is built from the owner
+this surface does not publish.
+
+`tags` is the item's tag chips, capped at **twelve** and never a hidden or NSFW
+one. A tag has no separate slug — `name` is unique and is what the site's own
+`/blog/tag/<name>` links interpolate, so it is both label and key. The field is
+**absent**, rather than an empty array, when the item has none.
+
+An **article** additionally carries `image`: the absolute CDN URL of its card
+image, chosen by the same fallback chain the site's own cards walk — the
+article's card, then its banner, then its single category's art, then its app's,
+then its icon. Private uploads are skipped rather than published, because the
+bucket would refuse them, so a fallback wins instead. The field is absent when
+nothing in that chain is servable, or when the deployment has no CDN configured.
+The other types have the same chains and can adopt it the same way; today only
+`article` publishes one.
 
 ### Servers carry a live block
 
@@ -121,9 +138,11 @@ address wants the label.
     answered "who made this" would have to re-derive all of them and get it
     wrong once.
   </Param>
-  <Param name="Anything from a relation table except a count">
+  <Param name="Anything from a relation table except a count, a tag chip or a card image">
     Media, files, releases, the roster. Those are the expensive half, and they
-    are what a key is for.
+    are what a key is for. Tags and the card image are the exceptions because
+    they are what a caller *rendering* the item needs, and neither is a payload:
+    a tag is a public label, and the image is one URL.
   </Param>
   <Param name="Engagement counts on the LIST endpoint">
     A page of twenty items would be a hundred count queries for numbers nobody
@@ -136,12 +155,25 @@ address wants the label.
 ## Listing
 
 `GET /api/content/<type>` takes `?page`, `?limit` (capped at 20 by default) and
-— for `asset`, `mod`, `server` and `article` — `?appId`. Ordering is
-newest-first by id.
+— for `asset`, `mod`, `server` and `article` — `?appId` and `?official`.
+Ordering is newest-first by id.
 
 There is deliberately **no search, no tag filter and no `mine`**: the anonymous
 surface exists so an integrator can see the shape of the API, not so it can be
 used as a search engine.
+
+`?official=1` narrows a listing to the site's own posts and `?official=0` to
+everything else. It exists because for articles that filter **is** the blog —
+the flag is what puts a post there — and without it a caller wanting the blog
+has to page the whole article table and filter client-side, getting a different
+and shrinking answer every time a member publishes:
+
+```
+GET /api/content/article?official=1&limit=20
+```
+
+Anything other than `0`, `false` or `no` reads as true, and the parameter is
+ignored for types that have no such flag.
 
 ## Quotas
 

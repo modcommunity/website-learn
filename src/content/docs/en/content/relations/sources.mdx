@@ -68,7 +68,7 @@ Replace the source set. Members are identified by `sourceId`.
 </Endpoint>
 
 ```bash
-curl -X POST https://moddingcommunity.com/api/content/mod/5/sources \
+curl -X POST https://api.moddingcommunity.com/api/content/mod/5/sources \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "sourceId": 3, "path": "/minecraft/mod/231", "externalId": "231" }]'
 ```

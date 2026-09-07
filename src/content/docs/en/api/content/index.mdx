@@ -10,7 +10,10 @@ The public content API lets a user script the things they can already do in the
 browser: create and edit their assets, mods, servers, articles, communities,
 collections and groups, using an API key instead of a session.
 
-**Base URL:** `/api/content`. Everything is versionless and JSON unless noted.
+**Base URL:** `https://api.moddingcommunity.com/api/content`. Everything is
+versionless and JSON unless noted. The apex address
+(`https://moddingcommunity.com/api/content`) is proxied to the same service and
+still works — see [the API index](/learn/api#the-apis-live-on-their-own-origin).
 
 Manage your keys under **Account → API keys**.
 
@@ -48,7 +51,7 @@ key](/learn/api/content/reading).
 | `community` | `/api/content/community` | Canonical writer |
 | `article` | `/api/content/article` | Canonical writer |
 | `collection` | `/api/content/collection` | Canonical writer |
-| `group` | `/api/content/group` | Canonical writer; no relations |
+| `group` | `/api/content/group` | Canonical writer; `tags` is its only relation |
 | `favorite` | `/api/content/favorite` | Simple owned row |
 | `filter` | `/api/content/filter` | Simple owned row |
 | `comment` | `/api/content/comment` | Simple owned row |

@@ -27,7 +27,7 @@ re-read it.
 
 | Relation | asset | mod | server | community | article | collection | group |
 | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| `tags` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `tags` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `media` | ✓ | ✓ | ✓ | ✓ | ✓ | | |
 | `releases` | ✓ | ✓ | ✓ | | | | |
 | `links` | | ✓ | ✓ | ✓ | | | |
@@ -74,18 +74,18 @@ DELETE /api/content/asset/10/tags     (no body → clears the relation)
 
 ```bash
 # Add two screenshots without disturbing the existing gallery.
-curl -X POST https://moddingcommunity.com/api/content/mod/5/media \
+curl -X POST https://api.moddingcommunity.com/api/content/mod/5/media \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "externalUrl": "https://example.com/a.png", "title": "A" },
        { "externalUrl": "https://example.com/b.png", "title": "B" }]'
 
 # Declare the gallery to be exactly these two, deleting anything else.
-curl -X PUT https://moddingcommunity.com/api/content/mod/5/media \
+curl -X PUT https://api.moddingcommunity.com/api/content/mod/5/media \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "id": 8, "title": "Renamed" }, { "externalUrl": "https://example.com/c.png" }]'
 
 # Cut a release with two uploaded files attached.
-curl -X PUT https://moddingcommunity.com/api/content/mod/5/releases \
+curl -X PUT https://api.moddingcommunity.com/api/content/mod/5/releases \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "version": "1.2.0", "title": "Bug fixes", "files": ["<file-id>", "<file-id>"] }]'
 ```

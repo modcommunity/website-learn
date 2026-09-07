@@ -41,7 +41,7 @@ Replace the link set. `POST` merges instead.
 </Endpoint>
 
 ```bash
-curl -X PUT https://moddingcommunity.com/api/content/mod/5/links \
+curl -X PUT https://api.moddingcommunity.com/api/content/mod/5/links \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "type": "DISCORD", "url": "https://discord.gg/…" },
        { "type": "GITHUB",  "url": "https://github.com/me/mod" }]'

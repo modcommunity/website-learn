@@ -84,7 +84,7 @@ Declare the gallery to be exactly this set. Anything not listed is deleted.
 
 ```bash
 # Add two screenshots without disturbing what is there.
-curl -X POST https://moddingcommunity.com/api/content/mod/5/media \
+curl -X POST https://api.moddingcommunity.com/api/content/mod/5/media \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "externalUrl": "https://example.com/a.png", "title": "A" },
        { "externalUrl": "https://example.com/b.png", "title": "B" }]'

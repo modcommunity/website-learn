@@ -1,0 +1,155 @@
+---
+title: Play and avatars
+description: The app catalogue, resolving a launch, the scoped player key a game hands its server, and the player's own avatar.
+navTitle: Play and avatars
+order: 40
+keywords:
+  - "launch"
+  - "web player"
+  - "loader"
+  - "scope key"
+  - "catalogue"
+  - "games list"
+source:
+  - src/app/api/app/v1/apps
+  - src/app/api/app/v1/play
+  - src/app/api/app/v1/avatar
+---
+
+## The app catalogue
+
+<Endpoint method="GET" path="/api/app/v1/apps">
+Every game, engine and VoIP platform the site tracks. Authentication is
+**optional**.
+</Endpoint>
+
+The app's front door. The website has nothing equivalent, because its chrome is
+built around one chosen game; the app opens on a flat list across all of them,
+so it needs the list itself.
+
+Nothing here is account-scoped — it is the same public catalogue an anonymous
+visitor reads a page at a time on the site. A bearer token is *accepted* so the
+rate limit is charged per account rather than per address, which matters for a
+household behind one address.
+
+Takes `search`, `ids`, `slugs`, `type`, `playable`, `managed` and `sort`.
+
+<Callout type="info" title="`playEnabled` is answered even when it is false">
+The play centre is a setting an operator can switch off. An app that could not
+tell "switched off" from "no game here is playable" would draw a catalogue that
+silently lost every Play button, and give the user nothing to read about it.
+</Callout>
+
+## Resolving a launch
+
+<Endpoint method="POST" path="/api/app/v1/play/launch">
+One launch, resolved. Authentication is **optional** — nothing here discloses
+anything a signed-out visitor could not already read.
+</Endpoint>
+
+The same handoff the website's own player performs, on the app's transport.
+Every decision is made server-side and the client is told the answer:
+
+<Params>
+  <Param name="null means &quot;not from here&quot;">
+    The app is hidden, the feature is off, the mode is not available, the named
+    server belongs to a different game, or direct play is off and no server was
+    chosen. **One vocabulary for all of them** — naming which would tell a
+    caller which column to probe, and none of them changes what the app does
+    with the answer.
+  </Param>
+  <Param name="Option values are coerced against the app's own declaration">
+    They arrive from a device, so an unknown key is dropped, a wrong type falls
+    back to the app's default, and an integer is clamped into the declared band.
+    Without that, an option is an unvalidated string interpolated into a URI
+    handed to a native client.
+  </Param>
+  <Param name="Direct play is enforced, not merely hidden">
+    The app draws no Play button without it — but a deep link and a mismatched
+    server both reach this code without passing one, and the second would
+    otherwise degrade into exactly the serverless launch the flag forbids,
+    silently.
+  </Param>
+</Params>
+
+A server's address is gated on its own `showNetInfo`, by the same helper the
+server page uses.
+
+## The scoped player key
+
+<Endpoint method="POST" path="/api/app/v1/play/scope-key" auth="Token">
+The caller's identifier on one server.
+</Endpoint>
+
+```json
+{ "scope": "server:412" }
+```
+
+A player's client asks for this on its way into a game and hands the answer to
+the server, which is then able to read and write that player's avatar — and file
+their statistics — **without ever learning their account id**. See [the
+derivation](/learn/api/integration/avatars#the-player-key).
+
+<Callout type="warning" title="A key is an identifier, not a proof">
+Anybody who has one can name it, and a client could hand a server a key it was
+given by another player. What that buys is **wearing somebody else's outfit**,
+because the endpoints behind it are scoped to the server's own credential — a
+stolen key reads an avatar the thief could see by standing next to its owner.
+
+Where a server needs the player to have *proven* who they are, that is what
+`dot-auth`'s connect tickets are for, and the key rides inside the ticket
+instead of being asked for here.
+</Callout>
+
+**The scope is whatever the caller says**, and it has to be: the client is
+joining a server whose name only it knows, and the derivation's guarantee is
+that *different* scopes cannot be correlated — not that any particular scope is
+off limits. A player asking for `global` is opting into being recognised
+everywhere, which is theirs to choose.
+
+A scope is letters, digits and `_ . : -`, up to 64 characters.
+
+## The player's own avatar
+
+<Endpoint method="GET" path="/api/app/v1/avatar" auth="Token">
+The caller's own avatar document.
+</Endpoint>
+
+<Endpoint method="PUT" path="/api/app/v1/avatar" auth="Token">
+Save it.
+</Endpoint>
+
+The same documents [the integration
+endpoints](/learn/api/integration/avatars) move, addressed as "me" and
+authenticated by the player's own token rather than by a server credential. This
+is what a game with its own in-game avatar editor calls, and what the desktop
+app calls to draw the figure on its profile screen.
+
+**There is deliberately no scoped key in this address.** The scoping exists so a
+*server* cannot correlate a player across the platform; a player asking about
+themselves has nothing to be protected from, and requiring them to derive their
+own key first would be ceremony with no property behind it.
+
+A publish here is exactly as authoritative as one from the site's own editor —
+it is the member acting for themselves — so it goes through the same code, and a
+document naming another schema is refused for the same reason.
+
+## The cross-origin half
+
+A game running **in the browser** is third-party code on its own origin — that
+iframe boundary is the point, not an accident of hosting — so the handful of
+routes it needs answer a preflight and are callable from it: `auth/handoff`,
+`auth/refresh`, `auth/revoke`, `me`, `play/scope-key`, `avatar`, and the three
+[statistics](/learn/api/integration/stats#self-reported-figures) routes.
+
+Nothing else on the app API does. The rest is one installed client talking to
+us, and has no reason to be reachable from a web page.
+
+A web player's credential is also **not a device token** — see [the handoff
+flow](/learn/api/app/auth#the-web-player-handoff).
+
+<Related>
+- [Avatars](/learn/api/integration/avatars) — the server's half
+- [Statistics](/learn/api/integration/stats#self-reported-figures)
+- [App API](/learn/api/app)
+</Related>

@@ -22,20 +22,34 @@ logged.
 
 Two **rolling windows**, and both must have budget or the request is rejected:
 
-| Window | Users | Supporters and above |
+| Window | Setting | Default |
 | --- | --- | --- |
-| 5 hours | `API_RATE_5H_USER` | `API_RATE_5H_SUPPORTER` |
-| 7 days | `API_RATE_WEEK_USER` | `API_RATE_WEEK_SUPPORTER` |
+| 5 hours | `api.rate.5h` | 500 requests |
+| 7 days | `api.rate.week` | 5000 requests |
 
-Live usage for both is shown under **Account → API keys**, alongside an audit
-log carrying every request's method, path, status, address and the item it
+Both are **per role**: an operator sets one base figure for everybody and
+overrides the roles that get more. That replaced a pair of environment variables
+per window — one for members and one for supporters — which hard-wired the tiers
+to "supporter or not" and could not give a moderator its own number.
+
+The quota is counted against the **user**, not the individual key, so a second
+key does not buy a second budget.
+
+Live usage for both windows is shown under **Account → API keys**, alongside an
+audit log carrying every request's method, path, status, address and the item it
 touched.
 
 ### List caching and limits
 
-List responses are cached briefly (30 seconds by default). `limit` defaults to
-1000; below 1 it clamps up, and above your role's maximum it clamps down —
-2500 for a standard account, 30000 for a supporter, by default.
+| Setting | Default | |
+| --- | --- | --- |
+| `api.list.limitDefault` | 25 | The page size when you ask for none |
+| `api.list.limitMax` | 100 | The ceiling. Per role |
+| `api.list.cacheSec` | 30s | How long an identical list response is served from cache |
+
+A `limit` above the ceiling is **clamped down rather than refused**, so a caller
+asking for a thousand gets a page and a `pagination` block that says what it
+actually got.
 
 ## Anonymous reads
 
@@ -137,6 +151,14 @@ front door, and a cache outage must not turn it into an unmetered row factory.
 | --- | --- |
 | `POST /auth/device` | 10 per minute |
 | `POST /auth/token` | 60 per minute — a well-behaved client polls about 12 times a minute |
+| `POST /auth/handoff` | 20 per minute, also durable — it mints credentials |
+| `GET /apps` | 120 per minute |
+| `POST /stats/submit` | 30 per minute |
+| `GET /stats/me`, `GET /stats/top` | 60 per minute |
+
+A token is what a limit is counted against wherever there is one — which is why
+`/apps` accepts a bearer despite needing none: the alternative is charging a
+whole household behind one address as though it were one caller.
 
 <Related>
 - [Errors](/learn/api/errors)

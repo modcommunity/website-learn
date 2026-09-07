@@ -65,7 +65,7 @@ Replace the membership wholesale. `POST` to the same path merges instead.
 </Endpoint>
 
 ```bash
-curl -X POST https://moddingcommunity.com/api/content/collection/17/items \
+curl -X POST https://api.moddingcommunity.com/api/content/collection/17/items \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '[{ "modId": 123 }, { "assetId": 88, "title": "Optional but nice" }]'
 ```

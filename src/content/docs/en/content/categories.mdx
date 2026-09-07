@@ -88,7 +88,7 @@ Tags are set as an array of plain strings — invalid ones are dropped rather th
 failing the write:
 
 ```bash
-curl -X PUT https://moddingcommunity.com/api/content/mod/5/tags \
+curl -X PUT https://api.moddingcommunity.com/api/content/mod/5/tags \
   -H "Authorization: Bearer $TMC_TOKEN" -H "Content-Type: application/json" \
   -d '["pvp", "vanilla"]'
 ```

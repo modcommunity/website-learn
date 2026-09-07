@@ -1,0 +1,224 @@
+---
+title: Leaderboards
+description: Declaring the game's own boards, filing entries on them, and reading a page back for an in-client HUD — plus why a board is a key and a scope rather than a fixed set of columns.
+order: 30
+keywords:
+  - "ranking"
+  - "highscore"
+  - "high score"
+  - "scoreboard"
+  - "records"
+  - "timer"
+  - "surf"
+  - "bhop"
+source:
+  - docs/api/integration-api.md
+  - src/app/api/integration/v1/leaderboard
+---
+
+A leaderboard here is the **game's own**, not ours: you declare it, you file its
+entries, and we hold it and rank it. A surf timer's map records, a deathmatch's
+top fraggers, a racing game's lap times.
+
+Nothing in any body names an app or a server. **The token decides which boards
+these are** — a credential scoped to anything but an app or one of its servers
+is refused, because "leaderboards for an article" is not a thing and a broader
+surface is a broader surface.
+
+## Declaring a board
+
+<Endpoint method="POST" path="/api/integration/v1/leaderboard/define" auth="Integration" scope="LEADERBOARD_WRITE">
+Declare the game's boards. Idempotent — send the whole table at boot and only
+the changed ones move.
+</Endpoint>
+
+```json
+{
+  "boards": [
+    {
+      "key": "fastest",
+      "scope": { "map": "surf_beginner", "track": "0", "style": "normal" },
+      "name": "Fastest time",
+      "kind": "TIME",
+      "decimals": 3,
+      "unit": ""
+    }
+  ],
+  "ts": 1735689600,
+  "nonce": "…"
+}
+```
+
+```json
+{ "ok": true, "created": 1, "updated": 0 }
+```
+
+### A board is a key **and** a scope
+
+The scope is a **map**, not a fixed set of columns. A surf timer scopes by map,
+track and style; a deathmatch by map and mode; a 2D game by nothing at all.
+Fixed columns would mean every consumer carrying a `track` field that most games
+leave at zero, and a game with a fourth dimension having nowhere to put it.
+
+At most **eight dimensions**, all identifiers.
+
+<Callout type="warning" title="The scope is canonicalised server-side, and sorted">
+A JSON object's key order is not a contract, so `{map, style}` and `{style, map}`
+would otherwise be two boards holding half the entries each — with nothing
+anywhere to say so.
+
+It also means a caller cannot address a board by forging its key.
+</Callout>
+
+### `kind` is only ever about ordering
+
+There are four, because ordering is the only thing that differs:
+
+| Kind | Ordering |
+| --- | --- |
+| `TIME` | Lower is better |
+| `PENALTY` | Lower is better |
+| `SCORE` | Higher is better |
+| `POINTS` | Higher is better |
+
+### Ceilings
+
+**25 boards per request, 2000 per owner.** Past the second, `define` refuses and
+says so in `refused[]` rather than growing.
+
+That ceiling exists for one specific bug: a reporter that scopes a board by
+*player id* creates one board per player, and every individual request that does
+it looks perfectly reasonable.
+
+## Filing entries
+
+<Endpoint method="POST" path="/api/integration/v1/leaderboard/submit" auth="Integration" scope="LEADERBOARD_WRITE">
+File up to fifty entries — twenty players finishing a round would otherwise be
+twenty POSTs to one endpoint.
+</Endpoint>
+
+```json
+{
+  "entries": [
+    {
+      "board": "fastest",
+      "scope": { "map": "surf_beginner", "track": "0", "style": "normal" },
+      "player": "srv-scoped-pseudonym",
+      "name": "Christian",
+      "value": 42.517,
+      "setAt": 1735689600,
+      "meta": { "splits": { "1": 12.4 }, "jumps": 212, "sync": 0.91 }
+    }
+  ],
+  "overwrite": false,
+  "ts": 1735689600,
+  "nonce": "…"
+}
+```
+
+```json
+{ "ok": true, "accepted": 3, "improved": 1, "unchanged": 2 }
+```
+
+**Only an improvement is written**, unless `overwrite` is set. "Keep the best"
+is what a leaderboard means, and a reporter that sent every attempt would
+otherwise replace the record with the most recent failure. `overwrite` is for a
+board whose value is a running total — points, playtime — where the newest
+figure *is* the right one.
+
+A result that did not beat the player's own best is **accepted and counted in
+`unchanged`**, not refused. Most results are worse than the player's best, and a
+reporter sending them is behaving correctly.
+
+<Callout type="warning" title="The board must already exist">
+An entry for an unknown one is refused rather than creating it. A board born
+from a submission has no name, no ordering and no units — so it renders as an
+unlabelled list of numbers sorted the wrong way, and nobody can tell whether
+that is the game's doing or ours.
+</Callout>
+
+`meta` is capped at **2 KB once serialised**, because a nested object's size is
+not its key count. Omitting it leaves whatever was there; sending an explicit
+`null` clears it.
+
+A board holds **10 000 entries** and prunes the **worst**, not the oldest — a
+leaderboard is a ranking, and pruning by age eventually deletes the record
+itself.
+
+<Callout type="info" title="A TIME board refuses a negative value">
+It sorts ascending, so −1 sorts above every real run and can never be beaten:
+one malformed submission takes the top of the board permanently.
+
+`SCORE` and `PENALTY` boards hold negative values legitimately, which is why
+this depends on the board rather than on the field.
+</Callout>
+
+## `player` is never a site account
+
+It is whatever the reporting server uses to mean "this player on this server".
+The play backbone hands a server a **per-scope pseudonymous id** precisely so
+operators cannot correlate their players across servers, and a leaderboard
+storing a global id would undo that for every game that adopts it. See
+[Avatars](/learn/api/integration/avatars#the-player-key) for how that key is
+derived.
+
+There is deliberately **no field for linking a score to a site account**. A
+server asserting "this player is that member" is a server that can put anybody's
+name on anybody's score; the only sound way to do it is for the *player* to
+prove the link. Until that runs end to end, these boards are pseudonymous and a
+display name is a display name.
+
+## Reading a board back
+
+<Endpoint method="GET" path="/api/integration/v1/leaderboard/board" auth="Integration" scope="LEADERBOARD_READ">
+A page of one of the credential's own boards, for an in-client HUD.
+</Endpoint>
+
+```
+GET /api/integration/v1/leaderboard/board
+      ?board=fastest
+      &scope=map%3Dsurf_beginner%3Bstyle%3Dnormal%3Btrack%3D0
+      &offset=0&limit=25
+      &player=srv-scoped-pseudonym
+```
+
+`scope` is the canonical `k=v;k=v` string, because a query string cannot carry
+an object — and it is re-sorted server-side all the same, so a caller who writes
+the segments out of order still reaches the board they meant.
+
+```json
+{
+  "ok": true,
+  "board": {
+    "key": "fastest",
+    "scope": "map=surf_beginner;style=normal;track=0",
+    "name": "Fastest time",
+    "kind": "TIME",
+    "decimals": 3,
+    "unit": "",
+    "entries": 412
+  },
+  "rows": [
+    { "rank": 1, "player": "…", "name": "…", "value": 38.204, "setAt": 1735689600, "meta": null }
+  ],
+  "self": { "rank": 37, "player": "…", "name": "…", "value": 42.517, "setAt": 1735689600, "meta": {} }
+}
+```
+
+**Ranks are derived from the ordering, not stored.** A stored rank is wrong the
+moment anybody else scores, and keeping one correct means rewriting every row on
+every submission. `self.rank` is a count of *strictly* better entries plus one,
+so a tie is joint rather than pushing somebody down.
+
+<Callout type="warning" title="Report honestly">
+Everything filed here goes into public rankings, so a reporter that lies is
+manipulating the platform. The same trust boundary — and the same consequences —
+as [reporting a server's own
+statistics](/learn/servers/reporting).
+</Callout>
+
+<Related>
+- [Statistics](/learn/api/integration/stats) — a stat is the fact; a board is a view of it
+- [Integration API](/learn/api/integration)
+- [Rate limits](/learn/api/rate-limits#integrations)
+</Related>
