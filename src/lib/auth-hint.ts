@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react'
 
 /**
  * The non-HttpOnly `tmc_auth` hint cookie that website-city's middleware keeps
- * in sync with the (HttpOnly, unreadable) auth session. Both apps are served
- * from the same domain, so it is directly readable here.
+ * in sync with the (HttpOnly, unreadable) auth session.
+ *
+ * Readable here only if city sets it on the shared PARENT domain — its
+ * middleware does that when `AUTH_COOKIE_DOMAIN` is set, and leaves the cookie
+ * host-only when it is not. On a docs-subdomain deploy that variable is
+ * therefore load-bearing: without it this always returns false, and the docs
+ * offer "Sign In" to a reader who is already signed in.
  *
  * It carries no identity — just a yes/no. That is all this site needs: which
  * account button to show, and whether the signed-in-only nav leaves ("My Mods",

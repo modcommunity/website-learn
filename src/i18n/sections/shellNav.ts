@@ -112,7 +112,7 @@ export const shellNav: NavCatalog = {
             desc: "What we've shipped, newest first",
         },
         docs: {
-            label: 'Documentation',
+            label: 'Docs',
             desc: 'Guides, references and the full API documentation',
         },
         status: {

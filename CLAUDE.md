@@ -72,6 +72,30 @@ two builds cannot collide, and adding a page never needs an nginx change.
 root because they are byte-identical to website-processing's copies and are
 already served from there.
 
+### If the docs get their own origin
+
+The above describes the `/learn`-on-the-main-domain deployment. On a separate
+host (`docs.moddingcommunity.com`) one more thing has to be said out loud,
+because nothing about it is visible until a reader clicks: **the shell's links
+are bare paths.** `nav.tsx` holds `/mods`, not an absolute URL, so the shared
+Header can match them against `activePath` — and a bare path resolves against
+whatever host served the page. On its own origin every entry in the header
+points at a page the docs host does not have.
+
+`PUBLIC_MAIN_URL` is the fix, applied at render time in `i18n/link.tsx` (and in
+the three places that hand-roll an anchor: `AccountButton`, `SiteSidebar`'s
+share card, and the `a` in `components/docs/mdx.tsx` for prose links). Unset it
+and every link goes back to being relative, so a main-domain deploy costs
+nothing.
+
+**`PUBLIC_URL` is not that variable** and setting it instead is the natural
+mistake: it is this build's OWN origin — canonical, hreflang, Open Graph and
+the sitemap — so on a subdomain it is the *docs* host, not the main site.
+
+One thing outside this repo: website-city's `AUTH_COOKIE_DOMAIN` must be set to
+the shared parent domain, or the `tmc_auth` hint cookie stays host-only, and
+`lib/auth-hint.ts` sees a signed-in reader as signed out.
+
 The docs also publish their own sitemap at `/learn/sitemap.xml` — scoped there
 because website-processing owns `/robots.txt` and `/sitemap.xml` at the domain
 root. Reference it from that repo's robots.txt:

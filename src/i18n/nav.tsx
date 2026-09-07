@@ -58,12 +58,12 @@ const STATUS = '/status'
 /*
  * The documentation — THIS site.
  *
- * A deliberate divergence from city's PRIMARY_NAV, which does not have this
- * entry yet: a docs site whose own header offers no way back to the docs is
- * absurd, and `/learn` is served from the same domain as everything else here.
- *
- * When city and website-processing add it, the three configs match again. Until
- * then this is the one place the three navs differ, and it is on purpose.
+ * City and website-processing now carry the same leaf, in the same slot at the
+ * top of Resources and with the same words, so the three menus match. What
+ * differs is the href: they point at `https://docs.moddingcommunity.com`, the
+ * docs' own hostname, and mark the leaf `external`; here it stays the relative
+ * `/learn` this build actually serves, because a docs site should not leave its
+ * own origin to reach itself.
  */
 const DOCS = '/learn'
 

@@ -5,6 +5,7 @@ import {
     FeatureCard,
     type CalloutTone,
 } from '@modcommunity/shared'
+import { isDocsPath, mainUrl } from '../../lib/site'
 
 /**
  * The component vocabulary an `.mdx` documentation page can use.
@@ -285,7 +286,36 @@ function Related({
     )
 }
 
+/**
+ * Plain Markdown links, `[the site](/mods)`.
+ *
+ * The shell's links are absolutized by `localeLink`, but prose links never go
+ * near it — MDX renders them straight to `<a>`. On a docs-subdomain deploy that
+ * left them resolving against the docs origin, so a link out to the app pointed
+ * at a page this host does not serve.
+ *
+ * Docs paths stay relative (they ARE this host), as do anchors and anything
+ * external. On a `/learn`-on-the-main-domain deploy `mainUrl` is a no-op and
+ * this whole component is a pass-through.
+ *
+ * Deliberately NOT localized, matching how prose links behave today: a docs
+ * link written `/learn/api` sends every reader to the English page regardless
+ * of the locale they are reading in. Worth fixing, but separately — it changes
+ * 291 links across the corpus and is not what this component is for.
+ */
+function A({ href, children, ...rest }: { href?: string; children?: ReactNode }) {
+    const external = !href || !href.startsWith('/') || href.startsWith('//')
+    const resolved = external || isDocsPath(href) ? href : mainUrl(href)
+
+    return (
+        <a href={resolved} {...rest}>
+            {children}
+        </a>
+    )
+}
+
 export const MDX_COMPONENTS = {
+    a: A,
     Callout,
     Endpoint,
     Params,

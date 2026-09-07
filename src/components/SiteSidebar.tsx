@@ -3,6 +3,7 @@ import { Sparkles } from 'lucide-react'
 import { getT } from '../i18n/t'
 import { buildVisibleSidebarSections } from '../i18n/nav'
 import { localeLink } from '../i18n/link'
+import { mainUrl } from '../lib/site'
 import { stripLocale, localizeUrl, isLocale, type LocaleT } from '../i18n/config'
 import { useSignedIn } from '../lib/auth-hint'
 
@@ -39,7 +40,10 @@ export default function SiteSidebar({
     const signedIn = useSignedIn()
     const sections = buildVisibleSidebarSections(t, signedIn)
 
-    const shareHref = localizeUrl('/share', lang)
+    // A website-city route, like everything in the rail that is not a doc —
+    // so it needs the main origin, and this anchor is hand-rolled rather than
+    // routed through `localeLink`.
+    const shareHref = mainUrl(localizeUrl('/share', lang))
     const shareTitle = t('rail.share.title')
 
     return (

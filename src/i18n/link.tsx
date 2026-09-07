@@ -1,5 +1,6 @@
 import type { LinkComponent, LinkProps } from '@modcommunity/shared'
 import { isLocale, localizeUrl, type LocaleT } from './config'
+import { isDocsPath, mainUrl } from '../lib/site'
 
 /**
  * Locale-aware link for the shared Header / Sidebar / Footer.
@@ -13,6 +14,12 @@ import { isLocale, localizeUrl, type LocaleT } from './config'
  *
  * website-city uses the same "as-needed" prefixing (English unprefixed, others
  * under `/xx`), so links that leave this site for the app stay in-language too.
+ *
+ * The ORIGIN is applied here for the same reason. On a docs-subdomain deploy
+ * every entry in this shell except the docs themselves belongs to another host,
+ * and a bare `/mods` would resolve against the docs origin — see `mainUrl` in
+ * `lib/site.ts`. Applied at render time rather than in `nav.tsx` so `activePath`
+ * still has bare paths to compare against, exactly like the locale prefix.
  */
 function isInternal(href: string): boolean {
     return href.startsWith('/') && !href.startsWith('//')
@@ -69,9 +76,24 @@ export function localeLink(locale: string): LinkComponent {
     const target: LocaleT = isLocale(locale) ? locale : 'en'
 
     function LocaleLink({ href, target: t, rel, children, ...rest }: LinkProps) {
+        /*
+         * Order matters: localize first (city prefixes locales the same way),
+         * then absolutize. `isDocsPath` is asked about the BARE href because by
+         * the time it is localized a docs link reads `/es/learn/…`.
+         *
+         * `mergeRel` keeps taking the bare href too — the nofollow list is
+         * written in bare paths, and an absolutized `/tos` would stop matching
+         * it and start voting for the terms of service from every page again.
+         */
+        const localized = isInternal(href) ? localizeUrl(href, target) : href
+        const resolved =
+            isInternal(href) && !isDocsPath(href)
+                ? mainUrl(localized)
+                : localized
+
         return (
             <a
-                href={isInternal(href) ? localizeUrl(href, target) : href}
+                href={resolved}
                 target={t}
                 rel={mergeRel(href, rel, t === '_blank')}
                 {...rest}

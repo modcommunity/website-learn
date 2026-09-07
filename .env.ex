@@ -25,7 +25,24 @@ INTERNAL_PORT=3000
 # ---- Build-time site configuration (src/layouts/Layout.astro) --------------
 # All optional. The values shown are the defaults the pages fall back to.
 
-# PUBLIC_URL=https://moddingcommunity.com
+# This build's OWN origin — canonical, hreflang, Open Graph and the sitemap.
+# On a docs-subdomain deploy that is the docs host, not the main site: it
+# describes the pages this build serves, which is what a canonical URL is for.
+# PUBLIC_URL=https://docs.moddingcommunity.com
+
+# The main domain — where website-city (/mods, /servers, /login) and
+# website-processing (/tos, /community) live.
+#
+# The shared header, rail and footer are the SAME chrome all three sites run,
+# and their nav configs hold bare paths (/mods) so the active entry can be
+# highlighted by path match. A bare path resolves against whatever host served
+# the page, which is exactly right when the docs sit at /learn on the main
+# domain — and wrong on their own origin, where every entry in the header would
+# point at a page the docs host does not have.
+#
+# Leave it UNSET for a /learn-on-the-main-domain deploy; the links are already
+# correct there and absolutizing them would only add redirects.
+# PUBLIC_MAIN_URL=https://moddingcommunity.com
 # PUBLIC_TITLE=The Modding Community Docs
 # PUBLIC_TITLE_MAIN=Documentation - The Modding Community
 # PUBLIC_DESCRIPTION=

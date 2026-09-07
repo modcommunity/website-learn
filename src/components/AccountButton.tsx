@@ -1,11 +1,16 @@
 import { Button } from '@modcommunity/shared'
 import { isLocale, localizeUrl, type LocaleT } from '../i18n/config'
+import { mainUrl } from '../lib/site'
 import { useSignedIn } from '../lib/auth-hint'
 
 /**
- * Header account action for the landing site: "Sign In" (→ website-city login)
- * for signed-out visitors, "My Account" (→ /account) for signed-in ones. Both
- * routes live on website-city, served under the same domain.
+ * Header account action for the docs site: "Sign In" (→ website-city login)
+ * for signed-out visitors, "My Account" (→ /account) for signed-in ones.
+ *
+ * Both routes live on website-city, so both go through `mainUrl` — this
+ * component builds its own anchor rather than going through `localeLink`, so it
+ * would otherwise be the one link in the header still pointing at the docs
+ * origin once the rest were absolutized.
  */
 export default function AccountButton({
     signInLabel = 'Sign In',
@@ -29,7 +34,7 @@ export default function AccountButton({
 
     return (
         <a
-            href={localizeUrl(signedIn ? '/account' : '/login', lang)}
+            href={mainUrl(localizeUrl(signedIn ? '/account' : '/login', lang))}
             className={className}
         >
             <Button btnType="special">
