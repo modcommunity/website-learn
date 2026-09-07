@@ -10,7 +10,7 @@ import {
     Search,
     Compass,
     Users,
-    UsersRound,
+    Network,
     NotebookPen,
     FolderKey,
     Package,
@@ -20,6 +20,8 @@ import {
     Group,
     Puzzle,
     Activity,
+    Joystick,
+    Trophy,
     FolderTree,
     MessageSquare,
     MessagesSquare,
@@ -76,7 +78,7 @@ const DOCS = '/learn'
  * under Explore, everywhere the community talks to us under Community, what we
  * publish back at them under Resources, and the Blog on its own. Resources is
  * hrefless (a dropdown-only trigger) because it has no page of its own; Explore
- * has none either, so it points at the app browser, exactly as city's does.
+ * points at `/explore`, city's editorial front across every content type.
  *
  * The pillars no longer carry their sidebar section as a dropdown — city
  * dropped that, so the per-pillar Add / Browse / My X routes are reached from
@@ -85,19 +87,33 @@ const DOCS = '/learn'
  * shapes the RAIL (see `buildVisibleSidebarSections`), just not this.
  *
  * If city's PRIMARY_NAV changes, change this with it — that config is the
- * source of truth.
+ * source of truth. That includes the ORDER of the pillars, which had drifted:
+ * this menu led with mods and put collections ahead of communities, so the front
+ * page's own index of the same destinations was numbered differently from the
+ * menu above it.
  */
 export function buildNav(t: TFunc): NavItem[] {
     return [
         {
-            // City has no `/explore` page and inventing one would duplicate the
-            // landing pages this menu already points at, so the pillar links at
-            // the app browser — as city's does.
+            // `/explore` is city's editorial front over every content type at
+            // once. This pillar used to point at the app browser, on the
+            // grounds that a page called Explore would only duplicate the
+            // landing pages in the menu below; city has since built one that
+            // does not — it is a curated look ACROSS the types each leaf here
+            // covers one of.
             label: t('nav.explore.label'),
-            href: '/apps/browse',
+            href: '/explore',
             icon: Compass,
             desc: t('nav.explore.desc'),
             children: [
+                {
+                    // The pillar's own destination, repeated as a leaf: a hover
+                    // menu hides the fact that the heading is itself a link.
+                    label: t('nav.explore.label'),
+                    href: '/explore',
+                    icon: Compass,
+                    desc: t('nav.explore.desc'),
+                },
                 {
                     label: t('nav.apps.label'),
                     href: '/apps',
@@ -158,7 +174,7 @@ export function buildNav(t: TFunc): NavItem[] {
                 {
                     label: t('nav.groups.label'),
                     href: '/groups',
-                    icon: UsersRound,
+                    icon: Network,
                     desc: t('nav.groups.desc'),
                 },
             ],
@@ -170,6 +186,16 @@ export function buildNav(t: TFunc): NavItem[] {
             icon: Users,
             desc: t('nav.community.desc'),
             children: [
+                {
+                    // The merged feed. It sits here rather than under Explore
+                    // because it is a record of what MEMBERS are doing and
+                    // saying, which is what every other leaf in this menu is
+                    // too — Explore is the catalogue, this is the conversation.
+                    label: t('nav.feed.label'),
+                    href: '/feed',
+                    icon: Compass,
+                    desc: t('nav.feed.desc'),
+                },
                 {
                     label: t('nav.discord.label'),
                     href: DISCORD,
@@ -256,10 +282,12 @@ export function buildNav(t: TFunc): NavItem[] {
             ],
         },
         {
-            // The blog lives on this site, so it keeps the trailing slash
-            // Astro's directory output serves it under.
+            // City's `BLOG_URL`. There is no `/blog` route in THIS repo — the
+            // blog is a website-city page, and city's Next.js build serves it
+            // without a trailing slash, so a `/blog/` here would only earn a
+            // 308 on every click.
             label: t('nav.blog.label'),
-            href: '/blog/',
+            href: '/blog',
             icon: NotebookPen,
             desc: t('nav.blog.desc'),
         },
@@ -312,9 +340,9 @@ export function buildFooterColumns(t: TFunc): FooterColumn[] {
                     href: DISCORD,
                     external: true,
                 },
-                // The blog lives on this site, so it keeps the trailing slash
-                // Astro's directory output serves it under.
-                { label: t('footer.links.blog'), href: '/blog/' },
+                // City's `BLOG_URL` — a website-city page served without a
+                // trailing slash. See the header entry above.
+                { label: t('footer.links.blog'), href: '/blog' },
                 {
                     label: t('footer.links.activity'),
                     href: '/community/activity',
@@ -341,6 +369,8 @@ export function buildFooterColumns(t: TFunc): FooterColumn[] {
              */
             heading: t('footer.headings.resources'),
             links: [
+                // The documentation. Same divergence from city as the header
+                // entry above, and first here for the same reason.
                 { label: t('footer.links.docs'), href: DOCS },
                 { label: t('footer.links.changelog'), href: CHANGELOG },
                 { label: t('footer.links.roadmap'), href: ROADMAP },
@@ -530,6 +560,14 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
                     icon: Map,
                     desc: t('rail.pillars.servers.maps'),
                 },
+                // Same reasoning as Maps: one leaf, pointing at the landing,
+                // which carries its own browse button.
+                {
+                    label: t('rail.items.players'),
+                    href: '/servers/players',
+                    icon: Users,
+                    desc: t('rail.pillars.servers.players'),
+                },
                 // The forum's Knowledgebase leaf used to sit here, and is
                 // gone from city's rail too until the FAQ section replacing it
                 // exists.
@@ -539,6 +577,42 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
                     icon: User,
                     desc: t('rail.pillars.servers.mine'),
                     requiresAuth: true,
+                },
+            ],
+        },
+        {
+            /*
+             * The play center. Sits ABOVE Parties on purpose, as it does in
+             * city: a party is something you organise, and this is something
+             * you press — somebody arriving to play should reach the shorter
+             * path first.
+             */
+            label: t('rail.sections.play'),
+            icon: Joystick,
+            items: [
+                {
+                    label: t('rail.items.playCenter'),
+                    href: '/play',
+                    icon: Joystick,
+                    desc: t('rail.pillars.play.center'),
+                },
+                {
+                    label: t('rail.items.playGames'),
+                    href: '/play/?tab=games',
+                    icon: Gamepad2,
+                    desc: t('rail.pillars.play.games'),
+                },
+                {
+                    label: t('rail.items.playServers'),
+                    href: '/play/?tab=servers',
+                    icon: Server,
+                    desc: t('rail.pillars.play.servers'),
+                },
+                {
+                    label: t('rail.items.playLobbies'),
+                    href: '/play/?tab=lobbies',
+                    icon: Users,
+                    desc: t('rail.pillars.play.lobbies'),
                 },
             ],
         },
@@ -622,11 +696,11 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
                     href: '/articles',
                     icon: Compass,
                 },
-                // The blog lives on this site, so it keeps the trailing slash
-                // Astro's directory output serves it under.
+                // City's `BLOG_URL` — a website-city page served without a
+                // trailing slash. See the header entry above.
                 {
                     label: t('rail.items.blog'),
-                    href: '/blog/',
+                    href: '/blog',
                     icon: NotebookPen,
                 },
                 {
@@ -749,6 +823,14 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
                     label: t('rail.items.users'),
                     href: '/community/browse',
                     icon: Users,
+                },
+                {
+                    // Under Community rather than under any one content type:
+                    // the page ranks members AND every kind of content at once,
+                    // and the half a reader comes for is usually the people.
+                    label: t('rail.items.leaderboard'),
+                    href: '/leaderboard',
+                    icon: Trophy,
                 },
                 {
                     label: t('rail.items.media'),

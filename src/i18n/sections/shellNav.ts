@@ -29,7 +29,7 @@ export const shellNav: NavCatalog = {
         more: 'More',
         explore: {
             label: 'Explore',
-            desc: 'Everything the community has published',
+            desc: 'Everything the community has published, in one place',
         },
         apps: {
             label: 'Apps',
@@ -70,6 +70,10 @@ export const shellNav: NavCatalog = {
         groups: {
             label: 'Groups',
             desc: 'Teams and organizations on the site',
+        },
+        feed: {
+            label: 'Feed',
+            desc: 'What people are making, posting and playing right now',
         },
         community: {
             label: 'Community',
@@ -165,6 +169,10 @@ export const shellNav: NavCatalog = {
         groups: {
             label: 'Grupos',
             desc: 'Equipos y organizaciones del sitio',
+        },
+        feed: {
+            label: 'Feed',
+            desc: 'Lo que la gente está creando, publicando y jugando ahora mismo',
         },
         community: {
             label: 'Comunidad',
@@ -264,6 +272,10 @@ export const shellNav: NavCatalog = {
             label: 'Groupes',
             desc: 'Équipes et organisations du site',
         },
+        feed: {
+            label: 'Flux',
+            desc: 'Ce que les gens créent, publient et jouent en ce moment',
+        },
         community: {
             label: 'Communauté',
             desc: 'Les nouveautés de la communauté',
@@ -359,6 +371,10 @@ export const shellNav: NavCatalog = {
         groups: {
             label: 'Gruppen',
             desc: 'Teams und Organisationen auf der Seite',
+        },
+        feed: {
+            label: 'Feed',
+            desc: 'Was die Leute gerade erstellen, posten und spielen',
         },
         community: {
             label: 'Community',
@@ -458,6 +474,10 @@ export const shellNav: NavCatalog = {
             label: 'Группы',
             desc: 'Команды и организации на сайте',
         },
+        feed: {
+            label: 'Лента',
+            desc: 'Что люди создают, публикуют и во что играют прямо сейчас',
+        },
         community: {
             label: 'Сообщество',
             desc: 'Что нового в сообществе',
@@ -555,6 +575,10 @@ export const shellNav: NavCatalog = {
             label: 'Groepen',
             desc: 'Teams en organisaties op de site',
         },
+        feed: {
+            label: 'Feed',
+            desc: 'Wat mensen nu maken, posten en spelen',
+        },
         community: {
             label: 'Community',
             desc: 'Wat er nieuw is in de community',
@@ -649,6 +673,10 @@ export const shellNav: NavCatalog = {
         groups: {
             label: 'グループ',
             desc: 'サイト上のチームや団体',
+        },
+        feed: {
+            label: 'フィード',
+            desc: 'いま誰が何を作り、投稿し、遊んでいるか',
         },
         community: {
             label: 'コミュニティ',
@@ -745,6 +773,10 @@ export const shellNav: NavCatalog = {
             label: '群组',
             desc: '站点上的团队与组织',
         },
+        feed: {
+            label: '动态',
+            desc: '此刻大家正在创作、发布和游玩的内容',
+        },
         community: {
             label: '社区',
             desc: '社区的最新动态',
@@ -839,6 +871,10 @@ export const shellNav: NavCatalog = {
         groups: {
             label: 'Grupos',
             desc: 'Equipes e organizações do site',
+        },
+        feed: {
+            label: 'Feed',
+            desc: 'O que as pessoas estão a criar, publicar e jogar agora mesmo',
         },
         community: {
             label: 'Comunidade',
