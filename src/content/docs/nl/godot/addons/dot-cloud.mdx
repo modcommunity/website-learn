@@ -1,0 +1,142 @@
+---
+title: dot-cloud
+description: Contentlevering tijdens het draaien voor Godot — ondertekende manifesten, een op inhoud geadresseerde cache, hervatbare parallelle downloads en aankoppelen onder een naamruimte per versie, ook in de browser.
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "download"
+  - "manifest"
+  - "pck"
+  - "resourcepakket"
+  - "aankoppelen"
+  - "cache"
+  - "handtekening"
+  - "DLC"
+  - "patchen"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+Een server geeft een client een manifest; de client downloadt wat hij mist,
+verifieert het en koppelt het aan — op Windows, macOS, Linux, Android, iOS en in
+de browser.
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+Publiceren gaat via een headless CLI die een **statische map** oplevert — een
+`manifest.json` plus een `objects/`-boom — die elke webserver of CDN zonder
+configuratie serveert:
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## De twee beperkingen die alles hebben gevormd
+
+**Godot kan een resourcepakket niet afkoppelen.** Niet langzaam, niet met een
+truc — de API bestaat niet. Daarom krijgt elke contentset zijn eigen
+geversioneerde pad, `res://<root>/<content_id>/<version>/`, en hoeft er nooit iets
+vervangen te worden. "Ontladen" betekent verwijzingen loslaten, niet de
+bestandstabel terugwinnen. Dat ene feit is waarom het wisselen van game tijdens
+het draaien überhaupt werkt.
+
+**Niet-ondertekende content is remote code execution.** Een Godot-pakket kan
+scripts bevatten, dus een manifest bepaalt wat er wordt uitgevoerd.
+`require_signed_manifests` staat standaard aan en de configuratie weigert te
+valideren zonder vertrouwde sleutel. Je kunt het uitzetten voor een LAN of een
+eigen server; hij waarschuwt elke keer.
+
+## Wat het doet
+
+- **Op inhoud geadresseerde cache.** Bestanden staan onder hun SHA-256, dus twee
+  games die een asset delen downloaden het één keer, en opnieuw publiceren haalt
+  alleen op wat veranderd is.
+- **Hervatbare parallelle downloads.** Omschakelen tussen mirrors, hervatten via
+  HTTP-ranges, een circuit breaker per bron, bandbreedtebeperking, en eerlijke
+  voortgang en resttijd.
+- **Drie bronnen.** HTTP/CDN, een lokale map (ontwikkeling, LAN, meegeleverde
+  content), en in-band via de gameverbinding voor een server zonder webhosting.
+- **Quotabewustzijn.** Opslagschattingen van de browser, mobiele plafonds, en
+  least-recently-used-verdringing die nooit content verdringt die in gebruik is.
+
+## Waar een game aansluit
+
+<Params>
+  <Param name="Subklasse van DotCloudSource">
+    `source_name()`, `is_supported()`, `can_serve(manifest)`, `fetch(...)`. Er
+    worden er drie meegeleverd — `DotCloudSourceHttp`, `DotCloudSourceLocal`,
+    `DotCloudSourceNetchan` — en de vierde is van jou: een torrent, een
+    platformspecifiek CDN, een generator van ondertekende S3-URL's.
+
+    Een `fetch` **moet** naar `DotCloudStore.partial_path` voor de hash van het
+    bestand schrijven, waar mogelijk hervatten vanaf `partial_size`, en afronden
+    via `commit_partial`. Dat is de enige plek waar de hash wordt geverifieerd, en
+    direct in de objectenmap schrijven is precies hoe ongeverifieerde content
+    aangekoppeld raakt.
+  </Param>
+  <Param name="can_serve() tegenover is_supported()">
+    Het onderscheid verdient zijn plek. Een bron kan volstrekt gezond zijn en toch
+    geen manier hebben om *dit* manifest te bereiken — een HTTP-bron zonder
+    `base_urls` tegenover een manifest zonder mirrors. Een mislukking teruggeven
+    uit `can_serve` betekent "sla me over voor dit manifest, en dit is waarom", en
+    telt **niet** mee voor de circuit breaker.
+  </Param>
+  <Param name="priority" type="int">
+    Op elke bron. Lager gaat eerst; de in-band terugval staat bewust achteraan.
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
+    `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
+    `verify_before_mount`, `resume_downloads`. Gelaagd zoals elke `DotConfig`.
+  </Param>
+  <Param name="Signalen">
+    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
+    `content_ready`, `content_released`, `failed`.
+  </Param>
+</Params>
+
+## De contentinterface die andere add-ons verwachten
+
+Registreer een `DotCloudClient` en hij publiceert zichzelf onder
+`dot_cloud_client`. De lader van `dot-map` en de gamewissel van `dot-server`
+bereiken hem via die naam en roepen aan:
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="Een afwezige cloudclient is een legitieme configuratie">
+Elke aanroepplek behandelt "geen `dot_cloud_client`" als "deze uitrol levert zijn
+content mee in de build" — wat voor de meeste ervan klopt, en dus niet te
+onderscheiden is van een client die zich niet heeft geregistreerd. Als een
+geleverde map of game stilletjes niets doet, kijk dan eerst in de registry.
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) — maps als content
+- [`dot-server`](/learn/godot/addons/dot-server) — van game wisselen met spelers erop
+- [Conventies](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

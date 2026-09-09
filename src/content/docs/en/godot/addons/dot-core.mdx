@@ -1,0 +1,134 @@
+---
+title: dot-core
+description: The shared foundation for every Dot addon — results, capability detection, node references, layered configuration, frame-budgeted jobs, swappable transports, HTTP and logging.
+navTitle: dot-core
+order: 10
+keywords:
+  - "DotResult"
+  - "DotError"
+  - "DotPlatform"
+  - "DotNodeRef"
+  - "DotConfig"
+  - "DotScheduler"
+  - "DotTransport"
+  - "DotHttp"
+  - "DotRegistry"
+  - "foundation"
+source:
+  - ../game-dev/godot/dot-core/README.md
+  - ../game-dev/godot/dot-core/CLAUDE.md
+---
+
+The common layer under everything else, and **the only hard dependency in the
+collection**. It targets desktop, mobile and the browser from one codebase, and
+encodes the browser's limitations rather than pretending they do not exist.
+
+```bash
+cp -r dot-core/addons/dot_core my-game/addons/
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+## What is in it
+
+| | |
+| --- | --- |
+| `DotResult` / `DotError` | The return type of everything fallible. Stable `CODE_*` values callers branch on; reading `.value` on a failure errors instead of handing back a default. |
+| `DotPlatform` | Cached capability detection — threads, UDP, listening, pack mounting, storage family, unique id. Ask about capabilities, not platform names. |
+| `DotNodeRef` | An inspector-editable description of *which node*: relative, absolute, group, registry, ancestor or descendant by type, or create-if-missing. |
+| `DotConfig` | Layered configuration: exported defaults < file < environment < command line, with reflective key discovery and secret-key protection. |
+| `DotRegistry` / `DotRegistryBus` | Name-based lookup, and the signals a static class cannot declare. |
+| `DotScheduler` / `DotJob` | Long work in slices. Worker threads where available, a per-frame time budget where not. |
+| `DotTransport` | Swappable multiplayer transport. `DotTransportAuto` picks between WebSocket and ENet, and logs why. |
+| `DotHttp` | An `HTTPRequest`-based client with retries, jittered backoff, `Retry-After`, range-resumed downloads and connection pooling. |
+| `DotLog` / `DotLogBus` / `DotLogSink` | Levelled, channelled logging with structured fields, rotating files and UDP forwarding. |
+| `DotPaths` | Path sanitisation that *refuses* traversal rather than cleaning it, atomic writes, and web filesystem flushing. |
+| `DotHash` / `DotHashJob` | SHA-256, HMAC, constant-time comparison, base64url, CSPRNG tokens. |
+| `DotRateLimiter` | A token bucket, used on every path a client can drive. |
+| `DotSemVer` | Version comparison, for content and engine minimums. |
+| `DotWeb` | The browser-only calls: filesystem sync, secure-context detection, storage estimates. |
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotTransport subclass">
+    `_create_server`, `_create_client`, `_transport_name`, `_is_available`,
+    `supports_web_clients`, `scheme`. Availability is checked *before* use, so
+    an unusable transport fails at boot with a reason rather than as a null peer
+    three calls later.
+  </Param>
+  <Param name="DotJob subclass">
+    `_step` (a bounded slice; return true if more remains), `_progress`,
+    `_setup`, `_teardown`, `is_thread_safe`. Hash a chunk, not a file — the
+    scheduler can stop calling `_step`, but it cannot interrupt one.
+  </Param>
+  <Param name="DotConfig subclass">
+    `env_prefix()`, `cli_prefix()`, `sensitive_keys()`, `validate()`. Declare
+    `@export` properties and the layering, the reflection and the settings
+    screen all follow.
+  </Param>
+  <Param name="DotLogSink, or DotLog.add_sink(callable)">
+    Where records go. The `Callable` form is one line; the class handles files,
+    rotation and forwarding.
+  </Param>
+  <Param name="DotNodeRef on every component">
+    The collection-wide answer to "which node". Every addon's node exports at
+    least one.
+  </Param>
+</Params>
+
+## `DotResult` is not optional politeness
+
+```gdscript
+var res := await cloud.acquire(url)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        retry_after(res.error.retry_after)
+    return
+var scene_path: String = res.value
+```
+
+Branch on `DotError.CODE_*`; never on the message. `res.wrap(...)` adds context
+without discarding the cause, so a failure three layers down still says what it
+was doing at each level.
+
+## `DotScheduler` and the browser
+
+`DotScheduler` runs jobs on worker threads where the build has them and slices
+them on the main thread inside a frame budget where it does not — because a web
+export has no threads unless the template was built for them, and
+`DotPlatform.has_threads()` is the question to ask rather than
+`OS.get_name()`.
+
+<Callout type="warning" title="A job's `finished` signal is always delivered on the main thread">
+It was not, once: `await` resumed on a worker thread and the next line touched
+the scene tree off-thread. `_teardown` runs on whichever thread settled the job
+and is for thread-safe APIs only; anything touching the tree belongs in a
+`finished` handler.
+</Callout>
+
+## Transports
+
+`DotTransportAuto` is the default and picks for you. The choice is not a
+preference:
+
+- **A browser has no UDP**, and `ENetMultiplayerPeer` is absent from the web
+  template — so `DotTransportENet` reaches ENet through `ClassDB.instantiate`
+  and `Object.call`, never by name. A script that so much as *mentions* the
+  identifier fails to compile on a web export.
+- **One listening socket speaks one protocol.** A server that wants browser
+  clients listens on WebSocket, and then *all* its clients do.
+  `require_web_clients` defaults to `true` for that reason.
+
+<Callout type="info" title="`DotWeb.is_secure_context()` is not &quot;the page is HTTPS&quot;">
+A browser treats `http://localhost` and `http://127.0.0.1` as trustworthy
+origins, so it is true on a plain HTTP page — while mixed-content blocking, the
+rule that actually decides whether `ws://` is allowed, exempts exactly those
+origins. Upgrading on the wrong question is why nothing here had ever loaded in
+a browser.
+</Callout>
+
+<Related>
+- [Conventions](/learn/godot/conventions) — most of this page as rules
+- [Extension points](/learn/godot/extending)
+- [`dot-cloud`](/learn/godot/addons/dot-cloud), [`dot-net`](/learn/godot/addons/dot-net)
+</Related>

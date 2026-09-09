@@ -47,6 +47,22 @@ export const en = {
         select: 'Select a language',
         current: 'Language: {name}',
     },
+    /*
+     * The bottom-right launcher block — Play beside Chat. Ported from
+     * website-city's `chat.widget.*`, whose block this one mirrors, and carried
+     * here and in website-processing so the control sits in the same corner
+     * whichever of the three shells a reader is on.
+     *
+     * `play` stays English in every locale on purpose: city carries
+     * `widget.playAria` in English alone, and its request pipeline merges
+     * English under every locale, so translating it on this side alone would
+     * make the same button read DIFFERENTLY from the app's. `chat` is city's
+     * `widget.aria`, which IS translated there.
+     */
+    dock: {
+        play: 'Open the play center',
+        chat: 'Open chats',
+    },
 }
 
 export type Messages = typeof en
@@ -73,6 +89,7 @@ const es: DeepPartial<Messages> = {
         toDark: 'Cambiar al modo oscuro',
     },
     picker: { select: 'Selecciona un idioma', current: 'Idioma: {name}' },
+    dock: { play: 'Open the play center', chat: 'Abrir los chats' },
 }
 
 const fr: DeepPartial<Messages> = {
@@ -96,6 +113,7 @@ const fr: DeepPartial<Messages> = {
         select: 'Sélectionner une langue',
         current: 'Langue : {name}',
     },
+    dock: { play: 'Open the play center', chat: 'Ouvrir les discussions' },
 }
 
 const de: DeepPartial<Messages> = {
@@ -119,6 +137,7 @@ const de: DeepPartial<Messages> = {
         select: 'Sprache auswählen',
         current: 'Sprache: {name}',
     },
+    dock: { play: 'Open the play center', chat: 'Chats öffnen' },
 }
 
 const ru: DeepPartial<Messages> = {
@@ -139,6 +158,7 @@ const ru: DeepPartial<Messages> = {
         toDark: 'Переключить на тёмную тему',
     },
     picker: { select: 'Выберите язык', current: 'Язык: {name}' },
+    dock: { play: 'Open the play center', chat: 'Открыть чаты' },
 }
 
 const nl: DeepPartial<Messages> = {
@@ -159,6 +179,7 @@ const nl: DeepPartial<Messages> = {
         toDark: 'Overschakelen naar donkere modus',
     },
     picker: { select: 'Kies een taal', current: 'Taal: {name}' },
+    dock: { play: 'Open the play center', chat: 'Chats openen' },
 }
 
 const ja: DeepPartial<Messages> = {
@@ -179,6 +200,7 @@ const ja: DeepPartial<Messages> = {
         toDark: 'ダークモードに切り替え',
     },
     picker: { select: '言語を選択', current: '言語: {name}' },
+    dock: { play: 'Open the play center', chat: 'チャットを開く' },
 }
 
 const zh: DeepPartial<Messages> = {
@@ -199,6 +221,7 @@ const zh: DeepPartial<Messages> = {
         toDark: '切换到深色模式',
     },
     picker: { select: '选择语言', current: '语言：{name}' },
+    dock: { play: 'Open the play center', chat: '打开聊天' },
 }
 
 const pt: DeepPartial<Messages> = {
@@ -219,6 +242,7 @@ const pt: DeepPartial<Messages> = {
         toDark: 'Mudar para o modo escuro',
     },
     picker: { select: 'Selecione um idioma', current: 'Idioma: {name}' },
+    dock: { play: 'Open the play center', chat: 'Abrir conversas' },
 }
 
 const SHELL: Record<LocaleT, DeepPartial<Messages>> = {

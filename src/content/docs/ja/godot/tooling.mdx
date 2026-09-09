@@ -1,0 +1,149 @@
+---
+title: ツール
+description: dot-server の仕組みを知らなくてもサーバーを起動できるシェルランチャー dotserve と、TMC のサーバーツール。YAML 設定、ディレクトリーから読み込むゲーム、そしてブラウザークライアント。
+navTitle: ツール
+order: 60
+keywords:
+  - "dotserve"
+  - "ランチャー"
+  - "server.cfg"
+  - "systemd"
+  - "docker"
+  - "YAML"
+  - "ホスティング"
+  - "ブラウザークライアント"
+  - "web エクスポート"
+source:
+  - ../game-dev/godot/dot-serve/README.md
+  - ../game-dev/godot/dot-server-setup-test/README.md
+---
+
+[`dot-server`](/learn/godot/addons/dot-server) は非常に細かく設定できます。cvar、
+フラグ、`server.cfg`、`autoexec.cfg`、`+command` 引数、RCON、そしてファイル・
+環境変数・argv からの階層化設定。足りなかったのは玄関でした。これがその呼び鈴です。
+
+## `dotserve`
+
+コレクションの中で唯一、Godot アドオンでないもの。`bash` と Godot 4.7 以降の
+バイナリーが必要なシェルスクリプトです。
+
+```bash
+./install.sh                 # ~/.local/bin にシンボリックリンクを張る
+PREFIX=/usr/local/bin sudo ./install.sh
+```
+
+```bash
+dotserve                            # 妥当な既定値で起動し、参加用アドレスを表示
+dotserve --game res://games/arena   # 特定のゲームを指定
+dotserve --port 27015 --web         # ブラウザークライアントも待ち受ける
+dotserve --restart                  # クラッシュ後に復帰する
+dotserve -- +sv_cheats 1 +map dm_arena
+```
+
+初回起動時に `~/.config/dotserve` へコメント付きの `server.cfg` を書き、RCON の
+パスワードを生成して 1 度だけ表示します。それ以降の起動はそのファイルを読むだけで、
+決して書き換えません。
+
+### 省略されがちだけれど大事なこと
+
+**友達に貼って渡せるアドレスを表示します。** LAN のアドレスも含めてです。
+「起動したと言っているのに友達がつながらない」の原因はたいていバインドアドレスか
+ファイアウォールで、まず助けになるのは「サーバーが実際にどのアドレスにいるか」を
+知ることだからです。
+
+**推測できる RCON パスワードでは起動を拒否します。** 空なら問題なく、その場合は
+RCON のリスナー自体が開きません。拒否されるのは、そのまま出荷されてしまった
+プレースホルダー、フォーラムからコピーしたもの、テンプレートに残ったままのもの
+です。
+
+**RCON のパスワードがコマンドラインに載ることはありません。** `server.cfg` は
+中身を書き込む前にモード 600 で作られます。argv と環境変数はマシン上の他の
+プロセスから読め、どちらも貼り付けられたバグ報告に紛れ込みます。
+`DotConfig.sensitive_keys` がそれらを拒否するのと同じ理由です。
+
+**あなたの `server.cfg` を上書きすることはありません。** あなたの編集内容こそが
+サーバーの設定です。
+
+### 知っておくとよいオプション
+
+| | |
+| --- | --- |
+| `--dry-run` | 実行するはずのコマンドを表示して終了します。 |
+| `--print-config` | 解決後の設定を表示して終了します。 |
+| `--install-service [名前]` | この呼び出し用の systemd ユニットを表示します。 |
+| `--restart` | クラッシュ後に再起動します。指数バックオフで最大 60 秒まで。 |
+| `--web` / `--ws-port N` | ブラウザークライアントも待ち受けます。既定は `--port` + 1。 |
+
+終了コードには意味があり、監視プロセスが設定ミスとクラッシュを区別できます。
+`2` 使い方の誤り、`3` Godot が無い、`4` プロジェクトが無い、`5` 設定が不正、
+`6` ポート使用中。生成される systemd ユニットはそれらすべてを
+`RestartPreventExitStatus` に列挙します。
+
+## TMC のサーバーツール
+
+`dot-server-setup-test` は、このコレクションがサーバー運営者の「コマンド 1 つで
+起動できるもの」にまとまる場所です。`dot-server` を起動し、設定を `cfg/*.yml` から
+読み、`content/` からゲームを読み込み、ブラウザークライアントを配信する Godot
+プロジェクトで、**自前のゲームは 1 本も持ちません**。
+
+```bash
+./setup.sh              # ランタイムを探し、アドオンを配線し、./server を書き出す
+./server                # 起動する
+
+docker compose up -d    # またはコンテナーで同じことを
+```
+
+Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `server.cmd`。
+
+### 運営者に与えるもの
+
+- **起動はコマンド 1 つ。** `setup.sh` が Godot ランタイムを探し、アドオンを配線し、
+  コメント付きの `cfg/` と `./server` を書き出します。すでにある設定ファイルを
+  上書きすることは決してありません。RCON は無効の状態で出荷されます。
+- **設定は YAML**、テーマごとに分割されています。`server.yml`、`net.yml`、
+  `rcon.yml`、`auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`。
+  `dot-server` がコンソール変数として公開しているものは、すべてそのままの名前で
+  書けます。
+- **フラグではなくロール。** dot-server の権限モデルは意図的にフラグですが、
+  `groups.yml` がその翻訳です。運営者は `admin: [kick, ban, mute]` と書き、
+  プレイヤーにはフラグが付きます。
+- **ゲームは実行時に読み込まれます。** `content/` の下にある `game.yml` を含む
+  ディレクトリーが 1 本のゲームで、`changelevel` はプレイヤーを接続したまま
+  切り替えます。
+- **次に何を遊ぶかはプレイヤーが決めます。** `content/` のゲームに対して
+  `!nominate`、`!rtv`、`!votefor`、`!timeleft`、`!nextmap`。
+  [`dot-vote`](/learn/godot/addons/dot-vote) 経由です。各ゲームは自分の
+  `game.yml` に自分の時間制限を持ちます。
+- **ブラウザークライアント。** `./server export-web` でビルドします。アドレスは
+  `?server=` から来るので、1 回のエクスポートですべてのサーバーに使えます。
+
+### 構成と、3 つに分かれている理由
+
+```
+cfg/       運営者が編集するもの
+content/   サーバーが配信するもの
+data/      サーバーが書き込むもの — from_yaml.cfg、admins.json、bans.json、audit.jsonl
+host/      起動処理: YAML -> DotServer
+client/    クライアントの外枠。どのゲームのことも知りません
+web/       ブラウザー用ビルドと、URL から ?server= を読むページ
+```
+
+コンテナーは最初の 2 つを読み取り専用で、3 つ目を読み書き可でマウントし、systemd
+ユニットは `ReadWritePaths` をちょうど 1 つのディレクトリーに向けます。
+
+<Callout type="info" title="`data/from_yaml.cfg` はあなたの YAML が変換された結果です">
+設定が無視されているように見えたら、これを読んでください。YAML は
+**dot-server 自身の語彙の上にかぶせた表層**であって、第 2 の語彙ではありません。
+このファイルがその翻訳結果です。
+</Callout>
+
+ここは、3 本のゲームが 1 つのビルドにコンパイルされ、プレイヤーが接続したまま
+切り替えられる唯一の場所であり、このコレクションの何かが初めてブラウザーで
+読み込まれた場所でもあります。
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [`dot-vote`](/learn/godot/addons/dot-vote)
+- [リファレンスゲーム](/learn/godot/games)
+- [サイトにサーバーを掲載する](/learn/servers/listing)
+</Related>

@@ -1,0 +1,155 @@
+---
+title: Installeren
+description: Kopieer een add-onmap, vink een plug-in aan en draai de controle in twee stappen — plus de engineversie, de links voor lokaal werk en waarom er één repository per asset is.
+order: 10
+keywords:
+  - "installeren"
+  - "installatie"
+  - "opzetten"
+  - "plug-in"
+  - "symlink"
+  - "klonen"
+  - "4.7.2"
+  - "headless"
+  - "--import"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Elke add-on installeert op dezelfde manier, en het antwoord is bewust saai:
+**kopieer een map**.
+
+## Een add-on installeren
+
+```bash
+# dot-core is voor alles nodig. Kopieer die eerst.
+cp -r dot-core/addons/dot_core       mijn-game/addons/
+cp -r dot-timer/addons/dot_timer     mijn-game/addons/
+```
+
+Zet ze daarna elk aan onder *Project → Projectinstellingen → Plug-ins*.
+
+<Callout type="info" title="De plug-inschakelaar registreert alleen inspectortypes">
+Elke klasse is via zijn `class_name` beschikbaar, of de plug-in nu aanstaat of
+niet. Aanzetten zorgt dat de resources in het dialoogvenster *Resource maken*
+staan en de knooppunten in *Node toevoegen*.
+</Callout>
+
+**Wat een add-on uitlevert is zijn map `addons/<naam>/` en verder niets.** Alles
+daarbuiten in de repository — `project.godot`, `examples/`, `fixtures/`,
+`icon.svg` — bestaat zodat de add-on los geopend en gecontroleerd kan worden, en
+wordt niet naar het gebruikende project gekopieerd.
+
+## Vereist Godot 4.7 of nieuwer
+
+De collectie is op 4.4 gebouwd en mikt nu op **4.7.2**. Elke `project.godot`
+declareert `config/features=PackedStringArray("4.7")`,
+[`dotserve`](/learn/godot/tooling) en de `setup.sh` van de servertool weigeren
+allebei iets ouders, en de container pint `4.7.2-stable` vast met de checksum.
+
+De overstap kostte in GDScript niets: elke gedocumenteerde breuk in 4.5, 4.6 en
+4.7 — `JSONRPC.set_scope`, `Node.get_rpc_config`, de verwijderde
+interpolatiemethoden van `RenderingServer`,
+`AudioEffectSpectrumAnalyzer.tap_back_pos`, de OpenXR- en
+TextServerExtension-signaturen — komt in deze repositories nergens voor.
+
+## Eén repository per asset
+
+**Elke asset is een eigen Git-repository en wordt afzonderlijk gekloond.** Er is
+geen bovenliggende repository, dus de hele collectie in één keer klonen kan
+niet.
+
+```bash
+git clone https://github.com/modcommunity/dot-core
+git clone https://github.com/modcommunity/dot-timer
+```
+
+Dat volgt uit hoe ze gebruikt worden: wie een speedruntimer wil, moet
+`dot-timer` en `dot-core` kunnen pakken en verder niets.
+
+## Lokaal aan een add-on werken
+
+Elk project behalve `dot-core` heeft `dot-core` nodig om überhaupt te *openen*,
+en de games hebben elke add-on nodig die ze gebruiken. Die links staan in
+`.gitignore`, want een gebruiker kopieert de mappen in plaats daarvan:
+
+```bash
+cd dot-cloud   # of welk add-onproject dan ook
+ln -s ../../dot-core/addons/dot_core addons/dot_core
+```
+
+```bash
+cd game-arena
+for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
+            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
+            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
+  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
+done
+```
+
+[`dot-serve`](/learn/godot/tooling) heeft hier niets van nodig: het is een
+shellscript en vindt tijdens het draaien zelf een Godot-binary.
+
+## De controle in twee stappen
+
+Er is geen CI. Elk project heeft dezelfde controle in twee stappen, en **beide
+stappen doen ertoe**.
+
+```bash
+cd <project>
+
+# 1. Elk script parseert.
+godot --headless --path . --import
+find . -name '*.gd' -not -path './.godot/*' | while read f; do
+    godot --headless --path . --check-only --script "res://${f#./}"
+done
+
+# 2. Het werkt ook echt.
+godot --headless --path . res://examples/<het-voorbeeld>.tscn
+```
+
+<Callout type="warning" title="De --import-stap is niet optioneel">
+Die registreert de `class_name`-globals. Zonder hem faalt elke typeverwijzing
+tussen bestanden en lijkt het op tientallen losstaande fouten — en **draai hem
+opnieuw na het toevoegen van elk script met een nieuwe `class_name`**, anders
+lost de identifier niet op, laadt de scène niet, en *hangt* het proces in plaats
+van te falen, omdat niets `get_tree().quit()` bereikt.
+</Callout>
+
+Stap 2 is de stap die mensen overslaan, en het is de stap die iets vindt.
+GDScript dat schoon parseert kan nog steeds fout zijn op manieren die alleen
+uitvoeren laat zien: een interessecache die weggooide wat de waarnemer bezat,
+een rendertijdlijn die tussen pakketten niet bewoog, een `Dictionary` die per
+referentie werd uitgedeeld zodat elke "kopie" één object deelde. Elk
+zelftestvoorbeeld eindigt bij een fout met een niet-nul code, dus ze werken
+ongewijzigd als rooktest.
+
+<Callout type="info" title="Begrens elke headless run met `timeout`">
+Een scène waarvan het script niet parseert hangt in plaats van te falen, en een
+scène zonder script ook. Vier voorbeeldscènes zijn bewust geen zelftests en
+stoppen nooit uit zichzelf.
+</Callout>
+
+## Drie doelen, één codebase
+
+Desktop (Windows, macOS, Linux), mobiel (Android, iOS) en de browser. In de
+browser zitten de beperkingen, en ze staan in de code in plaats van aan de lezer
+te worden overgelaten — zie
+[Conventies](/learn/godot/conventions#the-browser-decides-half-of-this).
+
+De snelste manier om te weten wat een build echt kan:
+
+```bash
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+Draai het op elk doel waarvoor je uitlevert. Zo ontdek je dat je webexport geen
+threads heeft, of dat een apparaat geen opslagquotum meldt — en allebei
+veranderen ze hoe [`dot-cloud`](/learn/godot/addons/dot-cloud) zich gedraagt.
+
+<Related>
+- [Conventies](/learn/godot/conventions)
+- [De add-ons](/learn/godot/addons)
+- [Gereedschap](/learn/godot/tooling) — een server starten met één commando
+</Related>

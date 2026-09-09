@@ -1,0 +1,109 @@
+---
+title: dot-stats
+description: Per-player statistics a game declares once — counters, gauges, bests and lowests — reported to the TMC backbone as coalesced deltas, under an app or a server integration.
+navTitle: dot-stats
+order: 190
+keywords:
+  - "statistics"
+  - "stats"
+  - "counters"
+  - "kills"
+  - "deaths"
+  - "telemetry"
+  - "deltas"
+  - "merge"
+source:
+  - ../game-dev/godot/dot-stats/README.md
+  - ../game-dev/godot/dot-stats/CLAUDE.md
+---
+
+A leaderboard is one number per player, ordered. Most of what a game counts is
+not that: kills, deaths, jumps, metres, seconds played, a top speed, a level.
+Those are many numbers per player, accumulated.
+
+**The only thing every party has to agree on is how a new reading meets an old
+one.** So a stat declares a *kind* — add, replace, keep the higher, keep the
+lower — and that rule is applied identically by the game counting, the reporter
+coalescing and the site storing.
+
+```gdscript
+var schema := DotStatsSchema.new()
+schema.define(&"kills").publish = true
+schema.define(&"top_speed", DotStatsDef.Kind.BEST, "Top speed").publish = true
+schema.define(&"level", DotStatsDef.Kind.GAUGE)          # kept, never reported
+
+var tracker := DotStatsTracker.new()
+tracker.schema = schema
+tracker.report_to_backbone = true
+tracker.reporter.client = backbone      # dot-auth's DotBackboneClient
+add_child(tracker)
+
+tracker.begin(player_key, display_name) # the SCOPED key, never the account id
+tracker.record(player_key, &"kills")
+tracker.record(player_key, &"top_speed", 41.2)
+tracker.end(player_key)
+```
+
+Every 30 seconds — and once more on the way down — the tracker sends each
+player's delta since the last report. **What crosses the wire is a delta**,
+which is what lets two servers report one player without either overwriting the
+other.
+
+## The other surface
+
+A player's own client files its own figures, with the player's token and no
+integration credential anywhere near it:
+
+```gdscript
+var mine := DotStatsClient.new()
+mine.schema = schema
+mine.client = auth_client        # dot-auth's DotAuthClient
+add_child(mine)
+
+mine.record(&"launches")
+var held := await mine.fetch_mine()
+```
+
+Both land on the **same rows**, because a client files under the member's key
+for the app's own scope. Keep anything competitive on the server; this surface is
+for a diary.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotStatsSchema / DotStatsDef">
+    Declare each stat once: an id, a `Kind` (`COUNTER`, `GAUGE`, `BEST`,
+    `LOWEST`), a display name, and `publish`. A stat with `publish` off is kept
+    locally and never reported.
+  </Param>
+  <Param name="DotStatsTracker">
+    The server surface. `begin`, `record`, `end`, and a reporter you point at a
+    `DotBackboneClient`.
+  </Param>
+  <Param name="DotStatsClient">
+    The player surface, on `DotAuthClient`.
+  </Param>
+  <Param name="DotStatsValues">
+    The accumulated set, and the merge that `DotStatsDef.merge` defines.
+  </Param>
+  <Param name="Signals">
+    `recorded`, `refused`, `reported`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="It refuses an account id as a player key">
+Before it leaves the server. The key must be the scoped derivation — see
+[`dot-user`](/learn/godot/addons/dot-user#the-identity-problem-and-the-answer).
+</Callout>
+
+<Callout type="info" title="The merge rule is deliberately duplicated">
+`DotStatsDef.merge` in the addon and the site's own merge are the same function,
+on purpose: a rule that lives only in the game is one the site cannot apply to a
+batch, and any disagreement between them is a wrong number with nothing failing.
+Both sides test it directly.
+</Callout>
+
+<Related>
+- [`dot-leaderboard`](/learn/godot/addons/dot-leaderboard) — the stat is the fact; a board is a view of it
+- [Integration API](/learn/api/integration/stats)
+</Related>

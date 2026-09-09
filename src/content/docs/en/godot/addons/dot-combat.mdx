@@ -1,0 +1,135 @@
+---
+title: dot-combat
+description: Health, damage and weapons for a Godot shooter — analytic hitboxes, deterministic spread, lag-compensated hit registration, and an arsenal that simulates from commands so a client can predict its own fire.
+navTitle: dot-combat
+order: 110
+keywords:
+  - "weapons"
+  - "damage"
+  - "health"
+  - "armour"
+  - "hitbox"
+  - "headshot"
+  - "spread"
+  - "recoil"
+  - "hit registration"
+  - "lag compensation"
+  - "friendly fire"
+source:
+  - ../game-dev/godot/dot-combat/README.md
+  - ../game-dev/godot/dot-combat/CLAUDE.md
+---
+
+**A weapon decides that a shot *happened*. Something else decides what it
+*hit*.**
+
+```gdscript
+var combat := DotCombatManager.new()
+combat.trace = DotTracePhysics.for_world(get_world_3d())
+combat.rules = DotDamageRules.strict()
+add_child(combat)
+
+hitbox_set.register_with(combat, player_id)
+combat.register_health(player_id, health)
+
+# Per simulated tick, on client and server alike.
+arsenal.movement = velocity.length() / max_speed
+arsenal.airborne = not grounded
+for shot in arsenal.simulate_tick(tick, delta, command):
+    if is_server:
+        combat.resolve_shot(shot, client_view_tick)
+```
+
+`DotArsenal.simulate_tick()` is a pure function of the command it is given and
+its own state — no device, no clock, no other node, no damage. The owning client
+runs it optimistically and the server runs it authoritatively, and both reach
+the same shot from the same command, because the spread is a **hash of the
+shot** rather than a draw from a random stream.
+
+`DotCombatManager.resolve_shot()` traces those shots and applies the damage, and
+runs only where the game is authoritative. A client that resolved its own shots
+would be a client that decides who dies.
+
+## Three failure modes it is built around
+
+**A shot that agrees with itself.** Spread from a `RandomNumberGenerator` gives
+a different pattern on the client that predicted the shot, the server that
+re-ran it, and every reconciliation replay. `DotSpread` is a pure function of
+(shooter, tick, shot, pellet), so all three agree.
+
+**A shot through a wall.** World geometry and entity hitboxes are traced
+together, the world hit shortens the search, and a tie between a hitbox and a
+wall surface goes to the wall. A player hugging cover is not shot through it.
+
+**A rewind that leaks.** Lag compensation moves every hitbox in the level into
+the past. Every path out of `resolve_shot()` restores it, **including the
+refusal paths** — a rewind that is never undone leaves the world permanently in
+the past, and the symptom is that shots quietly start missing for everyone.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotWeapon">
+    The definition: rate, spread, recoil, magazine, reload, splash. Seconds in,
+    **ticks out**, so everything replays.
+  </Param>
+  <Param name="DotDamageType">
+    Falloff, armour share, self and friendly scales. A game adds its own.
+  </Param>
+  <Param name="DotHitGroup">
+    Named body regions and their multipliers — a **table, not an enum**, so a
+    game with a tail or four legs does not fork anything.
+  </Param>
+  <Param name="DotDamageRules + DotDamageResolver.adjust" type="Callable">
+    Friendly fire, self damage, hit groups, falloff and clamping, applied in one
+    order, once. `adjust` is the last word; `team_of` is how it knows who is on
+    whose side.
+  </Param>
+  <Param name="DotTrace subclass">
+    `_world_ray` **and nothing else** — the hitbox walk, the wall tie-break and
+    the restore belong to the base class. `DotTracePhysics` for a real world,
+    `DotTraceFlat` for a headless one, and the fact that both exist is why the
+    whole thing has an offline test suite.
+  </Param>
+  <Param name="DotCombatManager.rewind_fn / restore_fn" type="Callable">
+    Two lines turn lag compensation on:
+
+    ```gdscript
+    combat.rewind_fn = func(view_tick: float) -> void:
+        net.history.rewind(view_tick, net.registry.all())
+    combat.restore_fn = net.history.restore
+    ```
+
+    Unset, shots resolve against the present — correct for a listen server and
+    wrong for anyone with latency.
+  </Param>
+  <Param name="DotHitbox / DotHitboxSet">
+    Capsules, boxes and spheres, tested analytically against a ray rather than
+    through the physics server.
+  </Param>
+  <Param name="DotCombatNetSync">
+    What to replicate, without naming a `dot-net` type.
+  </Param>
+  <Param name="Signals">
+    `fired`, `dry_fired`, `switched`, `reload_started`, `reload_finished`,
+    `ammo_changed`, `inventory_changed`, `shot_resolved`, `shot_refused`,
+    `damaged`, `damage_applied`, `healed`, `armour_changed`, `died`, `revived`,
+    `entity_killed`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="A maximum-magnitude check passes for a half-moon">
+`DotSpread.unit()` once shifted a 63-bit mixer output right by 40 and masked 24
+bits, which leaves 23 — so it never returned a value above 0.5. Every shotgun
+pattern was a half-moon on one side of the aim and the cone reached 1/√2 of its
+stated angle. It was invisible here and obvious in
+[`dot-2d`](/learn/godot/addons/dot-2d), where the same line put every scattered
+pellet in one corner of the world. If you write a scatter test, check
+**quadrants**, not magnitude.
+</Callout>
+
+<Related>
+- [`dot-loadout`](/learn/godot/addons/dot-loadout) — what a player brings in
+- [`dot-match`](/learn/godot/addons/dot-match) — what a kill is worth
+- [`dot-net`](/learn/godot/addons/dot-net) — where `rewind_fn` comes from
+</Related>

@@ -5,6 +5,7 @@ import {
     Users,
     Server,
     Gamepad2,
+    Blocks,
     Terminal,
     type LucideIcon,
 } from 'lucide-react'
@@ -38,6 +39,7 @@ export const SECTION_META: Record<string, SectionMeta> = {
     community: { icon: Users, order: 40 },
     servers: { icon: Server, order: 50 },
     parties: { icon: Gamepad2, order: 60 },
+    godot: { icon: Blocks, order: 65 },
     api: { icon: Terminal, order: 70 },
 }
 

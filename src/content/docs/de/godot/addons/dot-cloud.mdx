@@ -1,0 +1,145 @@
+---
+title: dot-cloud
+description: Inhaltsauslieferung zur Laufzeit für Godot — signierte Manifeste, ein inhaltsadressierter Cache, fortsetzbare parallele Downloads und versionsbasiertes Einhängen unter eigenem Namensraum, auch im Browser.
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "Download"
+  - "Manifest"
+  - "pck"
+  - "Ressourcenpaket"
+  - "einhängen"
+  - "Cache"
+  - "Signatur"
+  - "DLC"
+  - "Patchen"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+Ein Server reicht einem Client ein Manifest; der Client lädt herunter, was ihm
+fehlt, prüft es und hängt es ein — unter Windows, macOS, Linux, Android, iOS und
+im Browser.
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+Veröffentlicht wird über eine headless CLI, die ein **statisches Verzeichnis**
+erzeugt — eine `manifest.json` plus einen `objects/`-Baum —, das jeder Webserver
+und jedes CDN ohne Konfiguration ausliefert:
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## Die zwei Beschränkungen, die alles geformt haben
+
+**Godot kann ein Ressourcenpaket nicht aushängen.** Nicht langsam, nicht mit
+einem Trick — die API existiert nicht. Deshalb bekommt jeder Inhaltssatz seinen
+eigenen versionierten Pfad, `res://<root>/<content_id>/<version>/`, und nichts
+muss je ersetzt werden. „Entladen“ heißt Referenzen fallen lassen, nicht die
+Dateitabelle zurückgewinnen. Diese eine Tatsache ist der Grund, warum ein
+Spielwechsel zur Laufzeit überhaupt funktioniert.
+
+**Unsignierter Inhalt ist Remote Code Execution.** Ein Godot-Paket kann Skripte
+enthalten, also entscheidet ein Manifest, was ausgeführt wird.
+`require_signed_manifests` ist standardmäßig an, und die Konfiguration
+verweigert die Prüfung ohne vertrauenswürdigen Schlüssel. Für ein LAN oder einen
+eigenen Server kannst du es abschalten; es warnt jedes Mal.
+
+## Was es tut
+
+- **Inhaltsadressierter Cache.** Dateien liegen unter ihrem SHA-256, also laden
+  zwei Spiele mit gemeinsamem Asset es nur einmal, und ein erneutes
+  Veröffentlichen lädt nur das Geänderte nach.
+- **Fortsetzbare parallele Downloads.** Mirror-Umschaltung, HTTP-Range-Resume,
+  ein Circuit Breaker pro Quelle, Bandbreitendrosselung sowie ehrlicher
+  Fortschritt und ehrliche Restzeit.
+- **Drei Quellen.** HTTP/CDN, ein lokales Verzeichnis (Entwicklung, LAN,
+  mitgelieferter Inhalt) und in-band über die Spielverbindung für einen Server
+  ohne Webhosting.
+- **Kontingentbewusstsein.** Browser-Speicherschätzungen, mobile Obergrenzen und
+  eine LRU-Verdrängung, die nie Inhalt verdrängt, der gerade benutzt wird.
+
+## Wo sich ein Spiel einklinkt
+
+<Params>
+  <Param name="DotCloudSource-Unterklasse">
+    `source_name()`, `is_supported()`, `can_serve(manifest)`, `fetch(...)`. Drei
+    werden mitgeliefert — `DotCloudSourceHttp`, `DotCloudSourceLocal`,
+    `DotCloudSourceNetchan` — und die vierte ist deine: ein Torrent, ein
+    plattformspezifisches CDN, ein Erzeuger signierter S3-URLs.
+
+    Ein `fetch` **muss** in `DotCloudStore.partial_path` für den Hash der Datei
+    schreiben, wo möglich ab `partial_size` fortsetzen und über `commit_partial`
+    abschließen. Das ist die einzige Stelle, an der der Hash geprüft wird, und
+    direkt ins Objektverzeichnis zu schreiben ist genau der Weg, auf dem
+    ungeprüfter Inhalt eingehängt wird.
+  </Param>
+  <Param name="can_serve() gegenüber is_supported()">
+    Die Unterscheidung verdient sich ihren Platz. Eine Quelle kann völlig gesund
+    sein und trotzdem keinen Weg zu *diesem* Manifest haben — eine HTTP-Quelle
+    ohne `base_urls` gegenüber einem Manifest ohne Mirror. Aus `can_serve` einen
+    Fehlschlag zurückzugeben heißt „überspring mich für dieses Manifest, und hier
+    ist der Grund“, und wird **nicht** dem Circuit Breaker angerechnet.
+  </Param>
+  <Param name="priority" type="int">
+    An jeder Quelle. Niedriger läuft zuerst; der In-band-Rückfall steht bewusst
+    ganz hinten.
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
+    `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
+    `verify_before_mount`, `resume_downloads`. Geschichtet wie jede `DotConfig`.
+  </Param>
+  <Param name="Signale">
+    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
+    `content_ready`, `content_released`, `failed`.
+  </Param>
+</Params>
+
+## Die Inhaltsschnittstelle, die andere Addons erwarten
+
+Registriere einen `DotCloudClient`, und er veröffentlicht sich unter
+`dot_cloud_client`. Der Lader von `dot-map` und der Spielwechsel von
+`dot-server` erreichen ihn über diesen Namen und rufen:
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="Ein fehlender Cloud-Client ist eine legitime Konfiguration">
+Jede Aufrufstelle behandelt „kein `dot_cloud_client`“ als „diese Bereitstellung
+liefert ihre Inhalte im Build mit“ — was für die meisten stimmt und daher nicht
+von einem Client zu unterscheiden ist, der sich nicht registriert hat. Wenn eine
+ausgelieferte Karte oder ein ausgeliefertes Spiel still gar nichts tut, sieh
+zuerst in die Registry.
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) — Karten als Inhalt
+- [`dot-server`](/learn/godot/addons/dot-server) — Spielwechsel unter verbundenen Spielern
+- [Konventionen](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

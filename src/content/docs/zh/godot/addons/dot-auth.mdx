@@ -1,0 +1,171 @@
+---
+title: dot-auth
+description: 让玩家在后端登录，然后向社区自建的游戏服务器证明他是谁——而永远不把他账号的凭据交给那台服务器。
+navTitle: dot-auth
+order: 30
+keywords:
+  - "认证"
+  - "登录"
+  - "设备码"
+  - "PKCE"
+  - "票据"
+  - "JWT"
+  - "RS256"
+  - "刷新令牌"
+  - "访客"
+  - "2FA"
+source:
+  - ../game-dev/godot/dot-auth/README.md
+  - ../game-dev/godot/dot-auth/CLAUDE.md
+---
+
+社区自建的服务器需要知道来的是谁。但它**不该**拿到玩家整个账号的凭据——手里有那种
+凭据的服主，可以冒充每一个曾经加入过的玩家。`dot-auth` 就是对此的回答，形态与 Steam
+的 auth session ticket 相同。
+
+```
+客户端 ──(设备码 + PKCE)──> 后端            我是谁
+客户端 ──(访问令牌)───────> DotAuthIssuer   第一方，由发行方运行
+客户端 <──(签名票据)─────── DotAuthIssuer   限一台服务器，几分钟
+客户端 ──(票据)───────────> 游戏服务器       离线验证
+```
+
+票据限定受众、寿命短、只能用一次，并以 RS256 签名。服务器能验证它，却签发不了它；
+在一台服务器上被截获的票据，在其他任何服务器上都会被拒绝。服主拿到的只有一把公钥。
+
+## 客户端
+
+```gdscript
+var auth := DotAuthClient.new()
+add_child(auth)
+auth.config = DotAuthConfig.new()
+auth.config.backbone_url = "https://moddingcommunity.com"
+auth.config.client_name = "My Game"
+
+auth.device_code_ready.connect(func(user_code, url, _expires):
+    code_label.text = user_code
+    OS.shell_open(url))
+
+var res := await auth.sign_in()
+```
+
+用的是设备码流程而不是密码输入框，所以密码只会在网站上被输入，而同一个码在桌面、
+移动端、主机和浏览器上都能用。回访的玩家根本看不到码：`sign_in()` 会从保存的轮换
+刷新令牌恢复。
+
+## 服务器
+
+```gdscript
+var auth := DotAuthServer.new()
+auth.config.strategy = DotAuthConfig.Strategy.TICKET
+auth.config.server_id = "eu-west-1"
+auth.config.ticket_public_key = ISSUER_PUBLIC_KEY
+add_child(auth)
+
+var res := await auth.authenticate({"ticket": from_client}, peer_address)
+```
+
+验证是离线完成的——不需要为每次加入都往后端跑一趟。
+
+## 四种策略
+
+| | |
+| --- | --- |
+| `TICKET` | 公开服务器。就是上面那套流程。 |
+| `INTROSPECT` | 仅限第一方服务器——服主持有一份有效的账号凭据。启动时会警告。 |
+| `LOCAL` | 局域网与开发。账号放在一个 JSON 文件里。 |
+| `ANONYMOUS` | 所有人都是访客。封禁不可能有任何意义。会警告。 |
+
+## 没有云也能有账号
+
+`allow_local_profiles` 允许访客建立一个**只存在于这台服务器**的账号，带档案和形象，
+并且在多次到访之间保留。它是一个*提供方*而不是一种策略，所以可以组合：一台服务器
+可以同时接受后端票据和本地档案。
+
+**是服务器签发凭据——不是客户端自称身份。** 这正是它与别处“离线模式账号”的区别：
+在那些系统里，名字*就是*身份，谁打了你的名字谁就是你。
+
+<Callout type="info" title="机器 ID 是刻意不用的">
+`OS.get_unique_id()` 在 web 和 iOS 上是空的，它由客户端提供，因此和一个名字一样容易
+伪造，而且同一台电脑上的所有人共用它。它只作为线索记录下来并写进日志。（它也不是一个
+会安静失败的查询：引擎会先推一条错误*再*返回 `""`，这正是
+`DotPlatform.has_unique_id()` 存在的原因——先问一句。）
+</Callout>
+
+它签发的 id 是一个 22 个字符的玩家键，形状与这里其他一切相同，所以
+[`dot-user`](/learn/godot/addons/dot-user) 和
+[`dot-user-avatar`](/learn/godot/addons/dot-user-avatar) 会通过它们平常的本地后端来
+保存本地玩家的档案和形象。一个完整的平台，完全不需要后端。
+
+## 游戏从哪里接入
+
+<Params>
+  <Param name="DotAuthProvider 的子类">
+    `_provider_name()`、`_handles(credential)`、`_authenticate(credential)`、
+    `_validate()`。用 `DotAuthServer.add_provider` 注册。Steam、Epic、一个 Discord
+    机器人，或者你自己的服务，都从这里接进来。
+
+    把 `_handles` 写得便宜且纯粹是结构性的——“这个字典里有没有我的字段”。在那里做网络
+    请求的 provider，会在每一次登录尝试上都做一遍，包括本来是给别人的那些。而一个认领
+    了凭据又拒绝它的 provider **已经做出了裁决**：服务器不会接着去试下一个。
+  </Param>
+  <Param name="DotAuthAdminSource">
+    把站点的分组、角色和声明映射到
+    [`dot-server`](/learn/godot/addons/dot-server) 的权限 flag 和免疫等级上——
+    `group_flags`、`role_flags`、`claim_flags`、`user_flags`、`group_immunity`、
+    `base_immunity`。于是“站点分组 `moderators` 里的所有人在这里都能踢人”变成一条
+    规则，而不是一份手工维护的用户名单。任何带 `lookup()` 和 `source_name()` 的对象
+    都能替代它。
+
+    访客永远拿不到权限，站点角色在你没有做映射之前也什么都不授予。
+  </Param>
+  <Param name="DotBackboneClient">
+    专用服务器把自己的在线人数、当前地图和名单上报到它在站内的条目，并带上
+    [集成 API](/learn/api/integration) 要求的重放保护。`roster_provider` 和
+    `stats_provider` 这两个 `Callable` 决定要上报什么。
+  </Param>
+  <Param name="DotAuthIssuer">
+    唯一需要私钥的组件。它只用已有的后端端点就能独立运行，因此部署这套票据流程不需要
+    改动后端。
+  </Param>
+  <Param name="DotAuthConfig">
+    `strategy`、`server_id`、`allowed_server_ids`、`ticket_ttl_sec`、
+    `ticket_leeway_sec`、`ticket_replay_memory_sec`、`allow_guests`、
+    `single_session`、`tickets_per_minute`、`auth_attempts_per_minute`、
+    `encrypt_token_store`、`web_handoff`。
+  </Param>
+  <Param name="信号">
+    `device_code_ready`、`awaiting_approval`、`signed_in`、`signed_out`、
+    `token_refreshed`、`session_revoked`、`session_conflict`、`authenticated`、
+    `rejected`、`ticket_issued`、`request_refused`、`profile_created`、
+    `profile_recognised`。
+  </Param>
+</Params>
+
+## 两处比看上去要弱的地方
+
+**`DotAuthServer.hash_password` 是加盐 SHA-256 迭代 4096 次，不是 argon2。** Godot
+没有自带任何密码 KDF。它的存在是为了让局域网服务器别把明文存下来；真正的账号属于后端。
+
+**在 web 上，令牌存储的“加密”只是混淆**，因为密钥和密文共享同一个源。
+
+这两点都写在真正要紧的位置，而不是被包装得比实际更强。
+
+<Callout type="warning" title="默认端点是一项安全属性">
+`backbone_url` 曾经默认指向一个无人拥有的域名。任何没有覆盖它的部署，都把一次认证流程
+的开场请求指向了一个随便谁都能买下的名字。它之所以是响亮地失败，只是因为那个域名解析
+不了——等到有人真去注册它的那天，它就会开始*安静地*失败。正确的主机是
+`moddingcommunity.com`。
+</Callout>
+
+<Callout type="info" title="浏览器既没有环境变量也没有 argv">
+所以 `DOT_AUTH_BACKBONE_URL` 到不了 web 客户端。取而代之的是打包在导出产物里的一个
+JSON 文件——刻意**不**做成查询参数，因为这个 URL 决定了一次性登录码在哪里被兑换，而
+一条能把它指向别处的链接，就是一条转发凭据的链接。
+</Callout>
+
+<Related>
+- [`dot-user`](/learn/godot/addons/dot-user) —— 身份背后的档案
+- [`dot-platform`](/learn/godot/addons/dot-platform) —— 把这些全部串起来
+- [应用 API](/learn/api/app/auth) —— 设备码流程的后端一半
+</Related>

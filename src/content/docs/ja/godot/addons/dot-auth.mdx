@@ -1,0 +1,188 @@
+---
+title: dot-auth
+description: プレイヤーをバックボーンにサインインさせ、そのうえで、アカウントの資格情報をコミュニティ運営のゲームサーバーに一切渡さずに、そのサーバーへ本人であることを証明します。
+navTitle: dot-auth
+order: 30
+keywords:
+  - "認証"
+  - "サインイン"
+  - "ログイン"
+  - "デバイスコード"
+  - "PKCE"
+  - "チケット"
+  - "JWT"
+  - "RS256"
+  - "リフレッシュトークン"
+  - "ゲスト"
+  - "2FA"
+source:
+  - ../game-dev/godot/dot-auth/README.md
+  - ../game-dev/godot/dot-auth/CLAUDE.md
+---
+
+コミュニティが運営するサーバーは、目の前のプレイヤーが誰かを知る必要があります。
+しかし**アカウント全体の資格情報を渡してはいけません**。それを持つ運営者は、
+過去に参加したすべてのプレイヤーとして振る舞えてしまいます。`dot-auth` はその
+答えであり、形としては Steam の認証セッションチケットと同じです。
+
+```
+クライアント ──(デバイスコード + PKCE)──> バックボーン        自分は誰か
+クライアント ──(アクセストークン)────────> DotAuthIssuer      自社運用（パブリッシャー）
+クライアント <──(署名付きチケット)──────── DotAuthIssuer      1 サーバー、数分間
+クライアント ──(チケット)────────────────> ゲームサーバー      オフラインで検証
+```
+
+チケットは対象を限定され、寿命が短く、1 回限りで、RS256 で署名されています。
+サーバーは検証できますが発行はできず、あるサーバーで盗まれたチケットは他の
+どのサーバーでも拒否されます。サーバー運営者が受け取るのは公開鍵だけです。
+
+## クライアント
+
+```gdscript
+var auth := DotAuthClient.new()
+add_child(auth)
+auth.config = DotAuthConfig.new()
+auth.config.backbone_url = "https://moddingcommunity.com"
+auth.config.client_name = "My Game"
+
+auth.device_code_ready.connect(func(user_code, url, _expires):
+    code_label.text = user_code
+    OS.shell_open(url))
+
+var res := await auth.sign_in()
+```
+
+パスワード入力欄ではなくデバイスコード方式なので、パスワードを打つ場所は
+ウェブサイトだけで済み、同じコードがデスクトップでもモバイルでもコンソールでも
+ブラウザーでも使えます。再訪のプレイヤーにコードは表示されません。`sign_in()`
+が保存済みのローテーションするリフレッシュトークンから復元します。
+
+## サーバー
+
+```gdscript
+var auth := DotAuthServer.new()
+auth.config.strategy = DotAuthConfig.Strategy.TICKET
+auth.config.server_id = "eu-west-1"
+auth.config.ticket_public_key = ISSUER_PUBLIC_KEY
+add_child(auth)
+
+var res := await auth.authenticate({"ticket": from_client}, peer_address)
+```
+
+検証はオフラインで行われます。参加のたびにバックボーンへ往復することはありません。
+
+## 4 つのストラテジー
+
+| | |
+| --- | --- |
+| `TICKET` | 公開サーバー向け。上の流れです。 |
+| `INTROSPECT` | 自社サーバー専用。運営者が有効なアカウント資格情報を持ちます。起動時に警告します。 |
+| `LOCAL` | LAN と開発用。アカウントは JSON ファイルに。 |
+| `ANONYMOUS` | 全員ゲスト。BAN は何の意味も持てません。警告します。 |
+
+## クラウド無しのアカウント
+
+`allow_local_profiles` を使うと、訪問者は**そのサーバーだけに存在する**
+アカウントを作れます。プロフィールとアバターを持ち、次回訪問時も残ります。これは
+ストラテジーではなく*プロバイダー*なので併用でき、1 台のサーバーがバックボーンの
+チケットとローカルプロフィールの両方を同時に受け付けられます。
+
+**資格情報を発行するのはサーバーで、クライアントが身元を名乗るのではありません。**
+これが、他所のオフラインモードのアカウントとの違いです。あちらでは名前*が*身元
+なので、あなたの名前を打った人はあなたになってしまいます。
+
+<Callout type="info" title="マシン ID は意図的に使いません">
+`OS.get_unique_id()` は web と iOS では空で、クライアント側から与えられるので
+名前とまったく同程度に偽装でき、しかもその PC を使う全員で共有されます。ヒントと
+して記録し、ログに出すだけです（これは静かに失敗する問い合わせでもありません。
+エンジンはエラーを出し*てから* `""` を返すので、先に尋ねるための
+`DotPlatform.has_unique_id()` が用意されています）。
+</Callout>
+
+発行される id は、ここの他のすべてと同じ形をした 22 文字のプレイヤーキーです。
+そのため [`dot-user`](/learn/godot/addons/dot-user) と
+[`dot-user-avatar`](/learn/godot/addons/dot-user-avatar) は、ローカルプレイヤーの
+プロフィールとアバターを通常のローカルバックエンド経由で保存します。バックボーン
+無しで完結するプラットフォームです。
+
+## ゲームが差し込める場所
+
+<Params>
+  <Param name="DotAuthProvider のサブクラス">
+    `_provider_name()`、`_handles(credential)`、`_authenticate(credential)`、
+    `_validate()`。`DotAuthServer.add_provider` で登録します。Steam、Epic、
+    Discord のボット、あるいは自前のサービスはここに入ります。
+
+    `_handles` は安価かつ純粋に構造的に保ってください。「この辞書に自分のフィールドが
+    あるか」だけです。ここでネットワーク処理をするプロバイダーは、他人宛ての試行も
+    含めてログイン試行のたびにそれを走らせます。そして、資格情報を引き受けたうえで
+    拒否したプロバイダーは**判断を下した**のであり、サーバーはその後に別の
+    プロバイダーへは回しません。
+  </Param>
+  <Param name="DotAuthAdminSource">
+    サイトのグループ・ロール・クレームを
+    [`dot-server`](/learn/godot/addons/dot-server) の権限フラグと免疫レベルに
+    対応づけます。`group_flags`、`role_flags`、`claim_flags`、`user_flags`、
+    `group_immunity`、`base_immunity`。おかげで「サイトのグループ `moderators`
+    の全員はここで kick できる」が、手編集のユーザー一覧ではなく 1 つのルールに
+    なります。`lookup()` と `source_name()` を持つオブジェクトなら何でも代わりに
+    使えます。
+
+    ゲストには権限が付きませんし、サイトのロールも対応づけない限り何も与えません。
+  </Param>
+  <Param name="DotBackboneClient">
+    専用サーバーが自分のプレイヤー数・マップ・参加者一覧をサイトの掲載情報へ報告
+    します。[統合 API](/learn/api/integration) が要求するリプレイ防止つきです。
+    何を報告するかを決める 2 つの `Callable` が `roster_provider` と
+    `stats_provider` です。
+  </Param>
+  <Param name="DotAuthIssuer">
+    秘密鍵を必要とする唯一のコンポーネント。既存のエンドポイントだけを使って単体で
+    動くので、チケット方式の導入にバックボーン側の変更は要りません。
+  </Param>
+  <Param name="DotAuthConfig">
+    `strategy`、`server_id`、`allowed_server_ids`、`ticket_ttl_sec`、
+    `ticket_leeway_sec`、`ticket_replay_memory_sec`、`allow_guests`、
+    `single_session`、`tickets_per_minute`、`auth_attempts_per_minute`、
+    `encrypt_token_store`、`web_handoff`。
+  </Param>
+  <Param name="シグナル">
+    `device_code_ready`、`awaiting_approval`、`signed_in`、`signed_out`、
+    `token_refreshed`、`session_revoked`、`session_conflict`、`authenticated`、
+    `rejected`、`ticket_issued`、`request_refused`、`profile_created`、
+    `profile_recognised`。
+  </Param>
+</Params>
+
+## 見た目より弱い 2 つのこと
+
+**`DotAuthServer.hash_password` はソルト付き SHA-256 を 4096 回であり、argon2 では
+ありません。** Godot にはパスワード用の鍵導出関数がありません。これは LAN
+サーバーが平文を保存しないために存在するもので、本物のアカウントはバックボーンの
+仕事です。
+
+**web ではトークンストアの暗号化は難読化でしかありません。** 鍵と暗号文が同じ
+オリジンを共有しているからです。
+
+どちらも、実力以上に見せかけるのではなく、重要な場所に明記されています。
+
+<Callout type="warning" title="既定のエンドポイントはセキュリティ特性です">
+`backbone_url` の既定値が、誰の所有でもないドメインだった時期がありました。上書き
+しなかったデプロイはすべて、認証フローの最初のリクエストを、見知らぬ誰でも購入
+できる名前に向けていたことになります。名前が解決しなかったおかげで派手に失敗して
+いただけで、誰かがそれを登録した日から*静かに*失敗し始めていたはずです。正しい
+ホストは `moddingcommunity.com` です。
+</Callout>
+
+<Callout type="info" title="ブラウザーには環境変数も argv もありません">
+そのため `DOT_AUTH_BACKBONE_URL` は web クライアントに届きません。代わりに
+エクスポート内に同梱した JSON ファイルを使います。意図的にクエリパラメーターには
+**していません**。この URL は 1 回限りのサインインコードをどこで引き換えるかを
+決めるので、それを別の場所へ向けられるリンクは資格情報の横流しリンクになるからです。
+</Callout>
+
+<Related>
+- [`dot-user`](/learn/godot/addons/dot-user) — 身元の裏にあるプロフィール
+- [`dot-platform`](/learn/godot/addons/dot-platform) — それらをすべて結び付ける
+- [アプリ API](/learn/api/app/auth) — デバイスコード方式のバックボーン側
+</Related>

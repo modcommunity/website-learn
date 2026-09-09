@@ -1,0 +1,77 @@
+---
+title: Die Addons
+description: Alle zweiundzwanzig Dot-Addons für Godot 4 — wofür jedes da ist, wovon es abhängt und wo sich ein Spiel einklinkt.
+order: 40
+keywords:
+  - "Addons"
+  - "Erweiterungen"
+  - "Katalog"
+  - "Liste"
+  - "dot-core"
+  - "dot-net"
+  - "dot-server"
+source:
+  - ../game-dev/godot/NOTES.md
+---
+
+Zweiundzwanzig Addons, die zusammenarbeiten und — abgesehen von `dot-core` —
+auch einzeln funktionieren. Jedes ist ein eigenes Repository unter
+[`modcommunity`](https://github.com/modcommunity), jedes liefert einen Ordner
+`addons/<name>/` aus, und jedes hat seine eigene Testsuite ohne Anzeige.
+
+## Das Fundament
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-core](/learn/godot/addons/dot-core) | — | Protokollierung, Plattformfähigkeiten, Pfade, konfigurierbare Knotenreferenzen, geschichtete Konfiguration, Aufgaben mit Frame-Budget, Multiplayer-Transporte, HTTP. |
+
+## Plattform
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | Inhaltsauslieferung zur Laufzeit: signierte Manifeste, inhaltsadressierter Cache, fortsetzbare parallele Downloads, namensraumbasiertes Einhängen von Paketen. |
+| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | Anmeldung per Gerätecode gegen das Backend, signierte Verbindungstickets, serverseitige Identität. |
+| [dot-net](/learn/godot/addons/dot-net) | dot-core | Netzcode: Tick-Synchronisation, bitgepacktes Wire-Format, Zustandsreplikation, Snapshot-Interpolation, clientseitige Vorhersage, Lag-Kompensation, Interessenverwaltung. |
+| [dot-server](/learn/godot/addons/dot-server) | dot-core, *optional* dot-auth + dot-cloud | Der dedizierte Server: Konsole, RCON, Abfragen, Berechtigungen, Moderation, Abstimmungen, Module, Spielwechsel im laufenden Betrieb. |
+| [dot-user](/learn/godot/addons/dot-user) | dot-core | Profile, die einer Person zwischen Servern folgen, unter einer pseudonymen ID pro Geltungsbereich. |
+| [dot-user-avatar](/learn/godot/addons/dot-user-avatar) | dot-core | Avatare als Daten: ein begrenztes Dokument, das ein Server gegen ein Schema und Berechtigungen prüft, ohne ein Mesh zu laden. |
+| [dot-platform](/learn/godot/addons/dot-platform) | dot-core, dot-server | Verbindet Identität, Profil und Avatar zu einem Aufnahmeablauf und bindet ihn an einen Server. |
+
+## Spielmechanik
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-fps-controller](/learn/godot/addons/dot-fps-controller) | dot-core | Ego-Bewegung: Quake-/Source-Beschleunigung, Air-Strafing, Treppensteigen, Ducken mit Kopfraumprüfung. Deterministisch und befehlsgesteuert. |
+| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | Das 2D-Gegenstück: deterministische Draufsicht-, Schub- und massebasierte Bewegung, eine räumliche Hashtabelle für Tausende Entitäten und deterministische Streufelder. |
+| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | Gesundheit, Schaden und Waffen: analytische Trefferzonen, deterministische Streuung, lag-kompensierte Trefferauswertung. |
+| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | Was ein Spieler in eine Partie mitnimmt, als Dokument, das ein Server ohne jeden Inhalt prüfen kann. Dazu deterministische Aufsammelobjekte. |
+| [dot-match](/learn/godot/addons/dot-match) | dot-core | Die Partieschleife: Aufwärmen, Runden, Punkte, Teams, Spawnen, Respawnen. Alles in Ticks, angetrieben von einem Aufruf. |
+| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Bildschirme, HUD und Menüs ganz ohne Grafikmaterial. Ein Bildschirmstapel, ein aus jeder `DotConfig` erzeugtes Einstellungsfenster und eine Tastenbelegung mit Konflikterkennung. |
+
+## Der Genre-Baukasten
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | Speedrun-Timer: Zonen, Strecken, Abschnitte, Stile, Replays, Rekorde. Sub-Tick, also sind Läufe bei 64 Hz und 128 Hz vergleichbar. 2D wie 3D. |
+| [dot-map](/learn/godot/addons/dot-map) | dot-core, *optional* dot-cloud | Karten als Inhalt statt als Builds: ein Katalog, eine Rotation, Nominierungen und Abstimmungen, und ein Lader, der über dot-cloud nachlädt. |
+| [dot-props](/learn/godot/addons/dot-props) | dot-core | Eine Sandbox-Schicht: platzierbare Objekte, Budgets pro Spieler, ein Rückgängig-Stapel, eine Physikkanone und eine Gravitationskanone. Serverautoritativ. |
+| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core, *optional* dot-auth | Bestenlisten, Spielerstatistiken, Ranglistenpunkte, eine Speicherschnittstelle und ein bündelnder Melder für das Backend. |
+| [dot-stats](/learn/godot/addons/dot-stats) | dot-core, *optional* dot-auth | Statistiken, die ein Spiel einmal deklariert — Zähler, Messwerte, Bestwerte, Tiefstwerte — und als zusammengefasste Deltas meldet. |
+| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Sprachchat: Aufnahme, austauschbarer Codec, ein Jitter-Puffer pro Sprecher und serverseitiges Routing an alle, ein Team oder einen Umkreis. |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Sperren, Kicks, Chat-Knebel, Stummschaltungen und Verwarnungen als ein dauerhafter Datensatz mit austauschbarem Speicher. Veröffentlicht die Stumm- und Sperrquellen. |
+| [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optional* dot-server + dot-map | Abstimmen, was als Nächstes läuft, als ein konfigurierbares Verfahren: rtv, Nominierungen, vier Auszählverfahren, fünf Gleichstandsregeln. |
+
+<Callout type="info" title="Optional heißt zur Laufzeit gefunden">
+Alles in der Spalte *optional* wird per Duck-Typing oder über
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
+aufgelöst. Keines dieser Addons importiert ein anderes, und keines nennt die
+Bezeichner eines anderen — denn in GDScript scheitert ein Skript, das einen
+fehlenden `class_name` auch nur *erwähnt*, beim Parsen und reißt alles mit, was
+es referenziert.
+</Callout>
+
+<Related>
+- [Erweiterungspunkte](/learn/godot/extending) — der ganze Index in einer Tabelle
+- [Konventionen](/learn/godot/conventions)
+- [Referenzspiele](/learn/godot/games)
+</Related>

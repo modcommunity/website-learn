@@ -1,0 +1,133 @@
+---
+title: dot-core
+description: De gedeelde basis onder elke Dot-add-on — resultaten, detectie van mogelijkheden, knooppuntverwijzingen, gelaagde configuratie, taken met een framebudget, verwisselbare transporten, HTTP en logging.
+navTitle: dot-core
+order: 10
+keywords:
+  - "DotResult"
+  - "DotError"
+  - "DotPlatform"
+  - "DotNodeRef"
+  - "DotConfig"
+  - "DotScheduler"
+  - "DotTransport"
+  - "DotHttp"
+  - "DotRegistry"
+  - "fundament"
+source:
+  - ../game-dev/godot/dot-core/README.md
+  - ../game-dev/godot/dot-core/CLAUDE.md
+---
+
+De gemeenschappelijke laag onder al het andere, en **de enige harde afhankelijkheid
+in de collectie**. Hij mikt vanuit één codebase op desktop, mobiel en de browser,
+en legt de beperkingen van de browser vast in code in plaats van te doen alsof ze
+niet bestaan.
+
+```bash
+cp -r dot-core/addons/dot_core mijn-game/addons/
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+## Wat erin zit
+
+| | |
+| --- | --- |
+| `DotResult` / `DotError` | Het retourtype van alles wat kan mislukken. Stabiele `CODE_*`-waarden om op te vertakken; `.value` lezen op een mislukking werpt een fout in plaats van een standaardwaarde terug te geven. |
+| `DotPlatform` | Gecachete detectie van mogelijkheden — threads, UDP, luisteren, pakketten aankoppelen, opslagfamilie, unieke id. Vraag naar mogelijkheden, niet naar platformnamen. |
+| `DotNodeRef` | Een in de inspector bewerkbare beschrijving van *welk knooppunt*: relatief, absoluut, groep, registry, voorouder of afstammeling op type, of maak-als-het-ontbreekt. |
+| `DotConfig` | Gelaagde configuratie: geëxporteerde standaardwaarden < bestand < omgeving < opdrachtregel, met reflectieve sleutelontdekking en bescherming van geheime sleutels. |
+| `DotRegistry` / `DotRegistryBus` | Opzoeken op naam, en de signalen die een statische klasse niet kan declareren. |
+| `DotScheduler` / `DotJob` | Lang werk in plakjes. Workerthreads waar die er zijn, een tijdsbudget per frame waar niet. |
+| `DotTransport` | Verwisselbaar multiplayertransport. `DotTransportAuto` kiest tussen WebSocket en ENet, en logt waarom. |
+| `DotHttp` | Een op `HTTPRequest` gebouwde client met herhalingen, backoff met jitter, `Retry-After`, hervatte downloads via ranges en verbindingshergebruik. |
+| `DotLog` / `DotLogBus` / `DotLogSink` | Logging met niveaus en kanalen, met gestructureerde velden, roterende bestanden en doorsturen over UDP. |
+| `DotPaths` | Padopschoning die traversal *weigert* in plaats van op te schonen, atomaire schrijfacties, en het legen van het webbestandssysteem. |
+| `DotHash` / `DotHashJob` | SHA-256, HMAC, vergelijking in constante tijd, base64url, CSPRNG-tokens. |
+| `DotRateLimiter` | Een token bucket, gebruikt op elk pad dat een client kan aanjagen. |
+| `DotSemVer` | Versievergelijking, voor content en engine-minima. |
+| `DotWeb` | De browsereigen aanroepen: bestandssysteem synchroniseren, detectie van een beveiligde context, opslagschattingen. |
+
+## Waar een game aansluit
+
+<Params>
+  <Param name="Subklasse van DotTransport">
+    `_create_server`, `_create_client`, `_transport_name`, `_is_available`,
+    `supports_web_clients`, `scheme`. De beschikbaarheid wordt *vóór* gebruik
+    gecontroleerd, zodat een onbruikbaar transport bij het opstarten faalt met een
+    reden, en niet drie aanroepen later als een null-peer.
+  </Param>
+  <Param name="Subklasse van DotJob">
+    `_step` (een begrensd stukje; geeft true als er meer is), `_progress`,
+    `_setup`, `_teardown`, `is_thread_safe`. Hash een blok, geen bestand: de
+    scheduler kan stoppen met `_step` aanroepen, maar kan er geen onderbreken.
+  </Param>
+  <Param name="Subklasse van DotConfig">
+    `env_prefix()`, `cli_prefix()`, `sensitive_keys()`, `validate()`. Declareer
+    `@export`-eigenschappen en de gelaagdheid, de reflectie en het
+    instellingenscherm volgen vanzelf.
+  </Param>
+  <Param name="DotLogSink, of DotLog.add_sink(callable)">
+    Waar logregels heen gaan. De `Callable`-vorm is één regel; de klasse doet
+    bestanden, rotatie en doorsturen.
+  </Param>
+  <Param name="DotNodeRef op elk component">
+    Het collectiebrede antwoord op "welk knooppunt". Elk knooppunt van elke
+    add-on exporteert er minstens één.
+  </Param>
+</Params>
+
+## `DotResult` is geen optionele beleefdheid
+
+```gdscript
+var res := await cloud.acquire(url)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        retry_after(res.error.retry_after)
+    return
+var scene_path: String = res.value
+```
+
+Vertak op `DotError.CODE_*`; nooit op de melding. `res.wrap(...)` voegt context
+toe zonder de oorzaak weg te gooien, zodat een mislukking drie lagen dieper nog
+steeds vertelt wat hij op elk niveau aan het doen was.
+
+## `DotScheduler` en de browser
+
+`DotScheduler` draait taken op workerthreads waar de build ze heeft, en snijdt ze
+anders op de hoofdthread binnen een framebudget — want een webexport heeft geen
+threads tenzij het sjabloon ervoor gebouwd is, en de vraag die je stelt is
+`DotPlatform.has_threads()`, niet `OS.get_name()`.
+
+<Callout type="warning" title="Het `finished`-signaal van een taak komt altijd op de hoofdthread aan">
+Ooit niet: `await` hervatte op een workerthread en de volgende regel raakte de
+scèneboom buiten de hoofdthread aan. `_teardown` draait op de thread die de taak
+afrondde en is alleen voor thread-veilige API's; alles wat de boom aanraakt hoort
+in een `finished`-handler.
+</Callout>
+
+## Transporten
+
+`DotTransportAuto` is de standaard en kiest voor je. Die keuze is geen voorkeur:
+
+- **Een browser heeft geen UDP**, en `ENetMultiplayerPeer` ontbreekt in het
+  websjabloon — dus bereikt `DotTransportENet` ENet via `ClassDB.instantiate` en
+  `Object.call`, nooit bij naam. Een script dat de identifier alleen al *noemt*,
+  compileert niet in een webexport.
+- **Eén luisterende socket spreekt één protocol.** Een server die browserclients
+  wil, luistert via WebSocket, en dan doen *al* zijn clients dat. Daarom staat
+  `require_web_clients` standaard op `true`.
+
+<Callout type="info" title="`DotWeb.is_secure_context()` betekent niet &quot;de pagina is HTTPS&quot;">
+Een browser behandelt `http://localhost` en `http://127.0.0.1` als betrouwbare
+origins, dus het is waar op een gewone HTTP-pagina — terwijl mixed-content
+blocking, de regel die werkelijk bepaalt of `ws://` mag, precies die origins
+uitzondert. Opwaarderen op de verkeerde vraag is de reden dat hier nooit iets in
+een browser had geladen.
+</Callout>
+
+<Related>
+- [Conventies](/learn/godot/conventions) — bijna deze hele pagina, als regels
+- [Uitbreidingspunten](/learn/godot/extending)
+- [`dot-cloud`](/learn/godot/addons/dot-cloud), [`dot-net`](/learn/godot/addons/dot-net)
+</Related>

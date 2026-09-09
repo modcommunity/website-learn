@@ -1,0 +1,133 @@
+---
+title: dot-core
+description: すべての Dot アドオンが共有する土台。結果型、能力の判定、ノード参照、階層化された設定、フレーム予算つきジョブ、差し替え可能なトランスポート、HTTP、ログ。
+navTitle: dot-core
+order: 10
+keywords:
+  - "DotResult"
+  - "DotError"
+  - "DotPlatform"
+  - "DotNodeRef"
+  - "DotConfig"
+  - "DotScheduler"
+  - "DotTransport"
+  - "DotHttp"
+  - "DotRegistry"
+  - "土台"
+source:
+  - ../game-dev/godot/dot-core/README.md
+  - ../game-dev/godot/dot-core/CLAUDE.md
+---
+
+他のすべての下にある共通レイヤーであり、**コレクション唯一の強い依存**です。
+1 つのコードベースからデスクトップ・モバイル・ブラウザーを対象にし、ブラウザーの
+制約を「無いふり」ではなくコードとして書き込んでいます。
+
+```bash
+cp -r dot-core/addons/dot_core my-game/addons/
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+## 中身
+
+| | |
+| --- | --- |
+| `DotResult` / `DotError` | 失敗しうるすべての戻り値型。分岐に使う安定した `CODE_*` 値を持ち、失敗に対して `.value` を読むと既定値を返さずエラーになります。 |
+| `DotPlatform` | キャッシュされた能力判定。スレッド、UDP、待ち受け、パックのマウント、ストレージ系統、一意 id。プラットフォーム名ではなく能力を尋ねます。 |
+| `DotNodeRef` | *どのノードか*をインスペクターで編集できる形の記述。相対、絶対、グループ、レジストリ、型による最近傍の祖先・子孫、あるいは無ければ作成。 |
+| `DotConfig` | 階層化された設定。エクスポートされた既定値 < ファイル < 環境変数 < コマンドライン。キーはリフレクションで発見し、秘密のキーは保護します。 |
+| `DotRegistry` / `DotRegistryBus` | 名前による検索と、静的クラスが宣言できないシグナル。 |
+| `DotScheduler` / `DotJob` | 長い処理を小分けに。スレッドがある環境ではワーカースレッドで、無い環境ではフレーム時間予算内で。 |
+| `DotTransport` | 差し替え可能なマルチプレイヤー用トランスポート。`DotTransportAuto` が WebSocket と ENet を選び、その理由をログに残します。 |
+| `DotHttp` | `HTTPRequest` ベースのクライアント。リトライ、ジッター付きバックオフ、`Retry-After`、レンジによる再開ダウンロード、コネクションプール。 |
+| `DotLog` / `DotLogBus` / `DotLogSink` | レベルとチャンネルつきのログ。構造化フィールド、ローテーションするファイル、UDP 転送。 |
+| `DotPaths` | パスのサニタイズ。ディレクトリー traversal を「掃除」せず*拒否*します。アトミックな書き込みと web のファイルシステムフラッシュも。 |
+| `DotHash` / `DotHashJob` | SHA-256、HMAC、定数時間比較、base64url、CSPRNG トークン。 |
+| `DotRateLimiter` | トークンバケット。クライアントが叩ける経路すべてで使われます。 |
+| `DotSemVer` | バージョン比較。コンテンツとエンジン最小要件のために。 |
+| `DotWeb` | ブラウザー専用の呼び出し。ファイルシステムの同期、セキュアコンテキストの判定、ストレージ容量の見積り。 |
+
+## ゲームが差し込める場所
+
+<Params>
+  <Param name="DotTransport のサブクラス">
+    `_create_server`、`_create_client`、`_transport_name`、`_is_available`、
+    `supports_web_clients`、`scheme`。利用可能かは使用*前*に確認されるので、
+    使えないトランスポートは起動時に理由つきで失敗し、3 回呼んだ先で null ピアに
+    なることはありません。
+  </Param>
+  <Param name="DotJob のサブクラス">
+    `_step`（有界な一区切り。まだ残っていれば true）、`_progress`、`_setup`、
+    `_teardown`、`is_thread_safe`。ファイルではなくチャンクをハッシュしてください。
+    スケジューラーは `_step` を呼ぶのをやめられますが、実行中の 1 回を中断は
+    できません。
+  </Param>
+  <Param name="DotConfig のサブクラス">
+    `env_prefix()`、`cli_prefix()`、`sensitive_keys()`、`validate()`。`@export`
+    プロパティを宣言すれば、階層化もリフレクションも設定画面も後からついてきます。
+  </Param>
+  <Param name="DotLogSink、または DotLog.add_sink(callable)">
+    ログの行き先。`Callable` 版は 1 行で済み、クラス版はファイル・ローテーション・
+    転送まで面倒を見ます。
+  </Param>
+  <Param name="各コンポーネントの DotNodeRef">
+    「どのノードか」に対するコレクション共通の答え。どのアドオンのどのノードも
+    最低 1 つはエクスポートしています。
+  </Param>
+</Params>
+
+## `DotResult` は任意の礼儀作法ではありません
+
+```gdscript
+var res := await cloud.acquire(url)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        retry_after(res.error.retry_after)
+    return
+var scene_path: String = res.value
+```
+
+分岐は `DotError.CODE_*` で行い、メッセージでは決して分岐しません。
+`res.wrap(...)` は原因を捨てずに文脈を足すので、3 層下の失敗でも各層で何をして
+いたかが残ります。
+
+## `DotScheduler` とブラウザー
+
+`DotScheduler` は、ビルドにスレッドがあればワーカースレッドでジョブを走らせ、
+無ければメインスレッド上でフレーム予算内に刻みます。web エクスポートはテンプレート
+がスレッド付きでビルドされていない限りスレッドを持たず、尋ねるべき問いは
+`OS.get_name()` ではなく `DotPlatform.has_threads()` だからです。
+
+<Callout type="warning" title="ジョブの `finished` シグナルは必ずメインスレッドで届きます">
+かつてはそうではありませんでした。`await` がワーカースレッドで再開し、その次の行が
+メインスレッド外でシーンツリーに触れていました。`_teardown` はジョブを完了させた
+スレッドで走り、スレッドセーフな API 専用です。ツリーに触れるものは `finished`
+のハンドラーに置いてください。
+</Callout>
+
+## トランスポート
+
+`DotTransportAuto` が既定で、選択はそれが行います。この選択は好みの問題では
+ありません。
+
+- **ブラウザーには UDP がなく**、web テンプレートには `ENetMultiplayerPeer` が
+  ありません。そのため `DotTransportENet` は `ClassDB.instantiate` と
+  `Object.call` 経由で ENet に到達し、決して名前では触れません。識別子を*書いた
+  だけ*のスクリプトは web エクスポートでコンパイルできません。
+- **待ち受けソケット 1 つが話せるプロトコルは 1 つです。** ブラウザークライアントを
+  受けたいサーバーは WebSocket で待ち受け、その結果*すべての*クライアントが
+  そうなります。`require_web_clients` の既定が `true` なのはそのためです。
+
+<Callout type="info" title="`DotWeb.is_secure_context()` は「ページが HTTPS である」ではありません">
+ブラウザーは `http://localhost` と `http://127.0.0.1` を信頼できるオリジンとして
+扱うので、素の HTTP ページでも true になります。一方、`ws://` を許すかどうかを
+実際に決めている混在コンテンツのブロックは、まさにそれらのオリジンを除外します。
+誤った問いでアップグレードしていたことが、ここの何ひとつブラウザーで読み込まれた
+ことがなかった理由です。
+</Callout>
+
+<Related>
+- [規約](/learn/godot/conventions) — このページのほとんどをルールとして
+- [拡張ポイント](/learn/godot/extending)
+- [`dot-cloud`](/learn/godot/addons/dot-cloud)、[`dot-net`](/learn/godot/addons/dot-net)
+</Related>

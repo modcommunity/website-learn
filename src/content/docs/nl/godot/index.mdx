@@ -1,0 +1,194 @@
+---
+title: Dot voor Godot
+description: De Dot-collectie — tweeëntwintig open source Godot 4-add-ons, een starter, een servertool en vijf referentiegames die identiteit, contentlevering, netcode, dedicated servers en een hele genrekit bovenop standaard Godot leggen.
+navTitle: Dot voor Godot
+order: 0
+keywords:
+  - "godot"
+  - "gdscript"
+  - "dot-core"
+  - "add-on"
+  - "uitbreiding"
+  - "plug-in"
+  - "asset"
+  - "gameontwikkeling"
+  - "engine"
+  - "4.7"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/PLATFORM.md
+---
+
+**Dot** is de Godot 4-assetcollectie van The Modding Community: tweeëntwintig
+add-ons, een starter voor de opdrachtregel, een servertool en vijf games die
+bestaan om de add-ons samen te laten draaien. Op de site staan ze als de
+[Dot-assetcollectie](/co/4-dot-assets) en op GitHub onder
+[`modcommunity`](https://github.com/modcommunity).
+
+Ze voegen de delen van een gameplatform toe die geen enginefuncties zijn —
+accounts, avatars, contentlevering, netcode, dedicated servers, moderatie,
+timers, scoreborden — als **lagen bovenop standaard Godot**. Een game die er
+niets van wil, blijft een gewoon Godot-project.
+
+<Cards>
+  <Card title="De add-ons" href="/learn/godot/addons">
+    Alle tweeëntwintig, waar elk voor dient en welke haken het biedt.
+  </Card>
+  <Card title="Uitbreidingspunten" href="/learn/godot/extending">
+    De ene index van alles wat je kunt overerven, toewijzen of registreren — en
+    de belofte dat niets daarvan een fork vraagt.
+  </Card>
+  <Card title="Conventies" href="/learn/godot/conventions">
+    De regels die elke add-on volgt: geen autoloads, `DotResult`, `DotNodeRef`,
+    gelaagde configuratie, en waarom de browser de helft ervan bepaalt.
+  </Card>
+  <Card title="Installeren" href="/learn/godot/installing">
+    Kopieer een map, vink een plug-in aan. Plus de engineversie, de links voor
+    lokaal werk en de controle in twee stappen erna.
+  </Card>
+</Cards>
+
+<Callout type="warning" title="Beschouw dit als half getest">
+Elke asset heeft zijn eigen headless testsuite en die suites slagen, maar heel
+weinig hiervan is voor echte spelers geweest. Reken op ruwe randjes en meld wat
+je tegenkomt. De collectie is met Claude Code gebouwd en wordt zo onderhouden —
+dat staat vooraan in elk README in plaats van weggestopt.
+</Callout>
+
+## We forken Godot niet
+
+Dat kan er meteen uit, want "een fork van Godot" en "add-ons voor Godot" leiden
+tot verschillende projecten, en maar één daarvan is af te maken.
+
+Een fork betekent het releaseritme van de engine overnemen, de exportsjablonen
+voor zes platforms, de webbuild en elke rebase voor altijd — en zodra de fork
+afwijkt, kan een game die ervoor is geschreven niets meer uit de
+Godot-assetbibliotheek gebruiken. Wat mensen echt bedoelen als ze "platform"
+zeggen, zijn geen enginefuncties: identiteit, avatars, contentlevering,
+dedicated servers, moderatie, vindbaarheid. Elk daarvan is een laag *boven* een
+engine.
+
+Dus: **standaard Godot, plus add-ons, plus één open backendprotocol.**
+
+## Alleen `dot-core` is ooit een harde afhankelijkheid
+
+Dit is de regel waar de hele collectie omheen is gebouwd, en in GDScript is het
+geen voorkeur maar een feit: **een script dat een `class_name` die het project
+niet heeft alleen al *noemt*, mislukt bij het parsen**, en sleept elk script mee
+dat ernaar verwijst. Een add-on die een andere importeert, maakt die andere voor
+iedereen verplicht.
+
+Al het overige wordt dus tijdens het draaien gevonden, via duck typing
+opgelost, of door de game overbrugd:
+
+- `dot-server` vindt `dot-auth` en `dot-cloud` via
+  [`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads) en
+  importeert geen van beide.
+- `dot-net` heeft alleen `dot-core` nodig en verplaatst bytes via een
+  `Callable`.
+- `dot-fps-controller`, `dot-combat`, `dot-loadout`, `dot-match` en `dot-2d`
+  leveren elk een `*NetSync`-klasse die **als gegevens** beschrijft wat er
+  gerepliceerd wordt — eigenschaps- en typenamen als *strings* — die een brug
+  oplost met `DotNetVar.Type[spec.type]`. Geen ervan noemt een
+  `dot-net`-identifier.
+- `dot-combat` krijgt lagcompensatie als twee `Callable`s.
+- `dot-ui` noemt niets buiten `dot-core`: de feed krijgt gekleurde fragmenten en
+  de tabel krijgt rijen dictionaries.
+- `dot-user` en `dot-user-avatar` importeren elkaar niet, en `dot-loadout`
+  draagt om dezelfde reden zijn eigen kopie van een opslagsleutelcontrole.
+
+<Callout type="info" title="Dubbeling is hier bewust">
+Waar twee add-ons dezelfde twintig regels dragen, is dat de prijs van de regel
+hierboven, geen slordigheid. Ze samentrekken in één gedeelde import is precies
+hoe de ene add-on een afhankelijkheid van de andere wordt.
+</Callout>
+
+## Hoe de stukken stapelen
+
+```
+                        ┌──────────────┐
+                        │   dot-core   │  logging, capabilities, paths,
+                        │              │  node refs, config, jobs,
+                        └──────┬───────┘  transports, HTTP
+      ┌───────────┬────────────┼────────────┬───────────┬──────────┐
+      ▼           ▼            ▼            ▼           ▼          ▼
+┌───────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌────────┐ ┌────────┐
+│ dot-cloud │ │ dot-auth │ │ dot-net │ │dot-server│ │ dot-ui │ │ dot-2d │
+└─────┬─────┘ └────┬─────┘ └─────────┘ └────┬─────┘ └────────┘ └────────┘
+      │            │                        │
+┌─────┴─────┐ ┌────┴───────────┐    ┌───────┴────────┐
+│ dot-user  │ │dot-user-avatar │    │  dot-platform  │
+└───────────┘ └────────────────┘    └────────────────┘
+
+      ┌──────────────────┬──────────────┬─────────────┐
+      ▼                  ▼              ▼             ▼
+┌────────────┐    ┌────────────┐  ┌───────────┐ ┌──────────────────┐
+│ dot-combat │    │dot-loadout │  │ dot-match │ │dot-fps-controller│
+└────────────┘    └────────────┘  └───────────┘ └──────────────────┘
+      └──────────────────┴──────────────┴─────────────┘
+                               │  elk hiervan heeft
+                               ▼  ALLEEN dot-core nodig
+                    ┌──────────────────────┐
+                    │      jouw game       │  hier wonen de bruggen
+                    └──────────────────────┘
+```
+
+De pijlen zijn overal *optionele* relaties, behalve in de bovenste rij. Lees ze
+als "werkt beter met", niet als "vereist".
+
+## De drie groepen
+
+**De platformhelft** — `dot-core`, `dot-cloud`, `dot-auth`, `dot-net`,
+`dot-server`, `dot-user`, `dot-user-avatar`, `dot-platform`. Wie een speler is,
+hoe die eruitziet, hoe die aan content komt, en de dedicated server waarmee die
+verbindt.
+
+**De gameplayhelft** — `dot-fps-controller`, `dot-2d`, `dot-combat`,
+`dot-loadout`, `dot-match`, `dot-ui`. Beweging, wapens, uitrusting, de
+wedstrijdlus en de interface. Elk heeft alleen `dot-core` nodig.
+
+**De genrekit** — `dot-timer`, `dot-map`, `dot-props`, `dot-leaderboard`,
+`dot-stats`, `dot-voice`, `dot-moderation`, `dot-vote`. Alles wat je nodig hebt
+om *een server te draaien* waar mensen terugkomen: een recordtabel, een
+maprotatie, een stemming over wat er hierna komt, straffen die een sessie
+overleven.
+
+## De genrekit is een strategie, geen functielijst
+
+Het probleem van de collectie was nooit een gebrek aan functies. Het is dat
+**niemand een reden heeft om de eerste op een nieuw platform te zijn**, en een
+algemene add-onfamilie levert die reden niet. Een genre wel.
+
+Gekozen is surf en bunny-hop — de bewegingsgemeenschap van Counter-Strike, die
+in 2026 nog altijd Source-servers draait op een timerplug-in geschreven voor
+een SDK die voor het laatst in 2013 is opengegaan. Een goed eerste genre om
+vier redenen, en alleen de vierde gaat over ons:
+
+1. **Beweging is het moeilijkst om goed te krijgen.** Bijna niemand reproduceert
+   Quakes versnelling en Source' `TryPlayerMove` zo nauwkeurig dat iemand die
+   tien jaar surft het verschil niet meteen voelt.
+2. **Het heeft de vorm van een server.** Een surfgemeenschap *is* een server:
+   een rotatie, een recordtabel, een beheerder die nieuwe maps zoneert, vaste
+   spelers die om het scorebord geven.
+3. **De content is draagbaar en door de community gemaakt.** Maps komen van
+   mappers, zones van beheerders, en beide worden als bestand uitgewisseld.
+4. **Het is klein genoeg om af te maken.** Vier add-ons en een speelbare game.
+
+## Alles is MIT, behalve de backend
+
+De add-ons, de games en het gereedschap zijn open source onder MIT. Het enige
+dat dat niet is, is de **web-backendinfrastructuur** — TMC's eigen uitrol. Elke
+add-on die ermee praat doet dat via een gedocumenteerd HTTP-protocol en wijst
+naar een `backbone_url` die je kunt wijzigen: een project dat zijn eigen backend
+wil, bouwt er een en verandert één instelling.
+
+<Related>
+- [De add-ons](/learn/godot/addons) — alle tweeëntwintig, met hun haken
+- [Uitbreidingspunten](/learn/godot/extending) — de hele index in één tabel
+- [Conventies](/learn/godot/conventions) — de regels die ze allemaal volgen
+- [Referentiegames](/learn/godot/games) — waar de naden echt worden gedraaid
+- [Gereedschap](/learn/godot/tooling) — `dotserve` en TMC's servertool
+- [Integratie-API](/learn/api/integration) — de backendhelft van `dot-stats`,
+  `dot-leaderboard` en de serverrapporteur
+</Related>

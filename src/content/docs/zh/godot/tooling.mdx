@@ -1,0 +1,134 @@
+---
+title: 工具
+description: dotserve —— 让你不必了解 dot-server 内部就能把它启动起来的 shell 启动器；以及 TMC 的服务器工具：YAML 配置、从目录加载游戏，还有一个浏览器客户端。
+navTitle: 工具
+order: 60
+keywords:
+  - "dotserve"
+  - "启动器"
+  - "server.cfg"
+  - "systemd"
+  - "docker"
+  - "YAML"
+  - "托管"
+  - "浏览器客户端"
+  - "web 导出"
+source:
+  - ../game-dev/godot/dot-serve/README.md
+  - ../game-dev/godot/dot-server-setup-test/README.md
+---
+
+[`dot-server`](/learn/godot/addons/dot-server) 可配置得非常深：cvar、flag、
+`server.cfg`、`autoexec.cfg`、`+command` 参数、RCON，以及来自文件、环境变量和 argv
+的分层配置。它缺的是一扇正门。这就是那个门铃。
+
+## `dotserve`
+
+整套合集里唯一不是 Godot 插件的部分：一个 shell 脚本，需要 `bash` 和一个 Godot
+4.7+ 的可执行文件。
+
+```bash
+./install.sh                 # 在 ~/.local/bin 里建软链
+PREFIX=/usr/local/bin sudo ./install.sh
+```
+
+```bash
+dotserve                            # 合理的默认值，并打印一个可加入的地址
+dotserve --game res://games/arena   # 指定某个游戏
+dotserve --port 27015 --web         # 同时监听浏览器客户端
+dotserve --restart                  # 崩溃后自动重新拉起
+dotserve -- +sv_cheats 1 +map dm_arena
+```
+
+第一次运行会在 `~/.config/dotserve` 写下一份带注释的 `server.cfg`，生成一个 RCON
+密码并打印一次。此后每次运行都只读取这个文件，永不改动它。
+
+### 那些容易被省掉的事
+
+**它会打印一个可以直接发给朋友的地址**，包括局域网地址——因为“它说启动了，可我朋友
+连不上”几乎总是绑定地址或防火墙的问题，而首先有帮助的就是知道服务器到底在哪个地址上。
+
+**它拒绝用一个能被猜到的 RCON 密码启动。** 留空是可以的，那表示 RCON 监听根本不会
+打开。被拒绝的是那种随发布一起带出去的占位串、从论坛里抄来的、或者忘在模板里的。
+
+**RCON 密码永远不会出现在命令行上。** `server.cfg` 会先以 600 权限创建，然后才往里
+写东西。argv 和环境变量在多数系统上任何其他进程都读得到，而且两者都会出现在被粘贴
+出来的错误报告里——这也正是 `DotConfig.sensitive_keys` 拒绝它们的原因。
+
+**它绝不覆盖你的 `server.cfg`。** 你改过的内容*就是*服务器的配置。
+
+### 值得知道的选项
+
+| | |
+| --- | --- |
+| `--dry-run` | 打印它将要执行的命令，然后退出。 |
+| `--print-config` | 打印解析后的配置，然后退出。 |
+| `--install-service [名称]` | 为这次调用打印一份 systemd unit。 |
+| `--restart` | 崩溃后重启，采用指数退避，上限 60 秒。 |
+| `--web` / `--ws-port N` | 同时监听浏览器客户端。默认是 `--port` + 1。 |
+
+退出码是有含义的，好让守护进程分得清配置错误和崩溃：`2` 用法错误、`3` 没有 Godot、
+`4` 没有项目、`5` 配置有误、`6` 端口被占用。生成的 systemd unit 会把它们全部列在
+`RestartPreventExitStatus` 下。
+
+## TMC 的服务器工具
+
+`dot-server-setup-test` 是这套合集汇聚成“服主用一条命令就能启动的东西”的地方。它是
+一个 Godot 项目，负责启动 `dot-server`、从 `cfg/*.yml` 读配置、从 `content/` 加载
+游戏，并提供一个浏览器客户端——而且它**自己不带任何游戏**。
+
+```bash
+./setup.sh              # 找到运行时、接好插件、写出 ./server
+./server                # 启动它
+
+docker compose up -d    # 或者在容器里做同样的事
+```
+
+Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `server.cmd`。
+
+### 它给服主的东西
+
+- **一条命令就能启动。** `setup.sh` 会找到 Godot 运行时、接好插件、写出一份带注释的
+  `cfg/`，并生成 `./server`。它绝不覆盖已经存在的配置文件。RCON 默认是关的。
+- **配置写在 YAML 里**，按主题拆开——`server.yml`、`net.yml`、`rcon.yml`、
+  `auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`。凡是 `dot-server` 以控制台
+  变量形式暴露出来的东西，都能用它自己的名字写进去。
+- **是角色，不是 flag。** dot-server 的权限模型刻意是 flag；`groups.yml` 就是那层翻译，
+  于是服主写 `admin: [kick, ban, mute]`，玩家就拿到对应的 flag。
+- **游戏在运行时加载。** `content/` 下任何一个含有 `game.yml` 的目录就是一个游戏，
+  `changelevel` 能在玩家仍然在线的情况下切换它们。
+- **下一局玩什么由玩家决定。** 对 `content/` 里的游戏使用 `!nominate`、`!rtv`、
+  `!votefor`、`!timeleft`、`!nextmap`，走的是
+  [`dot-vote`](/learn/godot/addons/dot-vote)。每个游戏在自己的 `game.yml` 里有自己的
+  时间限制。
+- **一个浏览器客户端。** `./server export-web` 负责构建；一次导出就能服务所有服务器，
+  因为地址来自 `?server=`。
+
+### 目录结构，以及为什么分成三块
+
+```
+cfg/       服主编辑的东西
+content/   服务器提供的东西
+data/      服务器写入的东西 —— from_yaml.cfg、admins.json、bans.json、audit.jsonl
+host/      启动流程：YAML -> DotServer
+client/    客户端外壳。它不认识任何一个游戏
+web/       浏览器构建，以及从 URL 里读取 ?server= 的那个页面
+```
+
+容器把前两个以只读方式挂载、把第三个以读写方式挂载，而 systemd unit 把
+`ReadWritePaths` 指向恰好一个目录。
+
+<Callout type="info" title="`data/from_yaml.cfg` 就是你的 YAML 变成的样子">
+当某个设置看起来被忽略了，就读它。这里的 YAML 是**盖在 dot-server 自身词汇之上的一层
+外观**，而不是第二套词汇，而这个文件就是翻译结果。
+</Callout>
+
+它同时也是三个游戏被编译进同一份构建、并在玩家在线时互相切换的唯一场所，也是这套
+合集里任何东西第一次在浏览器中被加载的地方。
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [`dot-vote`](/learn/godot/addons/dot-vote)
+- [参考游戏](/learn/godot/games)
+- [在站内登记你的服务器](/learn/servers/listing)
+</Related>

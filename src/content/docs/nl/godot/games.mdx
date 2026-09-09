@@ -1,0 +1,185 @@
+---
+title: Referentiegames
+description: De vijf games die uit de Dot-collectie zijn gebouwd — wat elk ervan moet aantonen, en waarom de naden tussen add-ons alleen in een game echt worden beproefd.
+navTitle: Referentiegames
+order: 50
+keywords:
+  - "voorbeeld"
+  - "demo"
+  - "game-arena"
+  - "game-hungario"
+  - "game-playground"
+  - "game-g2gfast"
+  - "lobby"
+  - "deathmatch"
+  - "sandbox"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Vijf games, en het zijn geen demonstraties. De testsuite van elke add-on draait
+die add-on **met de andere afwezig**, dus de verbindingen ertussen bestaan alleen
+in een game — en volgens de les die deze collectie steeds herhaalt: *een codepad
+dat maar één uitrolvorm bereikt, is een codepad dat niets heeft gedraaid.*
+
+<Callout type="info" title="Hier zitten de bugs">
+De gameplay-add-ons door één proces halen leverde zeven bugs op, zes daarvan in
+*andere* repositories en geen ervan bereikbaar vanuit de suite van die
+repository. Het geheel van begin tot eind draaien leverde er nog twaalf op. Een
+echte browserclient tegen een echte server openen leverde er daarna nog zeven op.
+Het patroon houdt elke keer stand.
+</Callout>
+
+## game-arena
+
+**Een 3D-arena-deathmatch met dev-textures. De referentiegame.** Hij bestaat om
+te bewijzen dat de add-ons samenwerken, om te laten zien hoe de bruggen eruitzien,
+en om datgene te zijn waar een nieuwe game van wordt overgeschreven.
+
+Gebruikt `dot-core`, `dot-fps-controller`, `dot-combat`, `dot-loadout`,
+`dot-match`, `dot-ui`, `dot-server` en `dot-net`.
+
+Vier bestanden doen ertoe, en de reden dat elk ervan in de *game* zit en niet in
+een add-on is steeds dezelfde:
+
+- **`maps/arena_map.gd`** — een level is een lijst dozen, en die lijst wordt drie
+  dingen: meshes, physicsbodies en analytische geometrie voor een headless server.
+  Ze los bouwen levert drie beschrijvingen op die uit elkaar lopen, en dat uit
+  elkaar lopen is onzichtbaar tot schoten door iets heen gaan dat clients wel
+  zien.
+- **`game/arena_player.gd`** — beweging, wapens, gezondheid en hitboxes op één
+  body. Elke add-on zegt dat deze bedrading bij de game hoort, want een add-on die
+  het zou doen, dicteert een scèneopbouw.
+- **`game/arena_game.gd`** — de naad. Zes add-ons, elk op zichzelf correct; dit
+  zijn de vijftig regels waar een kill uit combat een matchscore wordt en een
+  respawn uit match een loadout.
+- **`game/arena_module.gd`** — het enige bestand dat `dot-server` noemt. Zo'n
+  veertig regels, en dat is de hele integratie met de dedicated server.
+
+Vier wapens, omdat het vier echt verschillende antwoorden zijn op "hoe overbrug ik
+afstand", en een deathmatch met minder maar één juist antwoord heeft. Loadouts
+zijn twee wapens op een budget van zes punten — vier getallen in plaats van een
+opsomming.
+
+```bash
+godot --headless --path . res://examples/headless_match.tscn   # een hele deathmatch
+godot --headless --path . res://examples/headless_net.tscn     # server + client, 20% verlies
+godot --headless --path . res://examples/dedicated.tscn        # een echte DotServer
+```
+
+## game-hungario
+
+**Een arenagame waarin je groeit door te eten, met een avatar op het monster.** De
+eerste speelbare client van de collectie, de eerste game met werkende netcode over
+een echte socket, en de enige plek waar de gameplayhelft en de identiteitshelft
+samen draaien.
+
+Gebruikt `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
+`dot-user-avatar`, `dot-loadout`, `dot-platform` en `dot-cloud` — alles behalve
+`dot-fps-controller` en `dot-combat`.
+
+Het is ook **de kortste route naar de browserkolom**: klein, heeft geen threads
+nodig, en het beproeft elke browserbeperking zonder dat er iets anders tussen
+zit. Zijn `web/README.md` is het uitrolcontract: WebSocket omdat een browser geen
+UDP heeft, alleen client omdat een tabblad niet kan luisteren, `wss://` omdat een
+HTTPS-pagina geen onbeveiligde socket mag openen, en threadondersteuning uit omdat
+die aanzetten cross-origin-isolatie op elke respons vereist en elke embed van
+derden op de pagina sloopt.
+
+## game-playground
+
+**Een sandbox in de klassieke physics-sandboxvorm.** Houd Q ingedrukt voor een
+menu met veertien props, vier gescripte NPC's en drie wapens; klik er een aan en
+hij is van jou. Een physics gun die vasthoudt en bevriest, een gravity gun die
+wegschiet. Drie maps, een dedicated server, twintig consoleopdrachten, en een
+springparcours van negen platforms op het bonustraject van `pg_lobby` — omdat een
+springparcours geen bewegingsgenre is, en omdat het laat zien dat
+[`dot-timer`](/learn/godot/addons/dot-timer) niet alleen iets voor surf en
+bunny-hop is.
+
+Gebruikt `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+`dot-leaderboard`, `dot-ui` en `dot-server`.
+
+<Callout type="warning" title="Entiteiten en wapens zijn scripts die bij PAD worden genoemd">
+Niet bij `class_name`. Een aangekoppeld `dot-cloud`-pakket kan geen
+`class_name`-globals registreren — dat is gemeten — dus binnen een pakket faalt
+elke typeverwijzing tussen bestanden bij het compileren terwijl het pakket
+aankoppelt en de scènes laden. **Een pad is de enige vorm die een geleverde
+entiteit kan aannemen**, en deze game is met opzet zo geschreven.
+</Callout>
+
+Het is de enige plek waar `dot-fps-controller`, `dot-timer`, `dot-map`,
+`dot-props`, `dot-leaderboard`, `dot-ui` en `dot-server` in één proces draaien.
+Zijn suite heeft negen bugs gevonden, drie daarvan in andere repositories;
+screenshots vonden er nog vier.
+
+## game-g2gfast
+
+**De bunny-hop- en surftimerserver, in de Counter-Strike-vorm.** Source-eenheden
+en -cvars, het gezichtsveld van Source, eerste en derde persoon, en elke speler
+getekend als avatar — de eigen avatar van het platform, of een standaardexemplaar.
+
+Gebruikt `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
+`dot-server`, `dot-user-avatar` en `dot-ui`.
+
+```
+sv_tickrate 100
+sv_autobunnyhopping 1
+sv_airaccelerate 1000        // 150 voor surf
+sv_gravity 800
+sv_allow_thirdperson 1
+sv_replay_bot 1              // het serverrecord als zichtbare ghost
+```
+
+Zoneer vervolgens vanuit de console een map waarvan de maker deze engine nooit
+gebruikt heeft:
+
+```
+g2g_zone start
+g2g_zone_mark          // ga op de ene hoek staan
+g2g_zone_mark          // en op de andere
+g2g_zone stage main 1
+g2g_zone_save
+```
+
+## game-simple-lobby
+
+**Een lobby.** Een kleine 2D-ruimte met chat, een deelnemerslijst en meldingen van
+komen en gaan — wat een server draait als hij verder niets draait, en het kleinste
+dat nog toelating, lidmaatschap, replicatie, voorspelling en chat beproeft.
+
+Een server zonder geladen game is iets volstrekt legitiems en `dot-server` heeft
+dat altijd ondersteund; wat ontbrak was iets om naar te kijken, en wie verbindt en
+niets ziet, kan dat niet onderscheiden van een kapotte server. Het is ook de game
+die een generieke browserclient als eerste downloadt.
+
+## Wat het draaien ervan heeft geleerd
+
+Vier lessen komen steeds terug, en het loont ze te kennen voor je je eigen brug
+schrijft.
+
+**Een waarde die correct wordt geproduceerd en door niets wordt gelezen, ziet er
+precies zo uit als een verkeerd geproduceerde waarde.** De geïnterpoleerde
+positie, de interesseset en de cloudclient werden alle drie correct berekend en
+door niemand gelezen, en telkens wees het zichtbare symptoom naar de producent.
+
+**Een waarde die door twee games wordt gelezen en door niemand geproduceerd, is
+dezelfde bug met de uiteinden omgedraaid.** `DotTimer.effect_requested` was
+gedeclareerd, doorgestuurd en aangesloten — en geen enkele regel zond hem uit,
+zodat het afgrondvolume van elke map in twee games niets dan decoratie was.
+
+**De bugs van een interface zijn onzichtbaar voor asserties**, omdat elke
+eigenschap klopt en er niets faalt. Twee 0 × 0 `Control`-bomen en een zwart scherm
+zijn gevonden door een frame te renderen en ernaar te kijken, niet door een test.
+
+**Beweging ook.** Elke controle in elke suite doet een uitspraak over een
+*gesimuleerde* waarde, en bij de trilling die een browserclient onspeelbaar maakte
+klopte elk gesimuleerd getal. De bug zat in de afbeelding van de simulatie naar
+het scherm, en geen enkele assertie over de simulatie komt daarbij.
+
+<Related>
+- [De add-ons](/learn/godot/addons)
+- [Uitbreidingspunten](/learn/godot/extending)
+- [Gereedschap](/learn/godot/tooling)
+</Related>

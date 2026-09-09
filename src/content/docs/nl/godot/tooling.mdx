@@ -1,0 +1,151 @@
+---
+title: Gereedschap
+description: dotserve, het shellscript dat een dot-server start zonder dat je hoeft te weten hoe dot-server werkt, en TMC's servertool — configuratie in YAML, games uit een map, en een browserclient.
+navTitle: Gereedschap
+order: 60
+keywords:
+  - "dotserve"
+  - "starter"
+  - "server.cfg"
+  - "systemd"
+  - "docker"
+  - "YAML"
+  - "hosting"
+  - "browserclient"
+  - "webexport"
+source:
+  - ../game-dev/godot/dot-serve/README.md
+  - ../game-dev/godot/dot-server-setup-test/README.md
+---
+
+[`dot-server`](/learn/godot/addons/dot-server) is diep instelbaar — cvars, flags,
+`server.cfg`, `autoexec.cfg`, `+command`-argumenten, RCON, en gelaagde
+configuratie uit bestand, omgeving en argv. Wat ontbrak was een voordeur. Dit is
+de deurbel.
+
+## `dotserve`
+
+Het enige stuk van de collectie dat geen Godot-add-on is: een shellscript dat
+`bash` en een Godot 4.7+-binary nodig heeft.
+
+```bash
+./install.sh                 # maakt links in ~/.local/bin
+PREFIX=/usr/local/bin sudo ./install.sh
+```
+
+```bash
+dotserve                            # verstandige standaarden, print een adres om te joinen
+dotserve --game res://games/arena   # een specifieke game
+dotserve --port 27015 --web         # luistert ook naar browserclients
+dotserve --restart                  # komt na een crash weer op
+dotserve -- +sv_cheats 1 +map dm_arena
+```
+
+De eerste run schrijft een becommentarieerde `server.cfg` onder
+`~/.config/dotserve`, genereert een RCON-wachtwoord en print het één keer. Elke
+run daarna leest het bestand en raakt het nooit aan.
+
+### Wat het doet en makkelijk wordt overgeslagen
+
+**Het print het adres dat je een vriend kunt sturen**, inclusief een LAN-adres —
+want "hij zegt dat hij gestart is en mijn vriend kan er niet in" is bijna altijd
+een bindadres of een firewall, en het eerste dat helpt is weten op welk adres de
+server werkelijk staat.
+
+**Het weigert te starten met een raadbaar RCON-wachtwoord.** Een leeg wachtwoord
+is prima en betekent dat de RCON-listener helemaal niet opengaat. Wat geweigerd
+wordt is een tijdelijke waarde die is meegeleverd, uit een forumbericht gekopieerd
+of in een sjabloon blijven staan.
+
+**Het RCON-wachtwoord staat nooit op een opdrachtregel.** `server.cfg` wordt in
+modus 600 aangemaakt voordat er iets in gaat. argv en de omgeving zijn op de meeste
+systemen leesbaar door elk ander proces en belanden allebei in geplakte
+foutrapporten — dezelfde reden waarom `DotConfig.sensitive_keys` ze weigert.
+
+**Het overschrijft je `server.cfg` nooit.** Jouw bewerkingen *zijn* de configuratie
+van de server.
+
+### Opties die het waard zijn
+
+| | |
+| --- | --- |
+| `--dry-run` | Print het commando dat het zou draaien, en stopt. |
+| `--print-config` | Print de opgeloste configuratie, en stopt. |
+| `--install-service [NAAM]` | Print een systemd-unit voor deze aanroep. |
+| `--restart` | Herstart na een crash, met exponentiële backoff tot maximaal 60 seconden. |
+| `--web` / `--ws-port N` | Luistert ook naar browserclients. Standaard `--port` + 1. |
+
+De exitcodes hebben betekenis, zodat een supervisor een misconfiguratie van een
+crash kan onderscheiden: `2` gebruik, `3` geen Godot, `4` geen project, `5` foute
+config, `6` poort bezet. De gegenereerde systemd-unit noemt ze allemaal onder
+`RestartPreventExitStatus`.
+
+## TMC's servertool
+
+`dot-server-setup-test` is waar de collectie samenkomt tot iets dat een
+servereigenaar met één commando start. Het is een Godot-project dat een
+`dot-server` opstart, zijn configuratie uit `cfg/*.yml` leest, games uit
+`content/` laadt en een browserclient serveert — en het **levert zelf geen game
+mee**.
+
+```bash
+./setup.sh              # zoek een runtime, koppel de add-ons, schrijf ./server
+./server                # start hem
+
+docker compose up -d    # of hetzelfde in een container
+```
+
+Windows: `setup.bat` (een schil om `setup.ps1`), dan `server.cmd`.
+
+### Wat het een beheerder geeft
+
+- **Eén commando om te starten.** `setup.sh` zoekt een Godot-runtime, koppelt de
+  add-ons, schrijft een becommentarieerde `cfg/` en schrijft `./server`. Het
+  overschrijft nooit een configuratiebestand dat er al is. RCON staat standaard
+  uit.
+- **Configuratie in YAML**, per onderwerp opgesplitst — `server.yml`, `net.yml`,
+  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`. Alles wat
+  `dot-server` als consolevariabele aanbiedt, kan daar onder zijn eigen naam in.
+- **Rollen, geen flags.** Het rechtenmodel van dot-server bestaat bewust uit
+  flags; `groups.yml` is de vertaling, zodat een beheerder
+  `admin: [kick, ban, mute]` schrijft en een speler de flags krijgt.
+- **Games die tijdens het draaien worden geladen.** Een map onder `content/` met
+  een `game.yml` erin is een game, en `changelevel` wisselt ertussen terwijl de
+  spelers verbonden blijven.
+- **De spelers kiezen de volgende game.** `!nominate`, `!rtv`, `!votefor`,
+  `!timeleft`, `!nextmap` over de games in `content/`, via
+  [`dot-vote`](/learn/godot/addons/dot-vote). Elke game krijgt zijn eigen
+  tijdslimiet in zijn eigen `game.yml`.
+- **Een browserclient.** `./server export-web` bouwt hem; één export bedient elke
+  server, omdat het adres uit `?server=` komt.
+
+### De indeling, en waarom die in drieën splitst
+
+```
+cfg/       wat een beheerder bewerkt
+content/   wat de server serveert
+data/      wat de server schrijft — from_yaml.cfg, admins.json, bans.json, audit.jsonl
+host/      het opstarten: YAML -> DotServer
+client/    de clientschil. Kent geen enkele game
+web/       de browserbuild, en de pagina die ?server= uit de URL haalt
+```
+
+Een container koppelt de eerste twee alleen-lezen en de derde lees-schrijf, en een
+systemd-unit wijst `ReadWritePaths` naar precies één map.
+
+<Callout type="info" title="`data/from_yaml.cfg` is wat jouw YAML geworden is">
+Lees het wanneer een instelling genegeerd lijkt te worden. De YAML is een
+**laag over het eigen vocabulaire van dot-server**, geen tweede vocabulaire, en
+dat bestand is de vertaling.
+</Callout>
+
+Het is ook de enige plek waar drie games in één build worden gecompileerd en
+gewisseld terwijl er spelers op zitten, en de eerste plek waar iets uit deze
+collectie in een browser is geladen.
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [`dot-vote`](/learn/godot/addons/dot-vote)
+- [Referentiegames](/learn/godot/games)
+- [Je server op de site aanmelden](/learn/servers/listing)
+</Related>

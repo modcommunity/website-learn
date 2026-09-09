@@ -1,0 +1,271 @@
+---
+title: Konventionen
+description: Die Regeln, die jedes Dot-Addon einhält — keine Autoloads, DotResult für alles Fehlbare, DotNodeRef statt Szenenpfaden, geschichtete Konfiguration, und die Browser-Beschränkungen, die die Hälfte davon entscheiden.
+order: 20
+keywords:
+  - "DotResult"
+  - "DotNodeRef"
+  - "DotRegistry"
+  - "DotConfig"
+  - "Autoload"
+  - "Singleton"
+  - "describe"
+  - "Konventionen"
+  - "Web-Export"
+  - "IndexedDB"
+source:
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-core/README.md
+---
+
+Diese Regeln gelten in jedem Addon. Eine davon zu brechen ist eine
+Bruchänderung über zweiundzwanzig Repositories, also lohnt es sich, sie zu
+kennen, bevor man gegen eines davon schreibt.
+
+## `DotRegistry` statt Autoloads
+
+**Kein Addon liefert irgendwo einen Autoload.**
+
+Ein Autoload reserviert in jedem konsumierenden Projekt einen globalen
+Bezeichner, legt die Initialisierungsreihenfolge fest und lässt sich nicht
+zweimal instanziieren — womit es ausscheidet, einen Server und einen Client in
+einem Prozess oder zwei Server in einer Editor-Sitzung zu betreiben. Genau das
+tut diese Sammlung ständig.
+
+Komponenten sind deshalb `Node`s, die du selbst platzierst, und sie finden
+einander über Namen:
+
+```gdscript
+DotRegistry.register(&"dot_server", self)
+
+var cloud: Object = DotRegistry.get_service(&"dot_cloud_client")
+if cloud != null:
+    ...
+```
+
+Die meisten Manager registrieren sich in `_enter_tree` und melden sich in
+`_exit_tree` ab, unter einer `SERVICE`-Konstante, mit einem Schalter
+`register_service` und einem `service_scope`, falls zwei davon in einem Baum
+laufen sollen.
+
+Statische Klassen können keine Signale deklarieren — deshalb gibt es `DotLogBus`
+und `DotRegistryBus` neben `DotLog` und `DotRegistry`.
+
+### Die Registry-Namen, die Nahtstellen sind
+
+Drei davon sind eher *Verträge* als Nachschlagevorgänge — ein Name, eine Methode,
+und keines der beiden Addons nennt das andere:
+
+<Params>
+  <Param name="dot_ban_source">
+    Alles mit `check_admission(uid, address) -> DotResult`.
+    [`dot-server`](/learn/godot/addons/dot-server) fragt es bei jedem Beitritt;
+    [`dot-moderation`](/learn/godot/addons/dot-moderation) veröffentlicht sich
+    darunter.
+  </Param>
+  <Param name="dot_mute_source">
+    Alles mit `is_voice_muted(peer) -> bool`. Der Router von
+    [`dot-voice`](/learn/godot/addons/dot-voice) fragt es, bevor er ein Frame
+    weiterleitet.
+  </Param>
+  <Param name="dot_cloud_client">
+    Alles, das `ensure(content_id, version)` /
+    `is_mounted(content_id, version)` spricht. Der Lader von
+    [`dot-map`](/learn/godot/addons/dot-map) und der Spielwechsel von
+    [`dot-server`](/learn/godot/addons/dot-server) greifen darüber auf Inhalte
+    zu.
+  </Param>
+</Params>
+
+Die vollständige Liste der Dienstnamen steht auf der Seite
+[Erweiterungspunkte](/learn/godot/extending#registry-seams).
+
+## Nichts codiert einen Szenenpfad fest
+
+Jede Komponente, die einen Knoten im Hostprojekt braucht, exportiert eine
+**`DotNodeRef`** — eine im Inspektor bearbeitbare Beschreibung, *welcher Knoten*
+gemeint ist: relativ, absolut, man selbst, das Elternteil, eine Gruppe, ein
+Registry-Dienst, der nächste Vorfahre oder Nachfahre eines Typs, oder
+Knoten-anlegen-falls-fehlend.
+
+```gdscript
+session.world_ref = DotNodeRef.of_path(^"../World")
+spawner.world_ref = DotNodeRef.of_group(&"world_root")
+```
+
+Der Host entscheidet, pro Instanz, im Inspektor. Ein Addon, das `$"../../World"`
+festschreibt, wäre ein Addon, dessen Szenenaufbau du übernehmen musst.
+
+<Callout type="warning" title="`of_self()` löst auf den Knoten auf, an dem die Referenz hängt">
+Auf einem Controller heißt das den *Controller*, nicht den Charakterkörper
+darunter — und der ist ein einfacher `Node`, also lehnt `setup()` ab und der
+Spieler wird nie simuliert. Das kostete neun Fehlschläge in einer Suite, und
+keiner zeigte auf die Referenz.
+</Callout>
+
+## `DotResult` für alles Fehlbare
+
+Nie null, nie ein `Array`-Paar, nie ein bloßes `false`.
+
+```gdscript
+var res := await manager.resolve(identity)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        wait(res.error.retry_after)
+    return
+var profile: DotUserProfile = res.value
+```
+
+Aufrufer verzweigen über `DotError.CODE_*`, **nie über die Nachricht** — die
+Codes sind stabil, die Nachrichten sind für Menschen. `res.wrap(...)` ergänzt
+Kontext, ohne die Ursache zu verwerfen, und `.value` auf einem Fehlschlag zu
+lesen wirft, statt einen plausiblen Standardwert zurückzugeben.
+
+## Konfiguration ist geschichtet, überall gleich
+
+```
+exportierte Standardwerte  <  JSON-Datei  <  Umgebung  <  Kommandozeile
+```
+
+Jede `DotConfig`-Unterklasse deklariert einfach `@export`-Eigenschaften; die
+Erkennung läuft reflexiv, eine neue Einstellung braucht also keinen Parsercode.
+Vier Haken formen sie:
+
+<Params>
+  <Param name="env_prefix()" type="String">
+    z. B. `"DOT_SERVER_"`. Gib `""` zurück, um Umgebungsüberschreibungen ganz
+    abzuschalten — richtig für eine Konfiguration, die *Inhalt* statt
+    Bereitstellung beschreibt, wo eine Umgebungsvariable, die das Verhalten
+    ändert, eine Überraschung wäre.
+  </Param>
+  <Param name="cli_prefix()" type="String">
+    z. B. `"--sv-"`.
+  </Param>
+  <Param name="sensitive_keys()" type="PackedStringArray">
+    Eigenschaften, die niemals aus der Umgebung oder von der Kommandozeile
+    setzbar sein dürfen. Beide sind auf den meisten Systemen von anderen
+    Prozessen lesbar und landen beide in `ps`-Ausgaben und eingefügten
+    Fehlerberichten.
+  </Param>
+  <Param name="validate()" type="DotResult">
+    Fängt, was Reflexion nicht kann: ein Port außerhalb 1–65535, eine Tickrate
+    von null, eine URL ohne Schema. Wird von `load_layered()` aufgerufen.
+  </Param>
+</Params>
+
+Dasselbe `sensitive_keys()` verhindert, dass
+[`DotSettingsPanel`](/learn/godot/addons/dot-ui) ein Geheimnis anzeigt.
+
+## `describe()` auf allem mit Laufzeitzustand
+
+Jede Komponente mit Zustand beantwortet `describe()` / `describe_lines()`, damit
+ein Konsolenbefehl oder ein Fehlerbericht sie ausgeben kann. Dort sagt ein Addon
+auch, was es in der aktuellen Konfiguration *nicht* kann: `dot-moderation`
+meldet, dass nichts als `dot_ban_source` registriert ist — eine Sperre ist dann
+eine Zeile in einer Datei, die niemanden aufhält, und das steht genau dort, wo
+ein Betreiber hinsieht.
+
+## Alles hat das Präfix `Dot`
+
+`class_name` ist in Godot global, und diese Addons werden nebeneinander
+installiert, also trägt jede Klasse das Präfix `Dot`. `dot-2d` verwendet
+`Dot2D*`, weil ein Bezeichner nicht mit einer Ziffer beginnen darf und `Dot2D`
+sich besser liest als `DotTwoD`.
+
+## Frag nach Fähigkeiten, nicht nach Plattformen
+
+`DotPlatform.has_threads()`, nicht `OS.get_name() == "Web"`. Die Zuordnung ist
+nicht eins zu eins — eine Web-Vorlage *kann* mit Threads gebaut sein, und einem
+Desktop-Build kann etwas fehlen, das du vorausgesetzt hast.
+
+## Kommentare erklären das Warum
+
+In diesem Code stecken viele nicht offensichtliche Abwägungen, und die
+Konvention lautet: Ein Kommentar sagt, warum die naheliegende Alternative falsch
+ist. Sonst „vereinfacht“ die nächste Leserin eine davon zurück in einen Fehler —
+was oft genug passiert ist, dass die Begründung als Teil des Quelltexts
+behandelt wird.
+
+## Der Browser entscheidet die Hälfte davon
+
+Desktop, Mobil und Browser aus einer Codebasis. Jede dieser Beschränkungen steht
+im Code, statt der Leserin überlassen zu werden:
+
+| Beschränkung | Folge |
+| --- | --- |
+| Kein UDP; `ENetMultiplayerPeer` fehlt in der Web-Vorlage | `DotTransportENet` erreicht ENet über `ClassDB.instantiate` und `Object.call`, nie über den Namen — ein Skript, das den Bezeichner *erwähnt*, kompiliert auf Web nicht |
+| Ein lauschender Socket spricht ein Protokoll | Ein Server mit Browser-Clients lauscht per WebSocket, und dann tun das *alle* seine Clients. Deshalb ist `DotTransportAuto.require_web_clients` standardmäßig `true` |
+| Ein Browser-Tab kann nicht lauschen | Web-Builds sind reine Clients |
+| Kein `HTTPClient`, nur `HTTPRequest` | `DotHttp` nutzt bedingungslos `HTTPRequest` |
+| Keine Threads, außer die Vorlage wurde dafür gebaut | `DotScheduler` zerlegt die Arbeit im Hauptthread innerhalb eines Frame-Budgets |
+| `user://` ist ein IndexedDB-Spiegel, der explizites Leeren braucht | jeder Schreibpfad ruft `DotWeb.sync_filesystem()` |
+| Ein Speicherkontingent, das die Nutzerin ablehnen kann | `DotCloudStore` wartet auf `navigator.storage.estimate()` und nimmt nie unbegrenzt an |
+| CORS, wobei `fetch()` sich weigert zu sagen, warum es scheiterte | Content-Hosts brauchen dokumentierte Header; gleiche Herkunft umgeht das |
+| **Ein eingehängtes Ressourcenpaket lässt sich nie aushängen, auf keiner Plattform** | `dot-cloud` gibt jedem Inhalt den Namensraum `id/version`, damit nie etwas ersetzt werden muss |
+
+Die letzte hat [`dot-cloud`](/learn/godot/addons/dot-cloud) mehr geprägt als
+alles andere.
+
+<Callout type="warning" title="Die `class_name`-Globals eines eingehängten Pakets werden nicht registriert">
+Gemessen: In einem ausgelieferten `.pck` scheitert jede dateiübergreifende
+Typreferenz beim Kompilieren — das Paket hängt sich ein, seine Szenen laden, und
+jedes Skript darin ist tot. `preload("res://x.gd")` und `extends "res://x.gd"`
+funktionieren beide. **Das entscheidet, wie ein ausgeliefertes Spiel aussehen
+darf** — siehe [game-playground](/learn/godot/games#game-playground), dessen
+Entitäten und Waffen genau deshalb Skripte sind, die über einen *Pfad* benannt
+werden.
+</Callout>
+
+## GDScript-Fallen, für die die Sammlung bezahlt hat
+
+Wissenswert, bevor du eine Brücke schreibst, denn keine davon erzeugt einen
+Fehler.
+
+- **`==` bindet stärker als `as`.** `a == [x] as Array[StringName]` wird als
+  `(a == [x]) as Array[StringName]` geparst und kompiliert nicht.
+- **`await x.f().ok` bindet das await an den Eigenschaftszugriff**, nicht an den
+  Aufruf — die Koroutine wird also nie erwartet. Weise zuerst einer Variablen zu.
+- **`var x := f()`, wo `f` `Variant` zurückgibt, ist ein Parserfehler** unter den
+  Warneinstellungen dieser Projekte. Schreibe `var x: Variant = f()`.
+  `Array.duplicate()` liefert ein untypisiertes Array, das Indizieren davon ist
+  genau dieser Fall.
+- **Lambdas erfassen lokale Variablen als Wert.** Ein Zähler, der in einem
+  Signal-Handler erhöht wird, bleibt außerhalb null. Erfasse ein `Array` und häng
+  an.
+- **Ein `Dictionary` ist eine Referenz.** Gibt `to_dictionary()` sein eigenes
+  Dictionary heraus, teilt sich eine „Kopie“ es — und eine Änderung an der einen
+  ändert still die andere.
+- **`Array.sort()` auf `StringName` sortiert nicht lexikografisch** — Godot
+  vergleicht internierte Zeiger, also können zwei Peers dieselbe Liste
+  unterschiedlich ordnen.
+- **`Vector3`-Komponenten sind 32-bittig, GDScript-Arithmetik ist 64-bittig.**
+  Füße, die auf `y = 0` stehen, rechnen sich als `-2.4e-8`.
+- **`String.is_valid_identifier()` ist für eine Ziffer falsch**, weil ein
+  Bezeichner nicht mit einer *beginnen* darf.
+- **Godot verweigert einen RPC, wenn nicht beide Seiten dieselbe Menge an
+  `@rpc`-Methoden deklarieren**, und leitet ihn über den Knotenpfad relativ zur
+  `MultiplayerAPI`-Wurzel. Eine zusätzliche `@rpc`-Methode auf einer Seite lässt
+  *jeden* RPC zwischen beiden scheitern — den Handshake eingeschlossen, dessen
+  einziges Symptom ein Timeout ist.
+
+### N Koroutinen starten und warten
+
+Beide naheliegenden Schreibweisen sind falsch. Das funktionierende Muster sind
+nackte Aufrufanweisungen plus ein **Mitgliedszähler**, damit ein Worker, der nie
+suspendiert, bereits verbucht ist:
+
+```gdscript
+_workers_finished = 0
+for i in range(n):
+    _worker(i)              # läuft bis zum ersten await oder bis zum Ende
+while _workers_finished < n:
+    await _worker_done      # wird gar nicht betreten, wenn alle fertig sind
+```
+
+Jeder Rückgabepfad muss den Zähler erhöhen *und* das Signal senden.
+
+<Related>
+- [Erweiterungspunkte](/learn/godot/extending)
+- [Installation](/learn/godot/installing)
+- [`dot-core`](/learn/godot/addons/dot-core) — wo das meiste davon lebt
+</Related>

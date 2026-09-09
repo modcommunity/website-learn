@@ -1,0 +1,190 @@
+---
+title: Referenzspiele
+description: Die fünf Spiele, die aus der Dot-Sammlung gebaut sind — was jedes belegen soll, und warum die Nahtstellen zwischen Addons nur in einem Spiel wirklich laufen.
+navTitle: Referenzspiele
+order: 50
+keywords:
+  - "Beispiel"
+  - "Demo"
+  - "game-arena"
+  - "game-hungario"
+  - "game-playground"
+  - "game-g2gfast"
+  - "Lobby"
+  - "Deathmatch"
+  - "Sandbox"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Fünf Spiele, und sie sind keine Demonstrationen. Die Testsuite jedes Addons führt
+dieses Addon **ohne die anderen** aus, also existieren die Verbindungen zwischen
+ihnen nur in einem Spiel — und nach der Lehre, die diese Sammlung ständig
+wiederholt: *ein Codepfad, den nur eine Bereitstellungsform erreicht, ist ein
+Codepfad, den nichts ausgeführt hat.*
+
+<Callout type="info" title="Hier stecken die Fehler">
+Die Gameplay-Addons in einen Prozess zu bringen, fand sieben Fehler — sechs davon
+in *anderen* Repositories und keiner davon aus der Suite jenes Repositories
+erreichbar. Das Ganze von Anfang bis Ende laufen zu lassen, fand zwölf weitere.
+Einen echten Browser-Client gegen einen echten Server zu öffnen, fand danach
+noch sieben. Das Muster hält jedes Mal.
+</Callout>
+
+## game-arena
+
+**Ein 3D-Arena-Deathmatch mit Dev-Texturen. Das Referenzspiel.** Es existiert, um
+zu zeigen, dass die Addons zusammenspielen, um zu zeigen, wie die Brücken
+aussehen, und um das zu sein, wovon ein neues Spiel abgeschrieben wird.
+
+Nutzt `dot-core`, `dot-fps-controller`, `dot-combat`, `dot-loadout`,
+`dot-match`, `dot-ui`, `dot-server` und `dot-net`.
+
+Vier Dateien zählen, und der Grund, warum jede davon im *Spiel* statt in einem
+Addon liegt, ist jedes Mal derselbe:
+
+- **`maps/arena_map.gd`** — ein Level ist eine Liste von Quadern, und aus dieser
+  Liste werden drei Dinge: Meshes, Physikkörper und analytische Geometrie für
+  einen headless Server. Sie getrennt zu bauen, ergibt drei Beschreibungen, die
+  auseinanderdriften — und die Abweichung ist unsichtbar, bis Schüsse anfangen,
+  durch etwas hindurchzugehen, das Clients sehen können.
+- **`game/arena_player.gd`** — Bewegung, Waffen, Gesundheit und Trefferzonen an
+  einem Körper. Jedes Addon sagt, diese Verdrahtung gehört ins Spiel, denn ein
+  Addon, das sie vornähme, würde eine Szenenform vorschreiben.
+- **`game/arena_game.gd`** — die Nahtstelle. Sechs Addons, jedes für sich
+  korrekt; dies sind die fünfzig Zeilen, in denen ein Kampf-Kill zu einem
+  Partiepunkt und ein Partie-Respawn zu einer Ausrüstung wird.
+- **`game/arena_module.gd`** — die einzige Datei, die `dot-server` nennt. Rund
+  vierzig Zeilen, und das ist die gesamte Anbindung an den dedizierten Server.
+
+Vier Waffen, weil sie vier wirklich verschiedene Antworten auf „wie verkürze ich
+die Distanz“ sind, und ein Deathmatch mit weniger nur eine richtige Antwort hat.
+Ausrüstungen sind zwei Waffen auf einem Budget von sechs Punkten — vier Zahlen
+statt einer Aufzählung.
+
+```bash
+godot --headless --path . res://examples/headless_match.tscn   # ein ganzes Deathmatch
+godot --headless --path . res://examples/headless_net.tscn     # Server + Client, 20% Verlust
+godot --headless --path . res://examples/dedicated.tscn        # ein echter DotServer
+```
+
+## game-hungario
+
+**Ein Arena-Spiel, in dem man durchs Fressen wächst, mit einem Avatar auf dem
+Monster.** Der erste spielbare Client der Sammlung, das erste Spiel mit
+funktionierendem Netzcode über einen echten Socket, und der einzige Ort, an dem
+die Gameplay-Hälfte und die Identitätshälfte zusammen laufen.
+
+Nutzt `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
+`dot-user-avatar`, `dot-loadout`, `dot-platform` und `dot-cloud` — alles außer
+`dot-fps-controller` und `dot-combat`.
+
+Es ist außerdem **der kürzeste Weg in die Browser-Spalte**: klein, ohne Bedarf an
+Threads, und es reizt jede Browser-Beschränkung aus, ohne dass etwas anderes im
+Weg steht. Seine `web/README.md` ist der Bereitstellungsvertrag: WebSocket, weil
+ein Browser kein UDP hat; nur Client, weil ein Tab nicht lauschen kann; `wss://`,
+weil eine HTTPS-Seite keinen unsicheren Socket öffnen darf; und Thread-Support
+aus, weil ihn einzuschalten Cross-Origin-Isolation auf jeder Antwort verlangt und
+jede Drittanbieter-Einbettung auf der Seite zerstört.
+
+## game-playground
+
+**Eine Sandbox in der klassischen Physik-Sandbox-Form.** Q halten für ein Menü
+mit vierzehn Objekten, vier geskripteten NPCs und drei Waffen; eines anklicken,
+und es gehört dir. Eine Physikkanone, die hält und einfriert, eine
+Gravitationskanone, die schleudert. Drei Karten, ein dedizierter Server, zwanzig
+Konsolenbefehle, und eine Sprungstrecke mit neun Plattformen auf der Bonusstrecke
+von `pg_lobby` — weil eine Sprungstrecke kein Bewegungsgenre ist und genau sie
+zeigt, dass [`dot-timer`](/learn/godot/addons/dot-timer) keine reine
+Surf-und-Bunny-Hop-Sache ist.
+
+Nutzt `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+`dot-leaderboard`, `dot-ui` und `dot-server`.
+
+<Callout type="warning" title="Entitäten und Waffen sind Skripte, die über einen PFAD benannt werden">
+Nicht über `class_name`. Ein eingehängtes `dot-cloud`-Paket kann keine
+`class_name`-Globals registrieren — das ist gemessen — also scheitert innerhalb
+eines Pakets jede dateiübergreifende Typreferenz beim Kompilieren, während das
+Paket eingehängt wird und seine Szenen laden. **Ein Pfad ist die einzige Form,
+die eine ausgelieferte Entität annehmen kann**, und dieses Spiel ist absichtlich
+so geschrieben.
+</Callout>
+
+Es ist der einzige Ort, an dem `dot-fps-controller`, `dot-timer`, `dot-map`,
+`dot-props`, `dot-leaderboard`, `dot-ui` und `dot-server` in einem Prozess
+laufen. Seine Suite hat neun Fehler gefunden, drei davon in anderen Repositories;
+Screenshots fanden vier weitere.
+
+## game-g2gfast
+
+**Der Bunny-Hop- und Surf-Timer-Server in der Counter-Strike-Form.**
+Source-Einheiten und -Cvars, Sources Sichtfeld, Ego- und Verfolgerperspektive,
+und jeder Spieler als Avatar gezeichnet — der eigene von der Plattform oder ein
+Standardavatar.
+
+Nutzt `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
+`dot-server`, `dot-user-avatar` und `dot-ui`.
+
+```
+sv_tickrate 100
+sv_autobunnyhopping 1
+sv_airaccelerate 1000        // 150 für Surf
+sv_gravity 800
+sv_allow_thirdperson 1
+sv_replay_bot 1              // der Serverrekord als sichtbarer Geist
+```
+
+Zone von der Konsole aus eine Karte, deren Autorin diese Engine nie benutzt hat:
+
+```
+g2g_zone start
+g2g_zone_mark          // auf eine Ecke stellen
+g2g_zone_mark          // und auf die andere
+g2g_zone stage main 1
+g2g_zone_save
+```
+
+## game-simple-lobby
+
+**Eine Lobby.** Ein kleiner 2D-Raum mit Chat, einer Anwesenheitsliste und
+Beitritts- und Abschiedsmeldungen — das, was ein Server ausführt, wenn er sonst
+nichts ausführt, und das Kleinste, das noch Zutritt, Mitgliedschaft, Replikation,
+Vorhersage und Chat beansprucht.
+
+Ein Server ohne geladenes Spiel ist etwas völlig Legitimes, und `dot-server` hat
+das immer unterstützt; was fehlte, war etwas zum Anschauen — und wer sich
+verbindet und nichts sieht, kann das nicht von einem kaputten Server
+unterscheiden. Es ist außerdem das Spiel, das ein generischer Browser-Client
+zuerst herunterlädt.
+
+## Was das Ausführen gelehrt hat
+
+Vier Lehren kehren wieder, und man sollte sie kennen, bevor man seine eigene
+Brücke schreibt.
+
+**Ein korrekt erzeugter und von nichts gelesener Wert sieht exakt aus wie ein
+falsch erzeugter.** Die interpolierte Position, die Interessensmenge und der
+Cloud-Client wurden alle korrekt berechnet und von niemandem gelesen, und in
+jedem Fall zeigte das sichtbare Symptom auf den Erzeuger.
+
+**Ein Wert, den zwei Spiele lesen und niemand erzeugt, ist derselbe Fehler mit
+vertauschten Enden.** `DotTimer.effect_requested` war deklariert, weitergereicht
+und verbunden — und keine Zeile hat ihn gesendet, sodass das Abgrundvolumen jeder
+Karte in zwei Spielen bloße Dekoration war.
+
+**Die Fehler einer Oberfläche sind für Assertions unsichtbar**, weil jede
+Eigenschaft stimmt und nichts fehlschlägt. Zwei 0 × 0 große `Control`-Bäume und
+ein schwarzer Bildschirm wurden gefunden, indem ein Frame gerendert und angesehen
+wurde — nicht durch einen Test.
+
+**Bewegung ebenso.** Jede Prüfung in jeder Suite behauptet etwas über einen
+*simulierten* Wert, und beim Ruckeln, das einen Browser-Client unspielbar machte,
+stimmte jede simulierte Zahl. Der Fehler lag in der Abbildung von der Simulation
+auf den Bildschirm, und keine Assertion über die Simulation kann ihn erreichen.
+
+<Related>
+- [Die Addons](/learn/godot/addons)
+- [Erweiterungspunkte](/learn/godot/extending)
+- [Werkzeuge](/learn/godot/tooling)
+</Related>

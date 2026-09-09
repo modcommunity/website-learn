@@ -1,0 +1,133 @@
+---
+title: dot-2d
+description: A deterministic, command-driven 2D movement and world layer — three movement feels, a spatial hash for thousands of entities, deterministic scatter fields and Vector2 replication specs.
+navTitle: dot-2d
+order: 100
+keywords:
+  - "2D"
+  - "top-down"
+  - "twin stick"
+  - "agar"
+  - "blob"
+  - "mass"
+  - "spatial hash"
+  - "grid"
+  - "scatter"
+  - "arena"
+source:
+  - ../game-dev/godot/dot-2d/README.md
+  - ../game-dev/godot/dot-2d/CLAUDE.md
+---
+
+The 2D counterpart of
+[`dot-fps-controller`](/learn/godot/addons/dot-fps-controller), holding the same
+contract: **the simulation is a pure function of a `Dot2DCommand`.** No device,
+no clock, no node, no randomness. A client predicting a move, a server re-running
+it and a reconciliation replay all reach the same position.
+
+```gdscript
+var arena := Dot2DArena.new()
+arena.bounds = Rect2(Vector2(-2000, -2000), Vector2(4000, 4000))
+add_child(arena)
+
+var player := Dot2DController.new()
+player.tunables = Dot2DTunables.blob()
+add_child(player)
+player.attach(arena, session_id)
+
+player.simulate_tick(tick, 1.0 / 60.0)
+arena.sync_grid()
+
+for id in arena.overlapping(state.position, state.radius, my_id):
+    ...
+```
+
+<Callout type="info" title="The pointer is resolved before it goes on the wire">
+A screen position is meaningless on a server that has no window and no camera,
+so `Dot2DSampler` turns it into a **direction and a world-space distance**. That
+one decision is what makes an agar.io-shaped game predictable at all — and
+sending a *point* rather than a direction is what lets a split player's pieces
+steer back toward each other and merge, which a direction alone can never do.
+</Callout>
+
+## What is in the box
+
+| | |
+| --- | --- |
+| `Dot2DCommand` | What a player asked for. Sanitised against everything a hostile client sends. |
+| `Dot2DState` | Position, velocity, facing, radius, mass. Snapshot-able and replayable. |
+| `Dot2DTunables` | How it moves. `top_down()`, `thrust()` or `blob()`. |
+| `Dot2DMassRules` | How mass becomes size, speed and the right to eat somebody. |
+| `Dot2DMotor` | The simulation. Pure, deterministic, node-free. |
+| `Dot2DBody` | What it collides against. `Flat` for a bounded arena, `Physics` for the rest. |
+| `Dot2DGrid` | A uniform spatial hash. Two thousand entities, local queries. |
+| `Dot2DScatter` | Pellet fields laid out from a seed, refilled on a per-tick budget. |
+| `Dot2DArena` | The world: bounds, grid, interest rectangles, spawn positions. |
+| `Dot2DController` | Drives one entity. Local, commanded or remote. |
+| `Dot2DSampler` | Devices to commands. The only place input is read. |
+| `Dot2DCameraRig` | Follows, zooms with size, stays inside the world. |
+| `Dot2DNetSync` | What to replicate, without naming a `dot-net` type. |
+| `Dot2DConfig` | The lot, layered, with `apply_to_controller` / `apply_to_scatter`. |
+
+## The three relationships a blob game balances on
+
+`Dot2DMassRules` holds all three in one place, because they have to agree — a
+blob whose drawn radius and whose eat radius come from different formulas
+visibly overlaps things it cannot eat.
+
+- **Radius grows as mass^0.5.** Area is radius squared, so twice the mass is √2
+  the width — which is what makes two small blobs equal to one big one.
+- **Speed falls as mass^-0.44, with a floor.** Without the floor, the biggest
+  blob on a long-running server is effectively stationary, which is not a
+  challenge, it is a player who has stopped playing.
+- **Eating needs a ratio *and* an overlap.** `can_eat` checks both in one call,
+  because a game that checks them separately eventually checks only one — and
+  the one usually forgotten is the distance, which is an eat at any range.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="Dot2DTunables">
+    Three presets and every number behind them. Acceleration, drag, turn rate,
+    maximum speed, and which of the three feels the motor runs.
+  </Param>
+  <Param name="Dot2DMassRules">
+    Growth, speed falloff, eat ratio, split and eject rules.
+  </Param>
+  <Param name="Dot2DBody subclass">
+    `move`, `overlaps`, `describe`. **`Dot2DBodyFlat` is the production
+    backend** — an arena is a rectangle, which is cheaper analytically than in
+    the physics server and gives bit-identical answers on a client and a server,
+    which a physics query never can. `Dot2DBodyPhysics` exists for unpredicted
+    entities and single-player, and says so.
+  </Param>
+  <Param name="Dot2DSampler">
+    Or build a `Dot2DCommand` yourself, for a bot or a replay.
+  </Param>
+  <Param name="Dot2DScatter.adopt()">
+    A receiving peer must **adopt** the index it was given rather than
+    allocating one, or two machines lay out different fields. `reseed()`
+    allocates monotonic indices, so a new field's ids sit *beside* the old
+    field's and the caller has to remove the old ones.
+  </Param>
+  <Param name="Dot2DConfig">
+    `apply_to_controller` and `apply_to_scatter` put its documented fields where
+    they belong.
+  </Param>
+  <Param name="Signals">
+    `simulated`, `collided`, `mass_changed`, `entity_registered`,
+    `entity_forgotten`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="Growing is a move">
+A cell against a wall that eats a pellet gets wider, and its edge ends up outside
+the arena — because the motor only clamps a cell that is *moving*. Measured at
+2.8 units past the wall.
+</Callout>
+
+<Related>
+- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller)
+- [`dot-net`](/learn/godot/addons/dot-net)
+- [game-hungario](/learn/godot/games#game-hungario) — what this is built for
+</Related>

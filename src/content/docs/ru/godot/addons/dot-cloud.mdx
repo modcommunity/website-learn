@@ -1,0 +1,142 @@
+---
+title: dot-cloud
+description: Доставка контента во время работы для Godot — подписанные манифесты, кэш с адресацией по содержимому, возобновляемые параллельные загрузки и монтирование с пространством имён по версии, в том числе в браузере.
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "загрузка"
+  - "манифест"
+  - "pck"
+  - "пакет ресурсов"
+  - "монтирование"
+  - "кэш"
+  - "подпись"
+  - "DLC"
+  - "патчи"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+Сервер передаёт клиенту манифест; клиент скачивает недостающее, проверяет и
+монтирует — на Windows, macOS, Linux, Android, iOS и в браузере.
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+Публикация — это безоконная CLI, которая создаёт **статический каталог**:
+`manifest.json` плюс дерево `objects/`. Такой каталог раздаёт без всякой
+настройки любой веб-сервер или CDN:
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## Два ограничения, которые определили всё
+
+**Godot не умеет размонтировать пакет ресурсов.** Ни медленно, ни в обход — API
+просто нет. Поэтому каждый набор контента получает собственный путь с версией,
+`res://<root>/<content_id>/<version>/`, и заменять никогда ничего не нужно.
+«Выгрузить» означает отпустить ссылки, а не вернуть себе таблицу файлов. Именно
+этот факт делает смену игры во время работы возможной вообще.
+
+**Неподписанный контент — это удалённое выполнение кода.** Пакет Godot может
+содержать скрипты, значит манифест решает, что будет выполнено.
+`require_signed_manifests` включён по умолчанию, а конфигурация отказывается
+проходить проверку без доверенного ключа. Для локальной сети или собственного
+сервера это можно выключить; предупреждение будет каждый раз.
+
+## Что он делает
+
+- **Кэш с адресацией по содержимому.** Файлы лежат под своим SHA-256, поэтому две
+  игры с общим ассетом скачают его один раз, а повторная публикация докачает
+  только изменившееся.
+- **Возобновляемые параллельные загрузки.** Переключение между зеркалами,
+  докачка по HTTP-диапазонам, размыкатель на каждый источник, ограничение
+  полосы, честный прогресс и честная оценка времени.
+- **Три источника.** HTTP/CDN, локальный каталог (разработка, локальная сеть,
+  встроенный контент) и внутриканальный — по игровому соединению, для сервера без
+  веб-хостинга.
+- **Учёт квоты.** Оценки хранилища в браузере, потолки для мобильных и вытеснение
+  давно не использовавшегося, которое никогда не вытесняет используемый контент.
+
+## Где подключается игра
+
+<Params>
+  <Param name="Наследник DotCloudSource">
+    `source_name()`, `is_supported()`, `can_serve(manifest)`, `fetch(...)`. Три
+    поставляются — `DotCloudSourceHttp`, `DotCloudSourceLocal`,
+    `DotCloudSourceNetchan`, — а четвёртый ваш: торрент, CDN конкретной
+    платформы, генератор подписанных ссылок S3.
+
+    `fetch` **обязан** писать в `DotCloudStore.partial_path` для хеша файла, по
+    возможности продолжать с `partial_size` и завершать через `commit_partial`.
+    Это единственное место, где проверяется хеш, а запись прямо в каталог
+    объектов — ровно тот путь, которым непроверенный контент оказывается
+    смонтированным.
+  </Param>
+  <Param name="can_serve() против is_supported()">
+    Это различие себя оправдывает. Источник может быть совершенно исправен и всё
+    равно не иметь способа добраться до *этого* манифеста: HTTP-источник без
+    `base_urls` против манифеста без зеркал. Вернуть неудачу из `can_serve`
+    означает «пропусти меня для этого манифеста, и вот почему», и это **не**
+    засчитывается размыкателю.
+  </Param>
+  <Param name="priority" type="int">
+    Есть у каждого источника. Меньшее значение идёт первым; внутриканальный
+    запасной вариант намеренно стоит последним.
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
+    `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
+    `verify_before_mount`, `resume_downloads`. Слоистая, как любой `DotConfig`.
+  </Param>
+  <Param name="Сигналы">
+    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
+    `content_ready`, `content_released`, `failed`.
+  </Param>
+</Params>
+
+## Интерфейс контента, которого ждут другие дополнения
+
+Зарегистрируйте `DotCloudClient`, и он опубликует себя под именем
+`dot_cloud_client`. Загрузчик `dot-map` и смена игры в `dot-server` обращаются к
+нему по этому имени и вызывают:
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="Отсутствие облачного клиента — законная конфигурация">
+Каждое место вызова трактует «нет `dot_cloud_client`» как «в этом развёртывании
+контент лежит внутри сборки» — что для большинства из них правда и потому
+неотличимо от клиента, который не смог зарегистрироваться. Когда доставляемая
+карта или игра молча ничего не делает, смотрите сначала в реестр.
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) — карты как контент
+- [`dot-server`](/learn/godot/addons/dot-server) — смена игры под подключёнными игроками
+- [Соглашения](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

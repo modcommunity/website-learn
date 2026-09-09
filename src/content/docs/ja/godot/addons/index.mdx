@@ -1,0 +1,77 @@
+---
+title: アドオン一覧
+description: Godot 4 向け Dot アドオン 22 種すべて。それぞれの役割、依存関係、そしてゲーム側から差し込める場所。
+order: 40
+keywords:
+  - "アドオン"
+  - "拡張"
+  - "カタログ"
+  - "一覧"
+  - "dot-core"
+  - "dot-net"
+  - "dot-server"
+source:
+  - ../game-dev/godot/NOTES.md
+---
+
+連携して動き、かつ `dot-core` を除けば単独でも動く 22 個のアドオンです。それぞれ
+[`modcommunity`](https://github.com/modcommunity) 配下の独立したリポジトリで、
+それぞれが `addons/<名前>/` フォルダーを 1 つだけ配布し、それぞれがヘッドレスの
+テストスイートを持っています。
+
+## 土台
+
+| | 依存 | |
+| --- | --- | --- |
+| [dot-core](/learn/godot/addons/dot-core) | — | ログ、プラットフォーム能力の判定、パス、設定可能なノード参照、階層化された設定、フレーム予算つきジョブ、マルチプレイヤー用トランスポート、HTTP。 |
+
+## プラットフォーム
+
+| | 依存 | |
+| --- | --- | --- |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | 実行時のコンテンツ配信。署名付きマニフェスト、内容アドレス方式のキャッシュ、再開可能な並列ダウンロード、名前空間つきのパックマウント。 |
+| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | バックボーンに対するデバイスコード認証、署名付き接続チケット、サーバー側の身元確認。 |
+| [dot-net](/learn/godot/addons/dot-net) | dot-core | ネットコード。ティック同期、ビット詰めのワイヤ形式、状態レプリケーション、スナップショット補間、クライアント側予測、ラグ補償、関心管理。 |
+| [dot-server](/learn/godot/addons/dot-server) | dot-core、*任意で* dot-auth + dot-cloud | 専用サーバー。コンソール、RCON、クエリ、権限、モデレーション、投票、モジュール、稼働中のゲーム切り替え。 |
+| [dot-user](/learn/godot/addons/dot-user) | dot-core | サーバーをまたいで人に追随するプロフィール。スコープごとの仮名 ID で管理します。 |
+| [dot-user-avatar](/learn/godot/addons/dot-user-avatar) | dot-core | データとしてのアバター。メッシュを一切読み込まずに、サーバーがスキーマと所有権に照らして検証できる有界なドキュメント。 |
+| [dot-platform](/learn/godot/addons/dot-platform) | dot-core、dot-server | 身元・プロフィール・アバターを 1 つの入場フローにまとめ、サーバーに結び付けます。 |
+
+## ゲームプレイ
+
+| | 依存 | |
+| --- | --- | --- |
+| [dot-fps-controller](/learn/godot/addons/dot-fps-controller) | dot-core | 一人称移動。Quake/Source 系の加速、エアストレイフ、階段登り、頭上を確認するしゃがみ。決定論的でコマンド駆動。 |
+| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | その 2D 版。決定論的な見下ろし移動・推力移動・質量ベース移動、数千体を扱う空間ハッシュ、決定論的な散布フィールド。 |
+| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | 体力・ダメージ・武器。解析的なヒットボックス、決定論的な弾のばらつき、ラグ補償つきのヒット判定。 |
+| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | プレイヤーが試合に持ち込むもの。サーバーがコンテンツを一切読み込まずに検証できるドキュメントとして扱います。決定論的な落ちものも含みます。 |
+| [dot-match](/learn/godot/addons/dot-match) | dot-core | 試合ループ。ウォームアップ、ラウンド、得点、チーム、出現、再出現。すべてティック単位で、呼び出し 1 つで進みます。 |
+| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | 画面・HUD・メニューを、美術アセットなしで。画面スタック、任意の `DotConfig` から生成される設定パネル、衝突検出つきのキー再割り当て。 |
+
+## ジャンルキット
+
+| | 依存 | |
+| --- | --- | --- |
+| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | スピードラン用タイマー。ゾーン、トラック、ステージ、スタイル、リプレイ、記録。サブティック精度なので 64 Hz と 128 Hz の記録を比較できます。2D でも 3D でも。 |
+| [dot-map](/learn/godot/addons/dot-map) | dot-core、*任意で* dot-cloud | マップをビルドではなくコンテンツとして扱います。カタログ、ローテーション、推薦と投票、そして dot-cloud 経由で取得するローダー。 |
+| [dot-props](/learn/godot/addons/dot-props) | dot-core | サンドボックス層。設置できるプロップ、プレイヤーごとの上限、取り消しスタック、フィジックスガンとグラビティガン。サーバー権威。 |
+| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core、*任意で* dot-auth | ランキング、プレイヤー別統計、レーティングポイント、ストアインターフェース、バックボーンへのバッチ送信。 |
+| [dot-stats](/learn/godot/addons/dot-stats) | dot-core、*任意で* dot-auth | ゲームが一度だけ宣言する統計（カウンター、ゲージ、最高値、最低値）を、まとめた差分として送信します。 |
+| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | ボイスチャット。収音、差し替え可能なコーデック、話者ごとのジッターバッファー、全体・チーム・半径へのサーバー側ルーティング。 |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | BAN、キック、チャット封じ、ボイスミュート、警告を、差し替え可能なストアを持つ 1 種類の永続レコードとして扱います。ミュート元と BAN 元を公開します。 |
+| [dot-vote](/learn/godot/addons/dot-vote) | dot-core、*任意で* dot-server + dot-map | 次に何を遊ぶかの投票を、設定可能な 1 つのエンジンで。rtv、推薦、4 つの集計方式、5 つの同点処理。 |
+
+<Callout type="info" title="「任意」とは実行時に発見されるという意味です">
+*任意で* の列にあるものはすべてダックタイピングか
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
+経由で解決されます。これらのアドオンは互いを import しませんし、互いの識別子を
+名前で書くこともありません。GDScript では、存在しない `class_name` に*言及した
+だけ*のスクリプトはパースに失敗し、それを参照しているものすべてを道連れにする
+からです。
+</Callout>
+
+<Related>
+- [拡張ポイント](/learn/godot/extending) — 全体の索引を 1 つの表に
+- [規約](/learn/godot/conventions)
+- [リファレンスゲーム](/learn/godot/games)
+</Related>

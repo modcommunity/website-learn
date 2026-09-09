@@ -1,0 +1,172 @@
+---
+title: dot-fps-controller
+description: First-person movement built to be networked — Quake and Source acceleration, air-strafing, surf, bunny-hopping, stair stepping and crouching, simulated deterministically from explicit commands.
+navTitle: dot-fps-controller
+order: 90
+keywords:
+  - "movement"
+  - "first person"
+  - "FPS"
+  - "strafe"
+  - "bhop"
+  - "bunny hop"
+  - "surf"
+  - "air control"
+  - "stair step"
+  - "crouch"
+  - "TryPlayerMove"
+  - "touch controls"
+source:
+  - ../game-dev/godot/dot-fps-controller/README.md
+  - ../game-dev/godot/dot-fps-controller/CLAUDE.md
+---
+
+Classic strafe acceleration — air-strafing, bunny-hopping, surf ramps — with
+stair stepping, crouching that checks for headroom, coyote time and jump
+buffering. The simulation is deterministic and driven entirely by explicit
+commands, so a client can predict it and a server can reconcile it.
+
+```
+Player (CharacterBody3D)
+ ├── Collision   (CollisionShape3D)
+ ├── Head        (Node3D)
+ │    └── Camera (Camera3D)
+ ├── View        (DotFpsView)
+ └── Controller  (DotFpsController)
+```
+
+That is the whole setup. Nothing is wired by hand: the view finds the camera by
+type and the controller finds the collider and the view the same way — and every
+one of those is a `DotNodeRef` you override in the inspector when your scene
+looks different.
+
+Input actions are registered at run time if your project has none. Existing
+actions are never touched; point `DotFpsSampler.actions` at your own names to use
+them instead.
+
+## What is in the box
+
+| | |
+| --- | --- |
+| `DotFpsCommand` | One tick of player intent. Bit-packed to 49 bits. |
+| `DotFpsState` | Everything the simulation carries between ticks. Capture, restore, compare. |
+| `DotFpsTunables` | Every movement number, layered: defaults < JSON < `DOT_FPS_*` < `--fps-*`. |
+| `DotFpsMotor` | The simulation. Deterministic, no engine globals, no input reads. |
+| `DotFpsBody` | The collision queries the motor needs. `DotFpsPhysicsBody` for real geometry, `DotFpsFlatBody` for tests. |
+| `DotFpsController` | The node. Drives the motor, writes to the scene, resizes the collider. |
+| `DotFpsView` | Camera, pitch, crouch height, speed FOV. Cosmetic only, runs at frame rate. |
+| `DotFpsSampler` | Devices to commands. The only thing that reads the keyboard. |
+| `DotFpsTouchSampler` | Commands from touch, for phones and the browser. No art, no layout. |
+| `DotFpsNetSync` | What to replicate and how, without importing `dot-net`. |
+| `DotFpsStats` | Strafe quality, sync, airtime — what a movement HUD shows. |
+
+## The movement model
+
+Everything below falls out of one acceleration function rather than being
+special-cased, which is why the behaviours players expect are all present:
+
+- **Air-strafing and bunny-hopping.** Airborne acceleration is capped at
+  `max_air_wish_speed` (1 m/s by default) measured as a projection onto the wish
+  direction, so turning while holding strafe adds speed perpendicular to motion.
+  Set it to 0 for a game that does not want this.
+- **Surfing.** Steep slopes are walls; velocity slides along them and gravity
+  does the rest. `_slide` keeps every plane touched during a move and picks a
+  direction satisfying all of them — Source's `TryPlayerMove` — so a surfer
+  arriving at a ramp junction at 20 m/s slides along the crease instead of
+  stopping dead in it.
+- **Stair stepping** up to `step_height`, refused when there is nothing to stand
+  on behind the step.
+- **Crouching** that resizes the collider, keeps the feet planted on the ground
+  and the head planted in mid-air (crouch-jumping), and refuses to stand up
+  under a low ceiling rather than pushing through it.
+- **Coyote time** and **jump buffering**, both configurable, both off at zero.
+- **Ground snapping**, so walking down slopes and stairs does not give you air
+  physics every other tick.
+
+## Where a game plugs in
+
+Four hooks, and none needs a fork. The first three are **part of the
+simulation**, so all three replicate and survive a prediction replay.
+
+<Params>
+  <Param name="DotFpsSurface in a DotFpsSurfaceSet">
+    Mark a collider `dot_fps_surface = "ice"` in the inspector, or put it in a
+    `surface_ice` group. Ice, mud, conveyors, unstandable rails.
+
+    **Multipliers, never absolute values.** A surface scales what
+    `DotFpsTunables` already says, so a game retunes its movement once and every
+    surface follows. A surface that stored values would silently ignore every
+    later change to the base feel.
+
+    Surfaces are resolved from something *both machines can see* — never from a
+    collider's instance id, which differs between processes.
+  </Param>
+  <Param name="DotFpsModifier">
+    A temporary change: `max_speed_scale`, `accelerate_scale`,
+    `air_accelerate_scale`, `friction_scale`, `gravity_scale`, `jump_scale`;
+    `deny_jump`, `deny_crouch`, `deny_move`; and an `impulse` with
+    `impulse_clears_velocity`. Speed pads, slow fields, stuns, launchers.
+    `duration_sec` and `refreshable` decide how it ends.
+  </Param>
+  <Param name="DotFpsMoveMode subclass">
+    A whole new way to move — a ladder, water, a grapple — using the motor's own
+    collision and acceleration. `_name`, `_enter`, `_exit`, `_simulate`,
+    `_uses_crouch`.
+  </Param>
+  <Param name="DotFpsSampler / DotFpsTouchSampler">
+    Devices to commands, and the only place input is read. Or build a
+    `DotFpsCommand` yourself for a bot or demo playback — the motor cannot tell
+    the difference, which is the point.
+  </Param>
+  <Param name="DotFpsBody subclass">
+    What the player collides against, via `DotFpsController._make_body`.
+  </Param>
+  <Param name="DotFpsStyle">
+    A named variation — sideways, half-sideways, backwards, low gravity,
+    prebhop. Jump toggles, gravity and speed scales, air acceleration, a
+    timescale, key blocking presets, and prespeed and velocity limits.
+    `apply_to(tunables)` produces the transformed set. Pair it with a
+    [`DotTimerStyle`](/learn/godot/addons/dot-timer) of the same id and a
+    records server has ranked styles.
+  </Param>
+  <Param name="DotFpsTunables">
+    Every number. Layered like every `DotConfig`, so a dedicated server retunes
+    movement from a JSON file, the environment or the command line without a
+    rebuild.
+  </Param>
+  <Param name="Signals">
+    `simulated`, `jumped`, `landed`, `crouch_changed`, `mode_changed`,
+    `surface_changed`, `stepped_up`, `modifier_added`, `modifier_removed`.
+  </Param>
+</Params>
+
+## Networking
+
+The controller does not depend on `dot-net` and does not name it. What it gives
+you instead is the hard part: a simulation that reproduces itself exactly when
+replayed, a command that packs to 49 bits, a state object with nothing left
+outside it, and `DotFpsNetSync`, which describes what to replicate **as data** —
+property names and type names as strings, which a bridge resolves. Joining the
+two is about thirty lines in your game.
+
+<Callout type="warning" title="Wire up `DotFpsTunables.fingerprint()` on day one">
+A client whose movement config differs from the server's diverges every tick,
+and the symptom is indistinguishable from packet loss.
+</Callout>
+
+<Callout type="warning" title="`render_state` is what stops the stutter">
+It interpolates a player's position between the last two ticks and is the cure
+for exactly the jitter people report as "the netcode feels bad". Its guard was
+`Drive.LOCAL` for a long time — the drive no networked game uses — so nothing
+under `dot-net` ever reached it. Measured at 60 frames against a 128-tick
+server: a **47% change in apparent speed, eight times a second**. And the sharp
+part is that either fix alone measures as no better than doing nothing: the
+fraction a renderer interpolates at is a fraction through a *physics frame*,
+which is a fraction through a tick only while the two rates agree.
+</Callout>
+
+<Related>
+- [`dot-timer`](/learn/godot/addons/dot-timer) — the run against the clock
+- [`dot-net`](/learn/godot/addons/dot-net)
+- [`dot-2d`](/learn/godot/addons/dot-2d) — the same contract in two dimensions
+</Related>

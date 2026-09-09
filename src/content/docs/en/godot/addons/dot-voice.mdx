@@ -1,0 +1,107 @@
+---
+title: dot-voice
+description: Voice chat for Godot — microphone capture with push-to-talk or voice activation, a pluggable codec, one jitter buffer per speaker, and server-side routing to everybody, a team or a radius.
+navTitle: dot-voice
+order: 200
+keywords:
+  - "voice"
+  - "voice chat"
+  - "VoIP"
+  - "microphone"
+  - "push to talk"
+  - "opus"
+  - "codec"
+  - "jitter buffer"
+  - "proximity chat"
+  - "mute"
+source:
+  - ../game-dev/godot/dot-voice/README.md
+  - ../game-dev/godot/dot-voice/CLAUDE.md
+---
+
+Needs `dot-core` and nothing else. Works with
+[`dot-moderation`](/learn/godot/addons/dot-moderation) and
+[`dot-server`](/learn/godot/addons/dot-server) without importing either.
+
+| | |
+| --- | --- |
+| **Capture** | Push-to-talk, or voice activation with hysteresis and a hangover so words are not clipped. |
+| **Codecs** | `pcm16` (exact) and `adpcm` (a quarter of the bandwidth). Register your own and nothing else changes. |
+| **Wire** | A ten-byte header carrying speaker, sequence, frame length, channel and codec. Every field bounds-checked, because a voice packet arrives before its sender has done anything trustworthy. |
+| **Playback** | A jitter buffer per speaker that reorders, drops duplicates, caps its own growth, and fades over a lost frame rather than cutting to silence. |
+| **Routing** | All, team, proximity, or a filter you write. Decided on the server. |
+| **Muting** | A moderator's mute is enforced on the server. A player's own mute list is applied on their machine. Those are different features and it matters. |
+
+## Three things worth knowing first
+
+**Nothing opens a microphone on its own.** Not on ready, not because a config
+flag was true in an exported default. `start_capture()` is an explicit call you
+make after the player has agreed, and it returns a failure you can put on
+screen.
+
+**The devices are behind an interface, which is why there is a test suite at
+all.** `DotVoiceSource` and `DotVoiceSink` have a real implementation and a
+buffer implementation, so the suite writes samples in one end and reads audio
+out of the other with no audio device in the process — the gate, the codec, the
+packet, the router and the jitter buffer all run the code a player runs.
+
+**Both ends must agree on the format.** Sample rate, frame length and codec.
+`DotVoiceConfig.format_fingerprint()` is one number to exchange at handshake,
+because a mismatch is not an error — it is noise, or speech at the wrong speed.
+
+## Where a game plugs in
+
+| To change | Where |
+| --- | --- |
+| Where bytes go | `DotVoiceManager.send_fn`, `DotVoiceRouter.send_fn` |
+| Where audio comes from | `DotVoiceSource` subclass |
+| Where audio goes | `DotVoiceSink` subclass, or `DotVoiceManager.sink_factory` |
+| The codec | `DotVoiceCodec` subclass plus `DotVoiceCodec.register` |
+| Who hears whom | `DotVoiceRouter.team_fn` / `position_fn` / `listener_filter` |
+| Who may be heard at all | Anything with `is_voice_muted(peer)` registered as `dot_mute_source` |
+| Feel and bandwidth | `DotVoiceConfig` |
+
+<Params>
+  <Param name="DotVoiceCodec subclass">
+    `id()`, `encode()`, `decode()`, `bytes_for()`, `is_stateful()`, `reset()`,
+    `duplicate_codec()`. Then `DotVoiceCodec.register(...)`. **This is the seam
+    an Opus GDExtension drops into** — Godot exposes no Opus encoder to
+    GDScript, and the two shipped codecs are what the language can do.
+  </Param>
+  <Param name="DotVoiceSource / DotVoiceSink subclass">
+    `start`, `stop`, `has_frame` / `can_accept`, `read_frame` / `write_frame`,
+    `is_running`, `describe`.
+  </Param>
+  <Param name="Signals">
+    `talking_changed`, `speaker_changed`, `frame_sent`, `speech_relayed`,
+    `speech_refused`, `capture_failed`. Those plus `input_level()` are what a
+    voice HUD needs; drawing it is your game's or
+    [`dot-ui`](/learn/godot/addons/dot-ui)'s.
+  </Param>
+</Params>
+
+## What is deliberately not here
+
+- **Opus.** The codec interface exists so a GDExtension can be dropped in.
+- **Echo cancellation and noise suppression.** Both are real signal processing
+  and belong in a GDExtension. Push-to-talk is the reason this is usable without
+  them.
+- **A voice UI.**
+- **A transport.** `send_fn` takes bytes, exactly as in
+  [`dot-net`](/learn/godot/addons/dot-net).
+- **Proof that the microphone works.** The device layer needs an audio device,
+  so the headless suite cannot cover it and says so rather than leaving you to
+  find out.
+
+<Callout type="warning" title="`AudioServer` reports a working sound card when there is none">
+In a headless run `get_mix_rate()` is 44100, `get_input_device_list()` is
+`["Default"]` and `get_output_latency()` is 0.0. Only `get_driver_name()` says
+`"Dummy"`. A capability check built on any of the others passes on a machine
+with no audio at all, and the symptom is a capture returning silence for ever
+with nothing reporting a problem.
+</Callout>
+
+<Related>
+- [`dot-moderation`](/learn/godot/addons/dot-moderation) — the mute that survives a reconnect
+- [`dot-server`](/learn/godot/addons/dot-server)
+</Related>

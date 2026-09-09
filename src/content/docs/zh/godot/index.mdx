@@ -1,0 +1,171 @@
+---
+title: 面向 Godot 的 Dot
+description: Dot 合集——二十二个开源 Godot 4 插件、一个启动器、一套服务器工具和五个参考游戏，在原生 Godot 之上补齐身份、内容分发、网络代码、专用服务器和一整套类型套件。
+navTitle: 面向 Godot 的 Dot
+order: 0
+keywords:
+  - "godot"
+  - "gdscript"
+  - "dot-core"
+  - "插件"
+  - "扩展"
+  - "资源"
+  - "游戏开发"
+  - "引擎"
+  - "4.7"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/PLATFORM.md
+---
+
+**Dot** 是 The Modding Community 的 Godot 4 资源合集：二十二个插件、一个 shell
+启动器、一套服务器工具，以及五个专为把这些插件跑在一起而存在的游戏。它们在站内是
+[Dot 资源合集](/co/4-dot-assets)，在 GitHub 上位于
+[`modcommunity`](https://github.com/modcommunity)。
+
+它们补上的是一个游戏平台里那些**并非引擎功能**的部分——账号、形象、内容分发、
+网络代码、专用服务器、管理、计时器、排行榜——以**位于原生 Godot 之上的分层**形式
+提供。一个什么都不需要的游戏，仍然是一个普通的 Godot 项目。
+
+<Cards>
+  <Card title="全部插件" href="/learn/godot/addons">
+    二十二个插件的用途，以及各自暴露的全部挂载点。
+  </Card>
+  <Card title="扩展点" href="/learn/godot/extending">
+    可继承、可赋值、可注册的一切，汇成同一份索引——并保证其中没有一项需要 fork。
+  </Card>
+  <Card title="约定" href="/learn/godot/conventions">
+    每个插件都遵守的规则：不用自动加载、`DotResult`、`DotNodeRef`、分层配置，
+    以及为什么其中一半是浏览器决定的。
+  </Card>
+  <Card title="安装" href="/learn/godot/installing">
+    复制一个目录、勾选一个插件。外加引擎版本、本地开发用的软链，以及随后要跑的
+    两步检查。
+  </Card>
+</Cards>
+
+<Callout type="warning" title="请当作只测过一半">
+每个资源都有自己的无界面测试套件，而且都能通过；但真正经过实际玩家检验的部分非常
+少。请预期会有毛糙之处，遇到问题就反馈。这套合集由 Claude Code 构建，也会以同样的
+方式维护——这一点写在每个仓库 README 的开头，而不是藏起来。
+</Callout>
+
+## 我们不打算 fork Godot
+
+这一点值得先说清楚，因为“fork Godot”和“给 Godot 写插件”会通向两个不同的项目，而
+只有其中一个能做完。
+
+fork 意味着要接手引擎的发布节奏、六个平台的导出模板、web 构建，以及此后永无止境的
+变基——而一旦分叉，为它写的游戏就再也用不了 Godot 资源库里的任何东西。人们说“平台”
+时真正指的东西，并不是引擎功能：身份、形象、内容分发、专用服务器、管理、发现。
+它们无一例外都是引擎*之上*的一层。
+
+所以：**原生 Godot，加插件，加一套开放的后端协议。**
+
+## 唯一的硬依赖始终是 `dot-core`
+
+这是整套合集赖以成立的规则，而且在 GDScript 里这不只是偏好：**一个脚本只要*提到*
+项目中不存在的 `class_name`，它就会解析失败**，并把所有引用它的脚本一起拖下水。
+一个插件如果 import 了另一个，就等于让那另一个对所有人变成必需品。
+
+因此其余一切都在运行时发现、用鸭子类型解决，或者由游戏本身搭桥：
+
+- `dot-server` 通过
+  [`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
+  找到 `dot-auth` 和 `dot-cloud`，两者都不 import。
+- `dot-net` 只需要 `dot-core`，字节通过一个 `Callable` 进出。
+- `dot-fps-controller`、`dot-combat`、`dot-loadout`、`dot-match` 和 `dot-2d`
+  各自提供一个 `*NetSync` 类，**以数据形式**描述要复制什么——属性名和类型名都是
+  *字符串*——再由桥接层用 `DotNetVar.Type[spec.type]` 解析。它们都不写出
+  `dot-net` 的任何标识符。
+- `dot-combat` 把延迟补偿当作两个 `Callable` 接收。
+- `dot-ui` 不提及 `dot-core` 之外的任何东西：它的信息流接收带颜色的片段，它的
+  表格接收字典组成的行。
+- `dot-user` 和 `dot-user-avatar` 互不 import，`dot-loadout` 出于同样的原因自带
+  一份存储键校验的副本。
+
+<Callout type="info" title="这里的重复是刻意的">
+两个插件带着同样的二十行代码时，那是在为上面这条规则付账，而不是疏忽。把它们抽成
+一个共享 import，正是一个插件变成另一个插件依赖的那条路。
+</Callout>
+
+## 各部分如何叠起来
+
+```
+                        ┌──────────────┐
+                        │   dot-core   │  logging, capabilities, paths,
+                        │              │  node refs, config, jobs,
+                        └──────┬───────┘  transports, HTTP
+      ┌───────────┬────────────┼────────────┬───────────┬──────────┐
+      ▼           ▼            ▼            ▼           ▼          ▼
+┌───────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌────────┐ ┌────────┐
+│ dot-cloud │ │ dot-auth │ │ dot-net │ │dot-server│ │ dot-ui │ │ dot-2d │
+└─────┬─────┘ └────┬─────┘ └─────────┘ └────┬─────┘ └────────┘ └────────┘
+      │            │                        │
+┌─────┴─────┐ ┌────┴───────────┐    ┌───────┴────────┐
+│ dot-user  │ │dot-user-avatar │    │  dot-platform  │
+└───────────┘ └────────────────┘    └────────────────┘
+
+      ┌──────────────────┬──────────────┬─────────────┐
+      ▼                  ▼              ▼             ▼
+┌────────────┐    ┌────────────┐  ┌───────────┐ ┌──────────────────┐
+│ dot-combat │    │dot-loadout │  │ dot-match │ │dot-fps-controller│
+└────────────┘    └────────────┘  └───────────┘ └──────────────────┘
+      └──────────────────┴──────────────┴─────────────┘
+                               │  这几个都只需要
+                               ▼  dot-core
+                    ┌──────────────────────┐
+                    │       你的游戏        │  桥接代码住在这里
+                    └──────────────────────┘
+```
+
+除最上面一行外，所有箭头都是*可选*关系。请读作“配合起来更好”，而不是“必须有”。
+
+## 三组
+
+**平台一半** —— `dot-core`、`dot-cloud`、`dot-auth`、`dot-net`、`dot-server`、
+`dot-user`、`dot-user-avatar`、`dot-platform`。玩家是谁、长什么样、怎么拿到内容，
+以及连到哪台专用服务器。
+
+**玩法一半** —— `dot-fps-controller`、`dot-2d`、`dot-combat`、`dot-loadout`、
+`dot-match`、`dot-ui`。移动、武器、装备、对局循环和界面。每一个都只需要
+`dot-core`。
+
+**类型套件** —— `dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+`dot-stats`、`dot-voice`、`dot-moderation`、`dot-vote`。经营一台让人愿意回来的
+*服务器*所需要的一切：记录表、地图轮换、下一局玩什么的投票，以及能熬过一次断线的
+处罚。
+
+## 类型套件是策略，不是功能清单
+
+这套合集的问题从来不是功能不够。问题是**没人有理由成为新平台上的第一个人**，而一个
+通用插件家族并不能提供这个理由。一个游戏类型可以。
+
+选中的是 surf 和 bunny-hop —— Counter-Strike 的移动社区。直到 2026 年，他们仍在用
+一个为 2013 年最后一次开放的 SDK 所写的计时插件运行 Source 服务器。它适合作为第一个
+类型有四个理由，而只有第四个跟我们自己有关：
+
+1. **移动是最难做对的东西。** 几乎没有人能把 Quake 的加速和 Source 的
+   `TryPlayerMove` 还原到让一个玩了十年 surf 的人察觉不出差别。
+2. **它天生就是服务器的形状。** 一个 surf 社区*就是*一台服务器：一份轮换、一张
+   记录表、一位给新图划区域的管理员、一群在意排行榜的常客。
+3. **它的内容可移植且由社区制作。** 地图来自作图者，区域来自管理员，两者都以文件
+   形式流通。
+4. **它小到能做完。** 四个插件和一个能玩的游戏。
+
+## 除后端外全部是 MIT
+
+插件、游戏和工具都是 MIT 许可的开源代码。唯一不是的是 **web 后端基础设施**——TMC
+自己的那套部署。所有与它通信的插件都走一份有文档的 HTTP 协议，指向一个可以改的
+`backbone_url`；想自建后端的项目，把它建起来再改一个设置即可。
+
+<Related>
+- [全部插件](/learn/godot/addons) —— 二十二个插件及其挂载点
+- [扩展点](/learn/godot/extending) —— 全部索引汇于一表
+- [约定](/learn/godot/conventions) —— 所有插件共同遵守的规则
+- [参考游戏](/learn/godot/games) —— 接缝真正被跑起来的地方
+- [工具](/learn/godot/tooling) —— `dotserve` 与 TMC 的服务器工具
+- [集成 API](/learn/api/integration) —— `dot-stats`、`dot-leaderboard` 与
+  服务器上报的后端一半
+</Related>

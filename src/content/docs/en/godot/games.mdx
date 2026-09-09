@@ -1,0 +1,182 @@
+---
+title: Reference games
+description: The five games built out of the Dot collection — what each one exists to prove, and why the seams between addons only get exercised in a game.
+navTitle: Reference games
+order: 50
+keywords:
+  - "example"
+  - "sample"
+  - "demo"
+  - "game-arena"
+  - "game-hungario"
+  - "game-playground"
+  - "game-g2gfast"
+  - "lobby"
+  - "deathmatch"
+  - "sandbox"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Five games, and they are not demonstrations. Every addon's own suite runs that
+addon **with the others absent**, so the joins between them only exist in a
+game — and by this collection's own repeated lesson, *a code path only one
+deployment shape reaches is a code path nothing has run.*
+
+<Callout type="info" title="This is where the bugs are">
+Putting the gameplay addons through one process found seven bugs, six of them in
+*other* repositories and not one reachable from that repository's own suite.
+Running the whole thing end to end found twelve more. Opening a real browser
+client against a real server found seven more after that. The pattern holds
+every time.
+</Callout>
+
+## game-arena
+
+**A 3D dev-textured arena deathmatch. The reference game.** It exists to prove
+the addons compose, to show what the bridges look like, and to be the thing a
+new game is copied from.
+
+Uses `dot-core`, `dot-fps-controller`, `dot-combat`, `dot-loadout`,
+`dot-match`, `dot-ui`, `dot-server` and `dot-net`.
+
+Four files matter, and the reason each one is in the *game* rather than in an
+addon is the same reason every time:
+
+- **`maps/arena_map.gd`** — a level is a list of boxes, and that list becomes
+  three things: meshes, physics bodies, and analytic geometry for a headless
+  server. Building them separately means three descriptions that drift, and the
+  drift is invisible until shots start passing through something clients can
+  see.
+- **`game/arena_player.gd`** — movement, weapons, health and hitboxes on one
+  body. Every addon says this wiring belongs in the game, because an addon that
+  did it would dictate a scene shape.
+- **`game/arena_game.gd`** — the seam. Six addons, each correct alone; this is
+  the fifty lines where a combat kill becomes a match score and a match respawn
+  becomes a loadout.
+- **`game/arena_module.gd`** — the only file that names `dot-server`. About
+  forty lines, and it is the entire dedicated-server integration.
+
+Four weapons, because they are four genuinely different answers to "how do I
+close distance", and a deathmatch with fewer has one right answer. Loadouts are
+two weapons on a six-point budget — four numbers instead of an enumeration.
+
+```bash
+godot --headless --path . res://examples/headless_match.tscn   # a whole deathmatch
+godot --headless --path . res://examples/headless_net.tscn     # server + client, 20% loss
+godot --headless --path . res://examples/dedicated.tscn        # a real DotServer
+```
+
+## game-hungario
+
+**A grow-by-eating arena game with an avatar riding the monster.** The first
+playable client in the collection, the first game with working netcode over a
+real socket, and the only place the gameplay half and the identity half run
+together.
+
+Uses `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
+`dot-user-avatar`, `dot-loadout`, `dot-platform`, `dot-cloud` — everything
+except `dot-fps-controller` and `dot-combat`.
+
+It is also **the shortest path to the browser column**: small, needs no threads,
+and it exercises every browser constraint with nothing else in the way. Its
+`web/README.md` is the deployment contract — WebSocket because a browser has no
+UDP, client-only because a tab cannot listen, `wss://` because an HTTPS page may
+not open an insecure socket, and thread support off because turning it on
+requires cross-origin isolation on every response and breaks every third-party
+embed on the page.
+
+## game-playground
+
+**A sandbox in the classic physics-sandbox shape.** Hold Q for a menu of
+fourteen props, four scripted NPCs and three weapons; click one and it is yours.
+A physics gun that holds and freezes, a gravity gun that punts. Three maps, a
+dedicated server, twenty console commands, and a nine-platform jump course on
+`pg_lobby`'s bonus track — because a jump course is not a movement genre, and it
+is what says [`dot-timer`](/learn/godot/addons/dot-timer) is not a surf-and-bhop
+thing.
+
+Uses `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+`dot-leaderboard`, `dot-ui`, `dot-server`.
+
+<Callout type="warning" title="Entities and weapons are scripts named by PATH">
+Not by `class_name`. A mounted `dot-cloud` pack cannot register `class_name`
+globals — measured — so every cross-file type reference inside a pack fails to
+compile while the pack mounts and its scenes load. **A path is the only shape a
+delivered entity can take**, and this game is written that way on purpose.
+</Callout>
+
+It is the only place `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+`dot-leaderboard`, `dot-ui` and `dot-server` run in one process. Its suite has
+found nine bugs, three of them in other repositories; screenshots found four
+more.
+
+## game-g2gfast
+
+**The bunny-hop and surf timer server, in the Counter-Strike shape.** Source
+units and cvars, Source's field of view, first and third person, and every
+player drawn as an avatar — theirs from the platform, or a stock one.
+
+Uses `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
+`dot-server`, `dot-user-avatar`, `dot-ui`.
+
+```
+sv_tickrate 100
+sv_autobunnyhopping 1
+sv_airaccelerate 1000        // 150 for surf
+sv_gravity 800
+sv_allow_thirdperson 1
+sv_replay_bot 1              // the server record as a visible ghost
+```
+
+Zone a map whose author never used this engine, from the console:
+
+```
+g2g_zone start
+g2g_zone_mark          // stand on one corner
+g2g_zone_mark          // and the other
+g2g_zone stage main 1
+g2g_zone_save
+```
+
+## game-simple-lobby
+
+**A lobby.** A small 2D room with chat, a roster and join/leave notices — what a
+server runs when it is not running anything else, and the smallest thing that
+still exercises admission, membership, replication, prediction and chat.
+
+A server with no game loaded is a legitimate thing to run and `dot-server` has
+always supported it; what it did not have was anything to look at, and a player
+who connects and sees nothing cannot tell that from a broken server. It is also
+the game a generic browser client shell downloads first.
+
+## What running them has taught
+
+Four lessons keep recurring, and they are worth having before you write your own
+bridge.
+
+**A value produced correctly and consumed by nothing looks exactly like a value
+produced wrongly.** The interpolated position, the interest set and the cloud
+client were all computed correctly and read by nobody, and in every case the
+visible symptom pointed at the producer.
+
+**A value consumed by two games and produced by nobody is the same bug with the
+ends swapped.** `DotTimer.effect_requested` was declared, forwarded and
+connected — and emitted by no line anywhere, so every map's pit volume was
+decoration in two games.
+
+**An interface's bugs are invisible to assertions**, because every property is
+correct and nothing fails. Two 0 × 0 `Control` trees and a black screen were
+found by rendering a frame and looking at it, not by a test.
+
+**So is motion.** Every check in every suite asserts a *simulated* value, and
+the jitter that made a browser client unplayable had every simulated number
+right. The bug was in the mapping from the simulation to the screen, which no
+assertion on the simulation can reach.
+
+<Related>
+- [The addons](/learn/godot/addons)
+- [Extension points](/learn/godot/extending)
+- [Tooling](/learn/godot/tooling)
+</Related>

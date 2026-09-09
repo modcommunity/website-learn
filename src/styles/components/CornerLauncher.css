@@ -1,0 +1,203 @@
+/*
+ * The bottom-right launcher block's chasing border — see
+ * `src/components/CornerLauncher.tsx`.
+ *
+ * Copied VERBATIM from website-city's `src/styles/components/CornerLauncher.css`
+ * (bar this note and the two lines about the Play-only block, which only city
+ * renders): the two shells share a domain, so the same control has to look the
+ * same in both. Change one and change the other.
+ *
+ * Lives here rather than in utilities because it needs `@keyframes` and a
+ * `prefers-reduced-motion` block, neither of which a class attribute can carry.
+ *
+ * IT IS AN SVG OUTLINE, NOT A GRADIENT, and that is the whole design.
+ *
+ * The obvious build — a rotating conic gradient behind a padded box — maps the
+ * gradient's ANGLE onto the perimeter, and the block is a wide, short pill. Most
+ * of the angular sweep therefore lands on the two short ends: the lit segments
+ * crawl, smear and pile up into a green blob at each end, then flash across the
+ * long sides in a couple of frames. It reads as a rendering fault.
+ *
+ * A dashed stroke travelling a rounded rect has no such distortion — dash offset
+ * is measured ALONG THE PATH, so the segments move at one constant speed the
+ * whole way round, and the corners are the same crisp 2px as the sides.
+ *
+ * `pathLength="100"` is what makes the dash numbers below size-independent: the
+ * browser rescales the real perimeter to 100 units, so a `dasharray` is written
+ * in percent-of-lap and fits whatever width the block takes without arithmetic
+ * of its own.
+ *
+ * WHY THREE DASHED RECTS AND NOT ONE. One evenly dashed ring is a metronome: the
+ * same marks, the same spacing, the same beat, every lap. Layering three with
+ * different dash patterns, different periods (5.5s / 8.3s / 11.7s) and staggered
+ * negative delays means the marks drift in and out of phase — segments overlap
+ * into one long streak, then separate, then leave the outline briefly bare. The
+ * combined pattern only repeats on the common multiple of the three periods,
+ * which is minutes away, so it never reads as a loop.
+ *
+ * Each layer's dash + gap sums to a whole division of 100 (100, 50, 25). A
+ * pattern that does NOT divide the lap gets cut short where it wraps, and that
+ * seam sits at the same spot on the outline forever — the one piece of
+ * regularity the eye does find.
+ *
+ * The animated value is a plain number for the same reason the ticker's ring is:
+ * a `calc()` over a var in a keyframe endpoint animates DISCRETELY in Chrome.
+ *
+ * The track rect underneath is the block's ordinary hairline border, always
+ * there, so the box is a finished box in the moments no dash is passing.
+ *
+ * The rect's `rx` is set on the ELEMENT, in `CornerLauncher.tsx`, alongside the
+ * `rounded-*` class it has to match. A ring rounded where the fill beneath it is
+ * square draws a hoop of border floating past the corner.
+ */
+
+.corner-launcher-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+
+    /* The stroke straddles the block's edge — half of it sits outside the box,
+       which an SVG clips by default. */
+    overflow: visible;
+}
+
+/*
+ * The marks are the accent pushed toward a bright SKY BLUE, not toward white.
+ *
+ * White is what "lighter" gets you if you mix with white, and the result is a
+ * gray-lavender dash that reads as a highlight on the border rather than as
+ * light running along it. Mixing toward `#9dd6ff` keeps the hue firmly blue and
+ * gains the saturation the pale version lost, so the marks stay part of the
+ * block's own palette while clearly being the thing that moves.
+ *
+ * Two mixes per colour, because "lighter" means different things on the two
+ * themes: the dark theme's accent is muted and needs to travel further; the
+ * light theme's is already a bright blue on a white page, and the dark theme's
+ * mix there would be a mark nobody can see — half the ring straddles the page
+ * background, not the block.
+ *
+ * A second, cooler tint for one of the laps. Two related blues crossing each
+ * other is what stops the layers reading as one train of identical marks; a
+ * second HUE would read as a different feature entirely.
+ */
+:root {
+    --corner-launcher-chase: color-mix(in oklab, var(--accent) 62%, #9dd6ff);
+    --corner-launcher-chase-alt: color-mix(
+        in oklab,
+        var(--accent) 45%,
+        #7fe4ff
+    );
+}
+
+.dark,
+[data-theme='dark'] {
+    --corner-launcher-chase: color-mix(in oklab, var(--accent) 34%, #9dd6ff);
+    --corner-launcher-chase-alt: color-mix(
+        in oklab,
+        var(--accent) 22%,
+        #7fe4ff
+    );
+}
+
+.corner-launcher-track {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 1.5;
+}
+
+.corner-launcher-chase {
+    fill: none;
+    stroke: var(--corner-launcher-chase);
+    stroke-linecap: round;
+    animation-name: corner-launcher-chase;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+/*
+ * The bloom, on the GROUP rather than on each mark: one filter pass for all
+ * three laps instead of three, and the track underneath keeps its flat hairline
+ * (a glowing border is a border that looks out of focus). Small and tight — this
+ * is light coming off the marks, not the halo the first draft of this thing had.
+ */
+.corner-launcher-glow {
+    filter: drop-shadow(0 0 2px var(--corner-launcher-chase));
+}
+
+/*
+ * One long streak, alone on its lap: the mark that carries the eye round.
+ */
+.corner-launcher-chase-a {
+    stroke-width: 1.5;
+    stroke-dasharray: 17 83;
+    animation-duration: 5.5s;
+}
+
+/*
+ * A pair of short marks, slower, thinner and dimmer, so they read as a second
+ * layer rather than as more of the first.
+ */
+.corner-launcher-chase-b {
+    stroke: var(--corner-launcher-chase-alt);
+    stroke-width: 1.25;
+    stroke-opacity: 0.85;
+    stroke-dasharray: 6 44;
+    animation-duration: 8.3s;
+
+    /* Negative delay = start mid-lap, so the layers are never in step at load. */
+    animation-delay: -2.4s;
+}
+
+/*
+ * Four faint ticks, slowest of the three. On their own they are almost nothing;
+ * what they do is break up the spacing whenever they cross the other two.
+ */
+.corner-launcher-chase-c {
+    stroke-width: 1;
+    stroke-opacity: 0.6;
+    stroke-dasharray: 3 22;
+    animation-duration: 11.7s;
+    animation-delay: -6.1s;
+}
+
+@keyframes corner-launcher-chase {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+/*
+ * The play half's fill: the site's accent blue taken DOWN rather than a token of
+ * its own.
+ *
+ * `--button-secondary`, the obvious candidate for "the dark button colour", is
+ * only pulled onto the brand hue in the dark theme — in the light one it is
+ * HeroUI's neutral gray, so a play button painted with it would be blue on one
+ * theme and gray on the other. Mixing the accent with black keeps it the same
+ * DARKER BLUE in both, one step below the chat half's accent, which is what
+ * makes the pair read as one control rather than two unrelated buttons.
+ */
+.corner-launcher-play {
+    background: color-mix(in oklab, var(--accent) 65%, #000);
+}
+
+.corner-launcher-play:hover {
+    background: color-mix(in oklab, var(--accent) 80%, #000);
+}
+
+/*
+ * Stopped, not removed: the dashes stay where they are, so the block keeps its
+ * green marks for a reader who has asked the browser not to animate at them.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .corner-launcher-chase {
+        animation: none;
+    }
+
+    /* Nothing is moving, so the bloom is just a soft edge on a static mark. */
+    .corner-launcher-glow {
+        filter: none;
+    }
+}

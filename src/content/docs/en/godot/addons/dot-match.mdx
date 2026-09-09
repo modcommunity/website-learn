@@ -1,0 +1,120 @@
+---
+title: dot-match
+description: The match loop — warmup, countdown, rounds, scoring, teams, autobalance, spawn selection and respawning, counted in ticks and driven by one call.
+navTitle: dot-match
+order: 130
+keywords:
+  - "match"
+  - "rounds"
+  - "game mode"
+  - "scoreboard"
+  - "teams"
+  - "autobalance"
+  - "respawn"
+  - "spawn point"
+  - "kill feed"
+  - "warmup"
+source:
+  - ../game-dev/godot/dot-match/README.md
+  - ../game-dev/godot/dot-match/CLAUDE.md
+---
+
+A match is a state machine —
+`WARMUP → COUNTDOWN → LIVE → INTERMISSION → MATCH_END` — and **one call moves
+it**. No `Timer`, no `_process`, no wall clock.
+
+```gdscript
+var match_node := DotMatch.new()
+match_node.rules = DotMatchRules.deathmatch(30)
+match_node.position_fn = func(key): return player_position(key)
+add_child(match_node)
+
+match_node.respawn_due.connect(func(key, spawn, tick):
+    spawn_player(key, spawn.spawn_transform()))
+
+match_node.tick(tick)                       # once per simulated tick
+match_node.report_kill(killer, victim, &"rifle", tick, headshot)
+```
+
+A match that ticks itself ticks on whatever schedule the engine gives it, which
+is not the schedule the simulation runs on — and a server whose round timer and
+whose netcode disagree about what time it is produces a round that ends on a
+different tick for every client.
+
+What *winning* means lives in a `DotMatchRules` resource. `DotMatch` never asks
+what mode it is running.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotMatchRules subclass">
+    `_points_for_kill`, `_round_outcome`, `_round_winner`, `_respawn_delay`.
+    `DotRulesElimination` is a worked example — and it treats **zero** teams
+    standing as the end of the round, not as "keep going", because a grenade
+    that kills the last player on both sides happens often enough to matter and
+    waiting for a side that no longer exists is a server that has to be
+    restarted.
+  </Param>
+  <Param name="DotSpawnPoint / DotSpawnSelector">
+    `danger_fn` and `filter_fn` are the two hooks. The default rule is
+    furthest-from-the-nearest-threat among the available points, and threats are
+    **enemies only** — spawning people away from their own team scatters a squad
+    across the map. Points have a cooldown, which is what stops two players
+    spawning inside each other.
+  </Param>
+  <Param name="DotMatch.position_fn" type="Callable">
+    Where a player is. `dot-match` does not know about your scene.
+  </Param>
+  <Param name="DotTeam / DotTeamManager">
+    Sides, assignment, deterministic autobalance, and `spawn_tag` so each team
+    spawns in its own base.
+  </Param>
+  <Param name="DotScoreboard / DotPlayerScore / DotKillFeed">
+    Who is playing and how they are doing. The kill feed is **data, not
+    formatted strings**.
+  </Param>
+  <Param name="DotMatchNetSync">
+    What to replicate, without naming a `dot-net` type.
+  </Param>
+  <Param name="Signals">
+    `state_changed`, `round_started`, `round_ended`, `match_ended`,
+    `player_added`, `player_left`, `player_idle`, `score_changed`,
+    `team_changed`, `balanced`, `kill_recorded`, `respawn_due`.
+  </Param>
+</Params>
+
+## Three failure modes it is built around
+
+**A scoreboard that rewards rage-quitting.** Records survive a disconnection and
+a reconnecting player gets their kills back. They are keyed by a stable player
+key, **never a peer id** — a peer id is reassigned the moment somebody
+reconnects, and a scoreboard keyed by one hands the next player to join the
+previous player's kills.
+
+**Two machines that disagree.** Every ordering decision has an explicit
+tie-break: ranked scoreboards fall back to the player key, spawn selection to
+the node name, team assignment to the lower team id, respawn batches to a sort.
+Left to dictionary iteration order, a server and a client produce different
+answers — and for team assignment that means they disagree about friendly fire.
+
+**A round that never ends.** See `DotRulesElimination` above.
+
+<Callout type="info" title="Spawning badly beats not spawning at all">
+When every point is on cooldown or occupied, the selector falls back and spawns
+somebody anyway. The alternative is a player who is dead until a point frees up,
+which on a busy map with a short round is the rest of the match.
+</Callout>
+
+<Callout type="warning" title="`player_spawned` only ever fires on the authority">
+It comes out of the respawn queue, which runs on the server. A mirroring client
+waiting for it to find its own player waits for ever — and the symptom is
+misleading: the HUD binds by id and works, the scoreboard works, the connection
+is live, and there is no camera and no world at all. Use the game's own
+`player_added` on a client.
+</Callout>
+
+<Related>
+- [`dot-combat`](/learn/godot/addons/dot-combat)
+- [`dot-ui`](/learn/godot/addons/dot-ui) — drawing the scoreboard and the feed
+- [game-arena](/learn/godot/games#game-arena)
+</Related>

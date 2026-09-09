@@ -1,0 +1,77 @@
+---
+title: De add-ons
+description: Alle tweeëntwintig Dot-add-ons voor Godot 4 — waar elk voor dient, waar het van afhangt en waar een game erop aansluit.
+order: 40
+keywords:
+  - "add-ons"
+  - "uitbreidingen"
+  - "catalogus"
+  - "lijst"
+  - "dot-core"
+  - "dot-net"
+  - "dot-server"
+source:
+  - ../game-dev/godot/NOTES.md
+---
+
+Tweeëntwintig add-ons die samenwerken en die, op `dot-core` na, ook los werken.
+Elk is een eigen repository onder
+[`modcommunity`](https://github.com/modcommunity), elk levert één map
+`addons/<naam>/`, en elk heeft zijn eigen headless testsuite.
+
+## De basis
+
+| | Hangt af van | |
+| --- | --- | --- |
+| [dot-core](/learn/godot/addons/dot-core) | — | Logging, platformmogelijkheden, paden, instelbare knooppuntverwijzingen, gelaagde configuratie, taken met een framebudget, multiplayertransporten, HTTP. |
+
+## Platform
+
+| | Hangt af van | |
+| --- | --- | --- |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | Content uitleveren tijdens het draaien: ondertekende manifesten, een op inhoud geadresseerde cache, hervatbare parallelle downloads, aankoppelen onder een naamruimte. |
+| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | Aanmelden met een apparaatcode bij de backend, ondertekende verbindingstickets, identiteit aan serverzijde. |
+| [dot-net](/learn/godot/addons/dot-net) | dot-core | Netcode: ticksynchronisatie, een bitgepakt wire-formaat, statusreplicatie, snapshotinterpolatie, voorspelling op de client, lagcompensatie, interessebeheer. |
+| [dot-server](/learn/godot/addons/dot-server) | dot-core, *optioneel* dot-auth + dot-cloud | De dedicated server: console, RCON, queries, rechten, moderatie, stemmingen, modules, wisselen van game tijdens het spelen. |
+| [dot-user](/learn/godot/addons/dot-user) | dot-core | Profielen die iemand tussen servers volgen, onder een pseudonieme id per bereik. |
+| [dot-user-avatar](/learn/godot/addons/dot-user-avatar) | dot-core | Avatars als gegevens: een begrensd document dat een server toetst aan een schema en aan rechten zonder ooit een mesh te laden. |
+| [dot-platform](/learn/godot/addons/dot-platform) | dot-core, dot-server | Voegt identiteit, profiel en avatar samen tot één toelatingsstroom en koppelt die aan een server. |
+
+## Gameplay
+
+| | Hangt af van | |
+| --- | --- | --- |
+| [dot-fps-controller](/learn/godot/addons/dot-fps-controller) | dot-core | Beweging in de eerste persoon: Quake/Source-versnelling, air-strafing, traptreden nemen, bukken met controle op kopruimte. Deterministisch en aangestuurd door commando's. |
+| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | De 2D-tegenhanger: deterministische top-down-, stuwkracht- en massagebaseerde beweging, een ruimtelijke hash voor duizenden entiteiten en deterministische strooivelden. |
+| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | Gezondheid, schade en wapens: analytische hitboxes, deterministische spreiding, treffers registreren met lagcompensatie. |
+| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | Wat een speler meeneemt de wedstrijd in, als document dat een server toetst zonder enige content te laden. Plus deterministische oprapers. |
+| [dot-match](/learn/godot/addons/dot-match) | dot-core | De wedstrijdlus: opwarmen, rondes, score, teams, spawnen, respawnen. Alles in ticks, aangedreven door één aanroep. |
+| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Schermen, HUD en menu's zonder enig grafisch materiaal. Een schermstapel, een instellingenpaneel dat uit elke `DotConfig` wordt gebouwd, en toetsen herbinden met conflictdetectie. |
+
+## De genrekit
+
+| | Hangt af van | |
+| --- | --- | --- |
+| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | Speedruntimers: zones, tracks, etappes, stijlen, replays, records. Sub-tick, dus een run op 64 Hz is vergelijkbaar met een run op 128 Hz. In 2D en 3D. |
+| [dot-map](/learn/godot/addons/dot-map) | dot-core, *optioneel* dot-cloud | Maps als content in plaats van als builds: een catalogus, een rotatie, nominaties en stemmingen, en een lader die via dot-cloud ophaalt. |
+| [dot-props](/learn/godot/addons/dot-props) | dot-core | Een sandboxlaag: neerzetbare props, budgetten per speler, een ongedaan-maken-stapel, een physics gun en een gravity gun. De server heeft het gezag. |
+| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core, *optioneel* dot-auth | Scoreborden, statistieken per speler, ranglijstpunten, een opslaginterface en een rapporteur die in batches naar de backend stuurt. |
+| [dot-stats](/learn/godot/addons/dot-stats) | dot-core, *optioneel* dot-auth | Statistieken die een game één keer declareert — tellers, meters, beste en laagste waarden — en als samengevoegde delta's rapporteert. |
+| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Spraakchat: opname, een verwisselbare codec, één jitterbuffer per spreker, en routering op de server naar iedereen, een team of een straal. |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Bans, kicks, chatverboden, microfoondempingen en waarschuwingen als één duurzaam record met verwisselbare opslag. Publiceert de demp- en banbronnen. |
+| [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optioneel* dot-server + dot-map | Stemmen over wat er hierna komt, als één instelbare motor: rtv, nominaties, vier telmethoden, vijf manieren om gelijkspel te breken. |
+
+<Callout type="info" title="Optioneel betekent: gevonden tijdens het draaien">
+Alles in de kolom *optioneel* loopt via duck typing of via
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads).
+Geen van deze add-ons importeert een andere, en geen ervan noemt de
+identifiers van een andere — want in GDScript mislukt een script dat een
+ontbrekende `class_name` ook maar *noemt* al bij het parsen, en het sleept
+alles mee dat ernaar verwijst.
+</Callout>
+
+<Related>
+- [Uitbreidingspunten](/learn/godot/extending) — de hele index in één tabel
+- [Conventies](/learn/godot/conventions)
+- [Referentiegames](/learn/godot/games)
+</Related>

@@ -1,0 +1,135 @@
+---
+title: dot-core
+description: La base compartida por todos los complementos Dot — resultados, detección de capacidades, referencias de nodo, configuración por capas, trabajos con presupuesto por fotograma, transportes intercambiables, HTTP y registro de trazas.
+navTitle: dot-core
+order: 10
+keywords:
+  - "DotResult"
+  - "DotError"
+  - "DotPlatform"
+  - "DotNodeRef"
+  - "DotConfig"
+  - "DotScheduler"
+  - "DotTransport"
+  - "DotHttp"
+  - "DotRegistry"
+  - "fundamento"
+source:
+  - ../game-dev/godot/dot-core/README.md
+  - ../game-dev/godot/dot-core/CLAUDE.md
+---
+
+La capa común bajo todo lo demás, y **la única dependencia dura de la
+colección**. Apunta a escritorio, móvil y navegador desde un solo código, y
+codifica las limitaciones del navegador en vez de fingir que no existen.
+
+```bash
+cp -r dot-core/addons/dot_core mi-juego/addons/
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+## Qué contiene
+
+| | |
+| --- | --- |
+| `DotResult` / `DotError` | El tipo de retorno de todo lo que puede fallar. Valores `CODE_*` estables sobre los que ramificar; leer `.value` en un fallo lanza un error en vez de devolver un valor por defecto. |
+| `DotPlatform` | Detección de capacidades con caché — hilos, UDP, escuchar, montar paquetes, familia de almacenamiento, id único. Pregunta por capacidades, no por nombres de plataforma. |
+| `DotNodeRef` | Una descripción editable en el inspector de *qué nodo*: relativo, absoluto, grupo, registro, ancestro o descendiente por tipo, o crear-si-falta. |
+| `DotConfig` | Configuración por capas: valores por defecto exportados < archivo < entorno < línea de comandos, con descubrimiento reflexivo de claves y protección de secretos. |
+| `DotRegistry` / `DotRegistryBus` | Búsqueda por nombre, y las señales que una clase estática no puede declarar. |
+| `DotScheduler` / `DotJob` | Trabajo largo en porciones. Hilos de trabajo donde los haya, y un presupuesto de tiempo por fotograma donde no. |
+| `DotTransport` | Transporte multijugador intercambiable. `DotTransportAuto` elige entre WebSocket y ENet, y explica por qué. |
+| `DotHttp` | Un cliente basado en `HTTPRequest` con reintentos, retroceso con jitter, `Retry-After`, descargas reanudables por rango y reutilización de conexiones. |
+| `DotLog` / `DotLogBus` / `DotLogSink` | Registro por niveles y canales, con campos estructurados, archivos rotatorios y reenvío por UDP. |
+| `DotPaths` | Saneamiento de rutas que *rechaza* el recorrido de directorios en vez de limpiarlo, escrituras atómicas y vaciado del sistema de archivos web. |
+| `DotHash` / `DotHashJob` | SHA-256, HMAC, comparación en tiempo constante, base64url, tokens de CSPRNG. |
+| `DotRateLimiter` | Un cubo de fichas, usado en todas las rutas que un cliente puede forzar. |
+| `DotSemVer` | Comparación de versiones, para contenido y mínimos de motor. |
+| `DotWeb` | Las llamadas exclusivas del navegador: sincronización del sistema de archivos, detección de contexto seguro, estimaciones de almacenamiento. |
+
+## Por dónde se engancha un juego
+
+<Params>
+  <Param name="Subclase de DotTransport">
+    `_create_server`, `_create_client`, `_transport_name`, `_is_available`,
+    `supports_web_clients`, `scheme`. La disponibilidad se comprueba *antes* de
+    usarlo, así que un transporte inservible falla al arrancar con un motivo, y
+    no como un peer nulo tres llamadas después.
+  </Param>
+  <Param name="Subclase de DotJob">
+    `_step` (una porción acotada; devuelve true si queda más), `_progress`,
+    `_setup`, `_teardown`, `is_thread_safe`. Hashea un trozo, no un archivo: el
+    planificador puede dejar de llamar a `_step`, pero no puede interrumpir una
+    llamada en curso.
+  </Param>
+  <Param name="Subclase de DotConfig">
+    `env_prefix()`, `cli_prefix()`, `sensitive_keys()`, `validate()`. Declara
+    propiedades `@export` y las capas, la reflexión y la pantalla de ajustes
+    salen solas.
+  </Param>
+  <Param name="DotLogSink, o DotLog.add_sink(callable)">
+    Adónde van los registros. La forma con `Callable` es una línea; la clase se
+    ocupa de archivos, rotación y reenvío.
+  </Param>
+  <Param name="DotNodeRef en cada componente">
+    La respuesta común de la colección a «qué nodo». Cada nodo de cada
+    complemento exporta al menos uno.
+  </Param>
+</Params>
+
+## `DotResult` no es cortesía opcional
+
+```gdscript
+var res := await cloud.acquire(url)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        retry_after(res.error.retry_after)
+    return
+var scene_path: String = res.value
+```
+
+Ramifica sobre `DotError.CODE_*`; nunca sobre el mensaje. `res.wrap(...)` añade
+contexto sin descartar la causa, así que un fallo tres capas más abajo sigue
+diciendo qué estaba haciendo en cada nivel.
+
+## `DotScheduler` y el navegador
+
+`DotScheduler` ejecuta trabajos en hilos de trabajo cuando la compilación los
+tiene y los reparte en el hilo principal dentro de un presupuesto por fotograma
+cuando no — porque una exportación web no tiene hilos salvo que la plantilla se
+compilara con ellos, y la pregunta correcta es
+`DotPlatform.has_threads()`, no `OS.get_name()`.
+
+<Callout type="warning" title="La señal `finished` de un trabajo se entrega siempre en el hilo principal">
+No siempre fue así: `await` reanudaba en un hilo de trabajo y la línea siguiente
+tocaba el árbol de escena fuera del hilo principal. `_teardown` se ejecuta en el
+hilo que resolvió el trabajo y es solo para APIs seguras entre hilos; cualquier
+cosa que toque el árbol pertenece a un manejador de `finished`.
+</Callout>
+
+## Transportes
+
+`DotTransportAuto` es el valor por defecto y elige por ti. La elección no es una
+preferencia:
+
+- **Un navegador no tiene UDP**, y `ENetMultiplayerPeer` no está en la plantilla
+  web — así que `DotTransportENet` llega a ENet mediante `ClassDB.instantiate` y
+  `Object.call`, nunca por nombre. Un script que solo *menciona* el
+  identificador no compila en una exportación web.
+- **Un socket de escucha habla un solo protocolo.** Un servidor que quiere
+  clientes de navegador escucha por WebSocket, y entonces *todos* sus clientes
+  también. Por eso `require_web_clients` vale `true` por defecto.
+
+<Callout type="info" title="`DotWeb.is_secure_context()` no es «la página es HTTPS»">
+Un navegador trata `http://localhost` y `http://127.0.0.1` como orígenes de
+confianza, así que es cierto en una página HTTP normal — mientras que el bloqueo
+de contenido mixto, que es la regla que en realidad decide si se permite `ws://`,
+exime exactamente a esos orígenes. Ascender basándose en la pregunta equivocada
+es la razón de que nada de esto hubiera cargado nunca en un navegador.
+</Callout>
+
+<Related>
+- [Convenciones](/learn/godot/conventions) — casi toda esta página, como reglas
+- [Puntos de extensión](/learn/godot/extending)
+- [`dot-cloud`](/learn/godot/addons/dot-cloud), [`dot-net`](/learn/godot/addons/dot-net)
+</Related>

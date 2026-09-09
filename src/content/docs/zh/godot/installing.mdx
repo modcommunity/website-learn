@@ -1,0 +1,141 @@
+---
+title: 安装
+description: 复制一个插件目录、勾选一个插件，然后跑那套两步检查——外加引擎版本、本地开发用的软链，以及为什么每个资源各占一个仓库。
+order: 10
+keywords:
+  - "安装"
+  - "配置"
+  - "插件"
+  - "软链接"
+  - "克隆"
+  - "4.7.2"
+  - "无界面"
+  - "--import"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+每个插件的安装方式都一样，而且这个答案刻意平淡：**复制一个目录**。
+
+## 安装一个插件
+
+```bash
+# 所有插件都依赖 dot-core，先复制它。
+cp -r dot-core/addons/dot_core       my-game/addons/
+cp -r dot-timer/addons/dot_timer     my-game/addons/
+```
+
+然后在 *项目 → 项目设置 → 插件* 里逐个启用。
+
+<Callout type="info" title="插件开关只负责注册检查器里的类型">
+无论插件是否启用，每个类都能通过它的 `class_name` 使用。启用它，只是让资源出现在
+“新建资源”对话框里、让节点出现在“添加节点”里。
+</Callout>
+
+**一个插件对外分发的就是它的 `addons/<名称>/` 目录，别的都不算。** 仓库里这个
+目录之外的东西——`project.godot`、`examples/`、`fixtures/`、`icon.svg`——是为了让
+插件能单独打开和验证而存在的，不会复制进使用它的项目。
+
+## 需要 Godot 4.7 或更新版本
+
+这套合集是在 4.4 上写的，现在面向 **4.7.2**。每个 `project.godot` 都声明
+`config/features=PackedStringArray("4.7")`，[`dotserve`](/learn/godot/tooling)
+和服务器工具的 `setup.sh` 都会拒绝更旧的版本，容器则把 `4.7.2-stable` 连同校验和
+一起固定。
+
+迁移本身在 GDScript 里没有任何代价：4.5、4.6 和 4.7 中所有有文档记录的破坏性
+改动——`JSONRPC.set_scope`、`Node.get_rpc_config`、被移除的 `RenderingServer`
+插值方法、`AudioEffectSpectrumAnalyzer.tap_back_pos`、OpenXR 与
+TextServerExtension 的签名——在这些仓库里一处都没出现过。
+
+## 每个资源一个仓库
+
+**每个资源都是独立的 Git 仓库，需要单独克隆。** 没有父仓库，因此没有办法一次把
+整套合集克隆下来。
+
+```bash
+git clone https://github.com/modcommunity/dot-core
+git clone https://github.com/modcommunity/dot-timer
+```
+
+这是使用方式决定的：想要一个速通计时器的人，应该能只拿走 `dot-timer` 和
+`dot-core`，别的都不需要。
+
+## 在本地开发某个插件
+
+除 `dot-core` 之外的每个项目，光是要*打开*就需要 `dot-core` 在场；游戏则需要它用到
+的每一个插件。这些软链都在 `.gitignore` 里，因为使用者是复制目录而不是链接：
+
+```bash
+cd dot-cloud   # 或任意一个插件项目
+ln -s ../../dot-core/addons/dot_core addons/dot_core
+```
+
+```bash
+cd game-arena
+for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
+            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
+            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
+  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
+done
+```
+
+[`dot-serve`](/learn/godot/tooling) 这些都不需要：它是个 shell 脚本，运行时自己去
+找 Godot 可执行文件。
+
+## 那套两步检查
+
+没有 CI。每个项目都用同一套两步检查，而且**两步都重要**。
+
+```bash
+cd <项目>
+
+# 1. 每个脚本都能解析。
+godot --headless --path . --import
+find . -name '*.gd' -not -path './.godot/*' | while read f; do
+    godot --headless --path . --check-only --script "res://${f#./}"
+done
+
+# 2. 它真的能跑。
+godot --headless --path . res://examples/<对应示例>.tscn
+```
+
+<Callout type="warning" title="--import 这一步不是可选的">
+是它注册了 `class_name` 全局名。没有它，所有跨文件的类型引用都会失败，看上去就像
+几十条彼此无关的报错——而且**每次新增带有新 `class_name` 的脚本后都要重跑**，否则
+标识符解析不出来、场景加载不了，进程会*卡住*而不是报错，因为根本走不到
+`get_tree().quit()`。
+</Callout>
+
+第二步是大家会跳过的一步，也是真正能发现问题的一步。解析干净的 GDScript 仍可能以
+只有运行才暴露的方式出错：一个把观察者自己拥有的东西丢掉的兴趣缓存；一条在两个数据包
+之间根本不前进的渲染时间轴；一个按引用交出去、于是每份“副本”共享同一个对象的
+`Dictionary`。每个自检示例失败时都会以非零码退出，因此原样就能当冒烟测试用。
+
+<Callout type="info" title="所有无界面运行都要用 `timeout` 兜底">
+脚本解析失败的场景会卡住而不是报错，完全没有脚本的场景同样如此。有四个示例场景刻意
+不是自检，永远不会自己结束。
+</Callout>
+
+## 三个目标平台，一份代码
+
+桌面（Windows、macOS、Linux）、移动（Android、iOS）和浏览器。约束都在浏览器这一侧，
+而且这些约束写进了代码里，而不是留给读者自己记——见
+[约定](/learn/godot/conventions#the-browser-decides-half-of-this)。
+
+想最快知道某个构建到底能做什么：
+
+```bash
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+在每个要发布的目标平台上都跑一次。你就是这样发现自己的 web 导出没有线程，或者某台
+设备根本不报告存储配额的——这两件事都会改变
+[`dot-cloud`](/learn/godot/addons/dot-cloud) 的行为。
+
+<Related>
+- [约定](/learn/godot/conventions)
+- [全部插件](/learn/godot/addons)
+- [工具](/learn/godot/tooling) —— 一条命令启动一台服务器
+</Related>

@@ -1,0 +1,156 @@
+---
+title: Instalação
+description: Copiar uma pasta de complemento, ativar um plugin e correr a verificação em dois passos — mais a versão do motor, as ligações para desenvolvimento local e porquê um repositório por recurso.
+order: 10
+keywords:
+  - "instalar"
+  - "instalação"
+  - "configuração"
+  - "plugin"
+  - "ligação simbólica"
+  - "clonar"
+  - "4.7.2"
+  - "sem interface"
+  - "--import"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Todos os complementos se instalam da mesma maneira, e a resposta é
+propositadamente aborrecida: **copiar uma pasta**.
+
+## Instalar um complemento
+
+```bash
+# O dot-core é exigido por tudo. Copie-o primeiro.
+cp -r dot-core/addons/dot_core       o-meu-jogo/addons/
+cp -r dot-timer/addons/dot_timer     o-meu-jogo/addons/
+```
+
+Depois ative cada um em *Projeto → Definições do projeto → Plugins*.
+
+<Callout type="info" title="O interruptor do plugin só regista tipos do inspetor">
+Todas as classes estão disponíveis através do seu `class_name`, esteja o plugin
+ativo ou não. Ativá-lo é o que coloca os recursos na caixa *Criar recurso* e os
+nós em *Adicionar nó*.
+</Callout>
+
+**O que um complemento distribui é a sua pasta `addons/<nome>/` e mais nada.**
+Tudo o que está fora dela no repositório — `project.godot`, `examples/`,
+`fixtures/`, `icon.svg` — existe para que o complemento possa ser aberto e
+validado isoladamente, e não é copiado para o projeto que o consome.
+
+## Exige o Godot 4.7 ou mais recente
+
+A coleção foi construída sobre a 4.4 e agora aponta à **4.7.2**. Cada
+`project.godot` declara `config/features=PackedStringArray("4.7")`, o
+[`dotserve`](/learn/godot/tooling) e o `setup.sh` da ferramenta de servidor
+recusam ambos qualquer versão anterior, e o contentor fixa `4.7.2-stable` com a
+respetiva soma de verificação.
+
+A mudança não custou nada em GDScript: todas as alterações incompatíveis
+documentadas nas 4.5, 4.6 e 4.7 — `JSONRPC.set_scope`, `Node.get_rpc_config`, os
+métodos de interpolação removidos do `RenderingServer`,
+`AudioEffectSpectrumAnalyzer.tap_back_pos`, as assinaturas do OpenXR e do
+TextServerExtension — não ocorrem em lado nenhum destes repositórios.
+
+## Um repositório por recurso
+
+**Cada recurso é o seu próprio repositório Git e é clonado individualmente.** Não
+há repositório pai, portanto não há forma de clonar a coleção inteira de uma vez.
+
+```bash
+git clone https://github.com/modcommunity/dot-core
+git clone https://github.com/modcommunity/dot-timer
+```
+
+Isso é consequência da forma como são consumidos: quem quiser um cronómetro de
+speedrun deve poder levar o `dot-timer` e o `dot-core` e mais nada.
+
+## Trabalhar num complemento localmente
+
+Todos os projetos exceto o `dot-core` precisam que o `dot-core` esteja presente
+só para *abrir*, e os jogos precisam de todos os complementos que usam. Essas
+ligações estão no `.gitignore`, porque quem consome copia as pastas em vez disso:
+
+```bash
+cd dot-cloud   # ou qualquer projeto de complemento
+ln -s ../../dot-core/addons/dot_core addons/dot_core
+```
+
+```bash
+cd game-arena
+for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
+            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
+            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
+  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
+done
+```
+
+O [`dot-serve`](/learn/godot/tooling) não precisa de nada disto: é um script de
+shell e encontra um binário do Godot em tempo de execução.
+
+## A verificação em dois passos
+
+Não há integração contínua. Todos os projetos têm a mesma verificação em dois
+passos e **os dois passos importam**.
+
+```bash
+cd <projeto>
+
+# 1. Todos os scripts são analisados.
+godot --headless --path . --import
+find . -name '*.gd' -not -path './.godot/*' | while read f; do
+    godot --headless --path . --check-only --script "res://${f#./}"
+done
+
+# 2. Funciona mesmo.
+godot --headless --path . res://examples/<o-exemplo>.tscn
+```
+
+<Callout type="warning" title="O passo --import não é opcional">
+É o que regista os globais `class_name`. Sem ele, todas as referências de tipo
+entre ficheiros falham e parecem dezenas de erros sem relação — e **volte a
+executá-lo depois de acrescentar qualquer script com um `class_name` novo**, ou o
+identificador não se resolve, a cena não carrega e o processo *fica pendurado* em
+vez de falhar, porque nada chega a `get_tree().quit()`.
+</Callout>
+
+O passo 2 é o que as pessoas saltam, e é o que encontra coisas. GDScript que
+analisa sem erros pode continuar errado de formas que só a execução mostra: uma
+cache de interesse que descartava aquilo que o observador possuía, uma linha
+temporal de desenho que não avançava entre pacotes, um `Dictionary` entregue por
+referência de modo que cada «cópia» partilhava um único objeto. Cada exemplo de
+autoteste sai com código diferente de zero em caso de falha, por isso servem como
+testes de fumo tal como estão.
+
+<Callout type="info" title="Limite todas as execuções sem interface com `timeout`">
+Uma cena cujo script não analisa fica pendurada em vez de falhar, e o mesmo
+acontece com uma cena sem script nenhum. Quatro cenas de exemplo são
+propositadamente autotestes e nunca terminam sozinhas.
+</Callout>
+
+## Três alvos, uma base de código
+
+Computador (Windows, macOS, Linux), telemóvel (Android, iOS) e o navegador. É no
+navegador que estão as restrições, e estão codificadas no código em vez de
+deixadas ao leitor — veja
+[Convenções](/learn/godot/conventions#the-browser-decides-half-of-this).
+
+A forma mais rápida de descobrir o que uma compilação consegue mesmo fazer:
+
+```bash
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+Corra-o em cada alvo para o qual publica. É assim que se descobre que a
+exportação web não tem threads, ou que um dispositivo não comunica quota de
+armazenamento — e ambas as coisas mudam o comportamento do
+[`dot-cloud`](/learn/godot/addons/dot-cloud).
+
+<Related>
+- [Convenções](/learn/godot/conventions)
+- [Os complementos](/learn/godot/addons)
+- [Ferramentas](/learn/godot/tooling) — arrancar um servidor com um só comando
+</Related>

@@ -1,0 +1,263 @@
+---
+title: Convenções
+description: As regras que todos os complementos Dot cumprem — sem autoloads, DotResult para tudo o que pode falhar, DotNodeRef em vez de caminhos de cena, configuração em camadas, e as restrições do navegador que decidem metade delas.
+order: 20
+keywords:
+  - "DotResult"
+  - "DotNodeRef"
+  - "DotRegistry"
+  - "DotConfig"
+  - "autoload"
+  - "singleton"
+  - "describe"
+  - "convenções"
+  - "exportação web"
+  - "IndexedDB"
+source:
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-core/README.md
+---
+
+Estas regras valem em todos os complementos. Quebrar uma é uma alteração
+incompatível em vinte e dois repositórios, por isso vale a pena conhecê-las
+antes de escrever contra qualquer um deles.
+
+## `DotRegistry` em vez de autoloads
+
+**Nenhum complemento traz um autoload, em lado nenhum.**
+
+Um autoload reserva um identificador global em todos os projetos que o usam, fixa
+a ordem de inicialização e não pode ser instanciado duas vezes — o que exclui
+correr um servidor e um cliente no mesmo processo, ou dois servidores na mesma
+sessão do editor. E esta coleção faz as duas coisas com regularidade.
+
+Por isso os componentes são `Node` que você coloca, e encontram-se pelo nome:
+
+```gdscript
+DotRegistry.register(&"dot_server", self)
+
+var cloud: Object = DotRegistry.get_service(&"dot_cloud_client")
+if cloud != null:
+    ...
+```
+
+A maioria dos gestores regista-se em `_enter_tree` e cancela o registo em
+`_exit_tree`, sob uma constante `SERVICE`, com uma opção `register_service` e um
+`service_scope` para correr dois do mesmo tipo numa só árvore.
+
+Classes estáticas não podem declarar sinais, e é por isso que existem
+`DotLogBus` e `DotRegistryBus` ao lado de `DotLog` e `DotRegistry`.
+
+### Os nomes do registo que são costuras
+
+Três deles são *contratos* mais do que pesquisas — um nome, um método, e nenhum
+dos complementos nomeia o outro:
+
+<Params>
+  <Param name="dot_ban_source">
+    Qualquer coisa com `check_admission(uid, address) -> DotResult`. O
+    [`dot-server`](/learn/godot/addons/dot-server) pergunta-lhe a cada entrada; o
+    [`dot-moderation`](/learn/godot/addons/dot-moderation) publica-se sob ele.
+  </Param>
+  <Param name="dot_mute_source">
+    Qualquer coisa com `is_voice_muted(peer) -> bool`. O encaminhador do
+    [`dot-voice`](/learn/godot/addons/dot-voice) consulta-o antes de retransmitir
+    uma trama.
+  </Param>
+  <Param name="dot_cloud_client">
+    Qualquer coisa que fale `ensure(content_id, version)` /
+    `is_mounted(content_id, version)`. O carregador do
+    [`dot-map`](/learn/godot/addons/dot-map) e a troca de jogo do
+    [`dot-server`](/learn/godot/addons/dot-server) chegam ao conteúdo por ele.
+  </Param>
+</Params>
+
+A lista completa dos nomes de serviço está na página de [pontos de
+extensão](/learn/godot/extending#registry-seams).
+
+## Nada fixa um caminho de cena
+
+Qualquer componente que precise de um nó do projeto anfitrião exporta um
+**`DotNodeRef`**, que é uma descrição editável no inspetor de *qual nó*:
+relativo, absoluto, a si próprio, ao pai, a um grupo, a um serviço do registo, ao
+antepassado ou descendente mais próximo de um tipo, ou criar-o-nó-se-faltar.
+
+```gdscript
+session.world_ref = DotNodeRef.of_path(^"../World")
+spawner.world_ref = DotNodeRef.of_group(&"world_root")
+```
+
+O anfitrião decide, por instância, no inspetor. Um complemento que fixasse
+`$"../../World"` seria um complemento cuja disposição de cena teria de adotar.
+
+<Callout type="warning" title="`of_self()` resolve para o nó onde está a referência">
+Num controlador isso significa o *controlador*, não o corpo da personagem por
+baixo — que é um `Node` simples, por isso `setup()` recusa e o jogador nunca é
+simulado. Custou nove falhas num conjunto de testes e nenhuma apontava para a
+referência.
+</Callout>
+
+## `DotResult` para tudo o que pode falhar
+
+Nunca null, nunca um par num `Array`, nunca um `false` seco.
+
+```gdscript
+var res := await manager.resolve(identity)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        wait(res.error.retry_after)
+    return
+var profile: DotUserProfile = res.value
+```
+
+Quem chama ramifica em `DotError.CODE_*`, **nunca na mensagem** — os códigos são
+estáveis e as mensagens são para pessoas. `res.wrap(...)` acrescenta contexto sem
+descartar a causa, e ler `.value` numa falha lança um erro em vez de devolver um
+valor plausível.
+
+## A configuração é em camadas, igual em todo o lado
+
+```
+valores por omissão exportados  <  ficheiro JSON  <  ambiente  <  linha de comandos
+```
+
+Qualquer subclasse de `DotConfig` limita-se a declarar propriedades `@export`; a
+descoberta é reflexiva, por isso uma definição nova não precisa de código de
+análise. Quatro ganchos moldam-na:
+
+<Params>
+  <Param name="env_prefix()" type="String">
+    p. ex. `"DOT_SERVER_"`. Devolva `""` para desativar por completo as
+    substituições pelo ambiente — o correto para uma configuração que descreve
+    *conteúdo* em vez de implantação, onde uma variável ambiente a mudar o
+    comportamento seria uma surpresa.
+  </Param>
+  <Param name="cli_prefix()" type="String">
+    p. ex. `"--sv-"`.
+  </Param>
+  <Param name="sensitive_keys()" type="PackedStringArray">
+    Propriedades que nunca podem ser definidas a partir do ambiente ou da linha de
+    comandos. Ambos são legíveis por outros processos na maioria dos sistemas e
+    ambos acabam na saída do `ps` e em relatórios de erro colados.
+  </Param>
+  <Param name="validate()" type="DotResult">
+    Apanha o que a reflexão não consegue: uma porta fora de 1–65535, um tickrate
+    de zero, um URL sem esquema. Chamada por `load_layered()`.
+  </Param>
+</Params>
+
+Esse mesmo `sensitive_keys()` é o que impede o
+[`DotSettingsPanel`](/learn/godot/addons/dot-ui) de mostrar um segredo.
+
+## `describe()` em tudo o que tenha estado
+
+Todo o componente com estado responde a `describe()` / `describe_lines()`, para
+que um comando de consola ou um relatório de erro o possa despejar. É também onde
+um complemento diz o que *não consegue* fazer na configuração atual: o
+`dot-moderation` reporta que nada está registado como `dot_ban_source`, ou seja,
+que um banimento é uma linha num ficheiro que não trava ninguém — e di-lo no
+sítio onde um operador olha.
+
+## Tudo tem o prefixo `Dot`
+
+`class_name` é global no Godot e estes complementos instalam-se lado a lado, por
+isso todas as classes têm o prefixo `Dot`. O `dot-2d` usa `Dot2D*`, porque um
+identificador não pode começar por um dígito e `Dot2D` lê-se melhor do que
+`DotTwoD`.
+
+## Pergunte por capacidades, não por plataformas
+
+`DotPlatform.has_threads()`, não `OS.get_name() == "Web"`. A correspondência não
+é um para um — um modelo web *pode* ser compilado com threads, e a uma
+compilação de computador pode faltar algo que tomou como garantido.
+
+## Os comentários explicam o porquê
+
+Há muitos compromissos pouco óbvios neste código, e a convenção é que um
+comentário diga porque é que a alternativa evidente está errada. Caso contrário,
+o leitor seguinte «simplifica» um deles e transforma-o outra vez num erro — o que
+aconteceu vezes suficientes para o raciocínio ser tratado como parte do
+código-fonte.
+
+## O navegador decide metade disto
+
+Computador, telemóvel e navegador a partir de uma só base de código. Cada uma
+destas restrições está codificada no código em vez de ser deixada ao leitor:
+
+| Restrição | Consequência |
+| --- | --- |
+| Sem UDP; `ENetMultiplayerPeer` ausente do modelo web | O `DotTransportENet` chega ao ENet por `ClassDB.instantiate` e `Object.call`, nunca pelo nome — um script que *menciona* o identificador não compila em web |
+| Um socket à escuta fala um só protocolo | Um servidor com clientes de navegador escuta em WebSocket, e então *todos* os seus clientes também. É por isso que `DotTransportAuto.require_web_clients` é `true` por omissão |
+| Um separador de navegador não pode ficar à escuta | As compilações web são só de cliente |
+| Não há `HTTPClient`, só `HTTPRequest` | O `DotHttp` usa `HTTPRequest` sem exceção |
+| Sem threads a não ser que o modelo tenha sido compilado com eles | O `DotScheduler` fatia o trabalho na thread principal dentro de um orçamento por fotograma |
+| `user://` é um espelho de IndexedDB que exige descargas explícitas | todos os caminhos de escrita chamam `DotWeb.sync_filesystem()` |
+| Uma quota de armazenamento que o utilizador pode recusar | O `DotCloudStore` espera por `navigator.storage.estimate()` e nunca assume que é ilimitada |
+| CORS, com o `fetch()` a recusar dizer porque falhou | os anfitriões de conteúdo precisam de cabeçalhos documentados; a mesma origem evita isso |
+| **Um pacote de recursos montado nunca pode ser desmontado, em plataforma nenhuma** | O `dot-cloud` dá a cada conteúdo o espaço de nomes `id/version` para que nada precise alguma vez de ser substituído |
+
+Esta última moldou o [`dot-cloud`](/learn/godot/addons/dot-cloud) mais do que
+qualquer outra coisa.
+
+<Callout type="warning" title="Os globais `class_name` de um pacote montado não são registados">
+Medido: dentro de um `.pck` entregue, todas as referências de tipo entre
+ficheiros falham a compilar — o pacote monta, as cenas carregam, e todos os
+scripts dentro dele estão mortos. `preload("res://x.gd")` e
+`extends "res://x.gd"` funcionam ambos. **Isto decide o aspeto que um jogo
+entregue pode ter** — veja o
+[game-playground](/learn/godot/games#game-playground), cujas entidades e armas
+são scripts nomeados por *caminho* exatamente por esta razão.
+</Callout>
+
+## Armadilhas do GDScript que a coleção já pagou
+
+Vale a pena conhecê-las antes de escrever uma ponte, porque nenhuma delas produz
+um erro.
+
+- **`==` liga mais forte do que `as`.** `a == [x] as Array[StringName]` é
+  analisado como `(a == [x]) as Array[StringName]` e não compila.
+- **`await x.f().ok` liga o await ao acesso à propriedade**, não à chamada, por
+  isso a corrotina nunca é esperada. Atribua primeiro a uma variável.
+- **`var x := f()` em que `f` devolve `Variant` é um erro de análise** com as
+  definições de aviso destes projetos. Escreva `var x: Variant = f()`.
+  `Array.duplicate()` devolve um array sem tipo, por isso indexá-lo é
+  exatamente este caso.
+- **As lambdas capturam locais por valor.** Um contador incrementado dentro de um
+  tratador de sinal continua a zero fora dele. Capture um `Array` e acrescente.
+- **Um `Dictionary` é uma referência.** Se `to_dictionary()` entregar o seu
+  próprio dicionário, a «cópia» partilha-o, e editar uma edita a outra em
+  silêncio.
+- **`Array.sort()` sobre `StringName` não ordena lexicograficamente** — o Godot
+  compara ponteiros internados, por isso dois pares podem ordenar a mesma lista
+  de forma diferente.
+- **As componentes de `Vector3` são de 32 bits enquanto a aritmética do GDScript
+  é de 64.** Pés assentes em `y = 0` calculam como `-2.4e-8`.
+- **`String.is_valid_identifier()` é falso para um dígito**, porque um
+  identificador não pode *começar* por um.
+- **O Godot recusa um RPC a menos que as duas pontas declarem o mesmo conjunto de
+  métodos `@rpc`**, e encaminha-o pelo caminho do nó relativo à raiz do
+  `MultiplayerAPI`. Um método `@rpc` a mais de um dos lados faz falhar *todos* os
+  RPC entre eles — incluindo o aperto de mão, cujo único sintoma é um tempo
+  esgotado.
+
+### Correr N corrotinas e esperar
+
+As duas escritas óbvias estão erradas. O padrão que funciona são chamadas como
+instrução solta mais um **contador membro**, para que um trabalhador que nunca
+suspende já esteja contabilizado:
+
+```gdscript
+_workers_finished = 0
+for i in range(n):
+    _worker(i)              # corre até ao primeiro await, ou até ao fim
+while _workers_finished < n:
+    await _worker_done      # nem sequer se entra se todos terminaram
+```
+
+Todos os caminhos de retorno têm de incrementar o contador *e* emitir.
+
+<Related>
+- [Pontos de extensão](/learn/godot/extending)
+- [Instalação](/learn/godot/installing)
+- [`dot-core`](/learn/godot/addons/dot-core) — onde vive a maior parte disto
+</Related>

@@ -5,6 +5,7 @@ import ObserverProvider from '../components/Observer';
 import SiteHeader from "../components/SiteHeader";
 import SiteSidebar from "../components/SiteSidebar";
 import SiteFooter from "../components/SiteFooter";
+import CornerLauncher from "../components/CornerLauncher";
 import { LOCALES, localizeUrl, stripLocale, type LocaleT } from "../i18n/config";
 
 import PlausibleAnalytics from "../components/helper/PlausibleAnalytics.astro";
@@ -193,6 +194,16 @@ const desc = descMeta ?? import.meta.env.PUBLIC_DESCRIPTION ?? "Documentation fo
 				</div>
 
 				<SiteFooter locale={locale} client:load />
+
+				<!--
+					The bottom-right launcher block: Play beside Chat, on every
+					page, exactly where website-city and website-processing put
+					it — a reader crossing between the three shells must not
+					have to look for it twice. No `client:*` directive: it is
+					two links and a CSS animation, so it renders to static HTML
+					and ships no JavaScript.
+				-->
+				<CornerLauncher locale={locale} />
 			</div>
 		</ObserverProvider>
 	</body>

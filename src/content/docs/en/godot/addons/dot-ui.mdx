@@ -1,0 +1,142 @@
+---
+title: dot-ui
+description: Screens, HUD and menus with no art assets — a screen stack that derives z-order, input blocking and mouse mode from one place, a settings panel generated from any DotConfig, and a rebinder with conflict detection.
+navTitle: dot-ui
+order: 140
+keywords:
+  - "UI"
+  - "HUD"
+  - "menu"
+  - "screen"
+  - "pause"
+  - "settings"
+  - "keybinds"
+  - "rebind"
+  - "crosshair"
+  - "scoreboard"
+  - "theme"
+source:
+  - ../game-dev/godot/dot-ui/README.md
+  - ../game-dev/godot/dot-ui/CLAUDE.md
+---
+
+```gdscript
+var stack := DotScreenStack.new()
+add_child(stack)
+stack.register(pause_menu)
+stack.register(settings_screen)
+
+hud.bind_stack(stack)
+settings_panel.bind(server_config)
+health_bar.bind(func(): return health.health)
+```
+
+## Two ideas
+
+**Four things have to agree, and they are usually written in four places.**
+Z-order, input blocking, mouse capture and the back key are each simple alone.
+The bug is a pause menu that is visible but not focused, a scoreboard that
+captures the mouse, or an escape key that closes two screens at once.
+`DotScreenStack` derives all four from one stack, every time it changes.
+
+**It ships no art and imports nothing.** No textures, no fonts, no nine-patches,
+and no knowledge of `dot-match` or `dot-combat`. The theme is generated from
+`StyleBoxFlat`s; the kill feed takes coloured string fragments; the scoreboard
+takes rows of dictionaries.
+
+## What is in the box
+
+| | |
+| --- | --- |
+| `DotScreenStack` / `DotScreen` | What is open, in what order, and who gets input. |
+| `DotUiTheme` | A whole `Theme` from a palette and a scale. No assets. |
+| `DotHud` / `DotHudWidget` | The always-on layer, and widgets that *pull* rather than being pushed. |
+| `DotStatBar` | Health, armour, ammo. Eased bar, un-eased number. |
+| `DotCrosshair` | Opens by the actual spread angle through the actual camera projection. |
+| `DotStarfield` | A parallax starfield drawn into any `CanvasItem`. Hashed, so nothing is stored. |
+| `DotFeedView` | A bounded, self-expiring list of coloured fragments. Kill feed and chat. |
+| `DotTableView` | Rows and columns. Scoreboard, server browser, ban list. |
+| `DotSettingsPanel` | Builds itself from a `DotConfig`. Never shows a secret. |
+| `DotBindingsPanel` | Rebinding, conflict detection, and a file that survives a restart. |
+
+## `DotSettingsPanel` reads the config you already wrote
+
+Every addon already describes its settings — keys, types, ranges, enum choices,
+groups, and which are secrets — in `@export` annotations. A hand-built settings
+screen restates all of that and then drifts from it, one field at a time, until
+a setting exists that no screen can reach.
+
+So this reads the config and builds the controls. It honours
+`sensitive_keys()`, for the same reason `DotConfig` refuses secrets from the
+environment and argv: they end up in screenshots and pasted bug reports.
+
+Edits are held until `apply()`, and **an invalid set is rolled back entirely** —
+applying half of them leaves the config in a state nobody chose and the player
+cannot tell which half survived.
+
+## Widgets pull
+
+A health bar wired to a `health_changed` signal misses the change that happened
+before it was created, and fires four times when four things change in one tick.
+A `DotHudWidget` holds a `Callable` that reads the value, on a throttle — ten
+times a second by default, which is faster than anyone can read, with an
+immediate path for anything where lateness is a lie.
+
+## The crosshair does the projection
+
+`gap_pixels()` is `half_viewport_height / tan(fov/2)` — the focal length in
+pixels — times `tan(spread)`. A crosshair that opens by an arbitrary amount is
+worse than a fixed one: it tells the player something confident and wrong about
+where their shots will go.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotScreen subclass">
+    `_screen_id`, `_on_push`, `_on_pop`, `_on_cover`, `_on_reveal`, `_can_pop`.
+    Use `_can_pop` sparingly — a screen that refuses to close is a screen a
+    player can be trapped in, and the escape key not working is
+    indistinguishable from a bug.
+  </Param>
+  <Param name="DotHudWidget subclass + source" type="Callable">
+    `_on_value(current)` and the `Callable` that reads it.
+    `DotStatBar.max_source` is the second one.
+  </Param>
+  <Param name="DotUiTheme, or your own Theme">
+    A palette and a scale, or replace it entirely. `dot-ui` ships no art on
+    purpose.
+  </Param>
+  <Param name="Nothing, for a settings screen">
+    `DotSettingsPanel.bind(config)`. That is the whole integration.
+  </Param>
+  <Param name="Signals">
+    `screen_pushed`, `screen_popped`, `top_changed`, `menu_state_changed`,
+    `pushed`, `popped`, `covered`, `revealed`, `close_requested`, `refreshed`,
+    `line_added`, `line_expired`, `row_activated`, `setting_changed`,
+    `applied`, `apply_failed`, `capture_started`, `capture_ended`,
+    `binding_changed`, `binding_refused`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="`set_anchors_preset` does not set offsets">
+A `Control` built in code keeps the zero size it was created with, so a whole
+interface lays out inside nothing and is **invisible while being, by every
+property, correctly configured**. This addon shipped five of them at once; every
+screen it had ever hosted was 0 × 0 unless its host happened to size it, and
+nothing in the suite measured a size.
+
+The general lesson: an interface is the one part of this collection whose bugs
+are invisible to assertions. Render a frame and look at it.
+</Callout>
+
+<Callout type="info" title="Open screens must sort after closed ones">
+The stack indexes from zero, which leaves *closed* screens after open ones in
+sibling order. Invisible while closed screens are hidden, and wrong the moment a
+host adds any other child.
+</Callout>
+
+<Related>
+- [`dot-core`](/learn/godot/addons/dot-core) — the `DotConfig` the panel reads
+- [`dot-match`](/learn/godot/addons/dot-match) — what a scoreboard is fed
+- [`dot-timer`](/learn/godot/addons/dot-timer) — which ships its own HUD
+</Related>

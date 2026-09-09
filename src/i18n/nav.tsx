@@ -60,10 +60,11 @@ const STATUS = '/status'
  *
  * City and website-processing now carry the same leaf, in the same slot at the
  * top of Resources and with the same words, so the three menus match. What
- * differs is the href: they point at `https://docs.moddingcommunity.com`, the
- * docs' own hostname, and mark the leaf `external`; here it stays the relative
- * `/learn` this build actually serves, because a docs site should not leave its
- * own origin to reach itself.
+ * differs is only the href: they point at `https://docs.moddingcommunity.com`,
+ * the docs' own hostname, while here it stays the relative `/learn` this build
+ * actually serves, because a docs site should not leave its own origin to reach
+ * itself. None of the three marks the leaf `external` any more — it navigates
+ * in place everywhere.
  */
 const DOCS = '/learn'
 
@@ -866,6 +867,18 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
                     icon: Search,
                 },
             ],
+        },
+        {
+            /*
+             * The docs, in the rail — city and website-processing added the
+             * same one-leaf section, for the same reason: the header menu and
+             * the footer column both carry this leaf, and the rail was the one
+             * surface the documentation could not be reached from. Here that
+             * leaf points at this very site.
+             */
+            label: t('rail.sections.resources'),
+            icon: FolderKey,
+            items: [{ label: t('rail.items.docs'), href: DOCS, icon: BookOpen }],
         },
     ]
 }

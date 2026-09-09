@@ -1,0 +1,213 @@
+---
+title: dot-server
+description: A console-driven dedicated server for Godot — console variables and commands, RCON, A2S and its own query protocol, admin permissions with immunity, bans, votes, hot-loadable modules, and switching games under live players.
+navTitle: dot-server
+order: 50
+keywords:
+  - "dedicated server"
+  - "srcds"
+  - "console"
+  - "cvar"
+  - "rcon"
+  - "A2S"
+  - "server query"
+  - "admin"
+  - "permissions"
+  - "immunity"
+  - "module"
+  - "plugin"
+  - "changelevel"
+  - "server.cfg"
+source:
+  - ../game-dev/godot/dot-server/README.md
+  - ../game-dev/godot/dot-server/CLAUDE.md
+---
+
+The dedicated server, in the shape operators already know. It works with
+`dot-core` alone; [`dot-auth`](/learn/godot/addons/dot-auth),
+[`dot-cloud`](/learn/godot/addons/dot-cloud) and
+[`dot-moderation`](/learn/godot/addons/dot-moderation) are **discovered at run
+time and imported by nothing**.
+
+```gdscript
+var server := DotServer.new()
+server.config = DotServerConfig.new()
+server.config.hostname = "My Server"
+server.config.port = 27015
+server.config.rcon_password = "something-long"
+add_child(server)
+```
+
+```bash
+godot --headless --path . res://server.tscn -- \
+    --sv-port 27015 --sv-hostname "My Server" +sv_maxplayers 24 +changelevel dm_arena
+```
+
+`--sv-*` sets configuration; `+command` runs a console command; `DOT_SERVER_*`
+environment variables work too, which is what a systemd unit or a container
+wants. Or skip all of it and use [`dotserve`](/learn/godot/tooling).
+
+## What it gives you
+
+**A real console.** `DotConVar`s with the flag semantics operators know —
+`FLAG_CHEAT` gated behind `sv_cheats`, `FLAG_PROTECTED` never printed anywhere
+including the log, `FLAG_STARTUP_ONLY` locked once listening, `FLAG_ARCHIVE`
+persisted by `writeconfig`. Config execution with search paths, a command buffer
+supporting `wait`, aliases, tab completion, and "did you mean" on typos.
+
+**RCON existing tools work with.** The classic RCON wire protocol, so operators
+keep their clients and panels. Constant-time password comparison, per-address
+lockout, an optional allow-list, and a WebSocket variant so a browser admin
+panel can reach it.
+
+**Server queries, both kinds.** A2S, so the twenty years of trackers, chat bots
+and uptime monitors that speak nothing else can list your server — off by
+default, and on the game port when you turn it on. And the dot query protocol:
+JSON sections you ask for by name, a revision that makes polling nearly free, a
+place for your game to publish its own state, and a WebSocket variant a
+browser-based server list can use. Both are challenged against the source
+address, so neither can be used to attack somebody else.
+
+**Permissions that fit real communities.** String flags rather than fixed roles,
+because nobody agrees what a "moderator" is. Numeric immunity so admins cannot
+kick each other in a loop. Admins from a JSON file, from dot-auth's site groups,
+or from your own source — all merged.
+
+**Moderation with a paper trail.** Bans by account and by address, with
+durations (`30m`, `2h`, `7d`), mutes and gags, and an append-only JSONL audit
+log flushed per entry so a crash cannot lose the action somebody is asking
+about.
+
+**Moderation from inside the game.** `/ban`, `/kick`, `/banip`, `/unban`,
+`/mute`, `/gag`, `/banlist` and `/whois` all run from chat with the speaker's
+own permissions — same commands, same flags, same audit trail — because a
+moderator who has to alt-tab to a terminal moderates less. Name a player however
+you have them: `#12`, their name, part of their name, their username, their
+account id, `ip:203.0.113.9` for everybody at an address, or `@me`.
+
+**A limit on how many clients one address may hold.**
+`sv_max_connections_per_ip`, off by default. Neither a ban nor a connect rate
+limiter covers this: connections that arrive slowly, from nobody banned, still
+let one machine take every slot on a small server. Loopback is never limited, so
+it cannot lock you out of your own server.
+
+**Games that swap under live players.** Announce, wait for everyone to download
+the new content, swap, re-spawn. A failed change restores the previous game
+rather than leaving the server empty.
+
+## The signon state machine
+
+```
+CONNECTING → AUTHENTICATING → DOWNLOADING → LOADING → SPAWNED
+```
+
+Each stage has its own timeout, deliberately: a player stuck downloading has a
+*different* problem from one stuck authenticating, and an operator has to be
+able to tell which without guessing.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotModule subclass">
+    The plugin surface. `_module_name`, `_module_version`,
+    `_module_description`, `_module_author`, `_module_load`, `_module_unload`,
+    `_module_game_changed`. Register through the helpers —
+    `add_command`, `add_cvar`, `hook_pre`, `hook_post`, `add_query_provider` —
+    and `module_unload` cleanly undoes all of it. Override `_module_unload` only
+    for what the helpers did not cover: timers, files, sockets.
+
+    A module that cannot work must fail in `_module_load` rather than load
+    broken.
+  </Param>
+  <Param name="DotEventBus.hook_pre / hook_post">
+    React to, or **veto**, anything. `player_chat`, `player_command` and
+    `game_changing` are cancellable; a hook that cancels stops the remaining
+    pre-hooks. `declare(name, description)` registers your own event so it shows
+    up in `event_list`.
+  </Param>
+  <Param name="DotQueryProvider subclass">
+    `_provider_name()` and `_contribute(snapshot)` — how a game publishes its own
+    state into a server query. `DotModule.add_query_provider` is the module
+    form.
+  </Param>
+  <Param name="DotBanStore subclass">
+    `_store_name`, `_load`, `_put`, `_remove`, `_refresh`, `_writable`. Point it
+    at a shared database or an HTTP service and a group of servers shares one
+    ban list. A `FileStore` ships.
+
+    **A failed `_load` must not be treated as "no bans".** `DotBanManager` keeps
+    whatever it already had and logs loudly, because silently starting with an
+    empty list readmits everyone who was ever removed.
+  </Param>
+  <Param name="dot_ban_source" type="registry">
+    Anything with `check_admission(uid, address) -> DotResult`, asked on every
+    join. `DotModerationManager` publishes itself under it.
+  </Param>
+  <Param name="DotConsole.command / DotConVar">
+    A command or a variable without a whole module. `DotConVar.validator` is a
+    `Callable`; `DotConCommand.completer` drives tab completion.
+  </Param>
+  <Param name="Admin sources">
+    Anything with `lookup()` and `source_name()`.
+    [`DotAuthAdminSource`](/learn/godot/addons/dot-auth) is the shipped one; all
+    registered sources are merged.
+  </Param>
+  <Param name="DotGameDescriptor">
+    What a game is: an id, a scene, a client scene, content ids, and a `cvars`
+    block applied when the game loads.
+  </Param>
+  <Param name="Signals">
+    `client_state_changed`, `client_spawned`, `client_disconnected`,
+    `permissions_resolved`, `message_sent`, `message_blocked`, `event_fired`,
+    `module_loaded`, `module_unloaded`, `game_changing`, `game_loaded`,
+    `game_load_failed`, `cvar_changed`, `command_executed`, `command_refused`,
+    `ban_added`, `ban_removed`, `action_recorded`, `vote_started`, `vote_ended`,
+    `query_answered`, `snapshot_rebuilt`.
+  </Param>
+</Params>
+
+## Connecting a client
+
+```gdscript
+var link := DotClientLink.new()
+add_child(link)
+link.player_name = "Ada"
+link.phase_changed.connect(func(_p, text): status.text = text)
+link.spawned.connect(func(): ui.show_game())
+
+await link.connect_to_server("wss://play.example.com/game")
+```
+
+The client downloads whatever content the current game needs (through
+`dot-cloud`), loads the scene the server names, and reports ready.
+
+<Callout type="warning" title="`client_spawn` carries `userid`, not `peer_id`">
+A module looking a session up by `peer_id` gets null every time and adds nobody,
+silently, because a null session is a legitimate thing to find. Two separate
+games shipped this and neither errored — in one, nobody could ever join a
+dedicated server, for as long as the module had existed.
+</Callout>
+
+<Callout type="warning" title="Nothing may be sent to a peer before it says it can receive">
+Signon finishes and *then* the client builds its scene. Everything sent in
+between lands on a node that does not exist and is lost, one "Node not found"
+per call.
+</Callout>
+
+## Optional, discovered at run time
+
+| | |
+| --- | --- |
+| [dot-auth](/learn/godot/addons/dot-auth) | Real player identity, so bans mean something and site groups can grant permissions. Without it, everyone is a `DotGuestIdentity`. |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | Downloadable game content. Without it, games ship inside the build. |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | Bans, mutes and gags as durable records in a store shared between your servers. Registered as `dot_ban_source`, its bans are enforced at connect. |
+
+Pick one ban list. `DotBanManager` and `DotModerationManager` both work
+standalone, and a deployment should run one rather than both.
+
+<Related>
+- [`dot-serve` and TMC's server tool](/learn/godot/tooling)
+- [`dot-vote`](/learn/godot/addons/dot-vote) — letting players choose what plays next
+- [`dot-moderation`](/learn/godot/addons/dot-moderation)
+- [Server listings on the site](/learn/servers)
+</Related>

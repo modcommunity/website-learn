@@ -1,0 +1,106 @@
+---
+title: dot-loadout
+description: What a player takes into a match, as a bounded document of ids a dedicated server validates against a schema and entitlements without loading any content — plus deterministic world pickups.
+navTitle: dot-loadout
+order: 120
+keywords:
+  - "loadout"
+  - "inventory"
+  - "items"
+  - "slots"
+  - "classes"
+  - "entitlements"
+  - "unlocks"
+  - "pickups"
+  - "budget"
+source:
+  - ../game-dev/godot/dot-loadout/README.md
+  - ../game-dev/godot/dot-loadout/CLAUDE.md
+---
+
+A loadout is a mapping from slot ids to item ids. Nothing else — no scenes, no
+meshes, no weapon resources. A server receives one from an untrusted client,
+checks it against a `DotLoadoutSchema` and a `DotLoadoutEntitlements`, and hands
+it to the game, **on a machine that may have none of the content installed**.
+
+```gdscript
+var res := await loadouts.active_for(user_key)
+for entry in loadouts.resolve(res.value):
+    arsenal.give(weapon_for(entry["item"]), entry["arsenal_slot"])
+
+var published := await loadouts.publish(user_key, submitted)
+if not published.ok:
+    DotLog.warn("game", "loadout refused: %s" % published.error)
+```
+
+The same trade [`dot-user-avatar`](/learn/godot/addons/dot-user-avatar) makes,
+for the same reason.
+
+## Two failure modes it is built around
+
+**Everyone owns everything.** `DotLoadoutEntitlements` starts empty and
+`entitlement_source` starts unset, so an unwired server permits only items
+marked `free`. That is loud and gets fixed in a minute. The other default —
+granting everything — is silent, and is a game where every unlock is free.
+
+**A schema change locks players out.** Retiring an item or adding a required
+slot makes every saved loadout invalid. `conform` repairs on the way **out** of
+a store, so a player who has not logged in for a month gets a slightly different
+gun rather than an error. `validate` refuses on the way **in** from a client,
+because a client that can make the server repair its way to a legal loadout can
+put anything anywhere.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotItem">
+    One thing a player can take: kind, slots, tags, cost, weight, entitlement.
+  </Param>
+  <Param name="DotItemCatalogue + resolver" type="Callable">
+    Every item by id, plus the **optional, client-side** resolver that turns one
+    into an asset. A server never calls it.
+  </Param>
+  <Param name="DotLoadoutSlot">
+    A position and what fits in it: kinds, required tags, forbidden tags.
+  </Param>
+  <Param name="DotLoadoutSchema">
+    The slots, the catalogue, and the point and weight budgets — a game mode's
+    equipment rules in one resource.
+  </Param>
+  <Param name="DotLoadoutEntitlements + DotLoadoutManager.entitlement_source">
+    What one player may take, and where that comes from.
+  </Param>
+  <Param name="DotLoadoutStore subclass">
+    `_fetch`, `_store`, `_remove`, `_open`, `_close`, `_writable`,
+    `_store_name`. Memory and local-JSON ship.
+  </Param>
+  <Param name="DotLoadoutValidator">
+    `validate` for the trust boundary, `conform` for the way out of a store.
+  </Param>
+  <Param name="DotPickup / DotPickupField">
+    Things on the floor. `wants_fn` and `tags_fn` decide who may take what.
+  </Param>
+  <Param name="Signals">
+    `loadouts_changed`, `loadout_refused`, `loadout_conformed`, `taken`,
+    `collected`, `respawned`.
+  </Param>
+</Params>
+
+## Pickups are not `Area3D`s
+
+Respawn timers count **ticks**, not seconds, and reach is a distance test rather
+than a physics overlap. Both because a client predicts picking something up and
+the server re-runs it: an area callback fires on whichever frame the physics
+server got to it, which is not the same frame on two machines.
+
+<Callout type="warning" title="A publish appends unless it replaces">
+A player with nothing saved is handed a synthesised default. If publishing adds
+a *second* loadout rather than replacing that one, then on a schema with a cap of
+one, the only publish they would ever make is refused.
+</Callout>
+
+<Related>
+- [`dot-combat`](/learn/godot/addons/dot-combat)
+- [`dot-user-avatar`](/learn/godot/addons/dot-user-avatar)
+- [`dot-match`](/learn/godot/addons/dot-match)
+</Related>

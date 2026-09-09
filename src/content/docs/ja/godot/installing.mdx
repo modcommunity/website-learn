@@ -1,0 +1,150 @@
+---
+title: インストール
+description: アドオンのフォルダーをコピーし、プラグインを有効にして、2 段階のチェックを走らせる。エンジンのバージョン、ローカル開発用のリンク、そしてアセットごとにリポジトリが分かれている理由も。
+order: 10
+keywords:
+  - "インストール"
+  - "セットアップ"
+  - "プラグイン"
+  - "シンボリックリンク"
+  - "クローン"
+  - "4.7.2"
+  - "ヘッドレス"
+  - "--import"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+どのアドオンも同じ手順で入ります。答えは意図的に退屈です。**フォルダーをコピー
+するだけ**。
+
+## アドオンを入れる
+
+```bash
+# dot-core はすべてが必要とします。最初にコピーしてください。
+cp -r dot-core/addons/dot_core       my-game/addons/
+cp -r dot-timer/addons/dot_timer     my-game/addons/
+```
+
+そのあと *プロジェクト → プロジェクト設定 → プラグイン* でそれぞれを有効にします。
+
+<Callout type="info" title="プラグインのスイッチはインスペクター用の型を登録するだけです">
+どのクラスもプラグインの有効・無効にかかわらず `class_name` で使えます。有効に
+することで、リソースが「リソースを作成」ダイアログに、ノードが「ノードを追加」に
+現れるようになります。
+</Callout>
+
+**アドオンの配布物は `addons/<名前>/` フォルダーだけです。** リポジトリ内のそれ
+以外——`project.godot`、`examples/`、`fixtures/`、`icon.svg`——は、アドオンを単体で
+開いて検証できるようにするためのもので、利用側のプロジェクトにはコピーしません。
+
+## Godot 4.7 以降が必要です
+
+このコレクションは 4.4 で作られ、いまは **4.7.2** を対象にしています。すべての
+`project.godot` が `config/features=PackedStringArray("4.7")` を宣言し、
+[`dotserve`](/learn/godot/tooling) とサーバーツールの `setup.sh` はどちらもそれ
+より古いものを拒否します。コンテナーは `4.7.2-stable` をチェックサムつきで
+固定しています。
+
+移行自体は GDScript では無コストでした。4.5・4.6・4.7 で文書化された破壊的変更
+——`JSONRPC.set_scope`、`Node.get_rpc_config`、削除された `RenderingServer` の
+補間メソッド、`AudioEffectSpectrumAnalyzer.tap_back_pos`、OpenXR と
+TextServerExtension のシグネチャ——は、これらのリポジトリのどこにも出てきません。
+
+## アセットごとに 1 リポジトリ
+
+**各アセットは独立した Git リポジトリで、個別にクローンします。** 親リポジトリは
+無いので、コレクション全体を一度にクローンする方法はありません。
+
+```bash
+git clone https://github.com/modcommunity/dot-core
+git clone https://github.com/modcommunity/dot-timer
+```
+
+これは使われ方の帰結です。スピードラン用タイマーが欲しい人は、`dot-timer` と
+`dot-core` だけを持って行けるべきだからです。
+
+## アドオンをローカルで開発する
+
+`dot-core` 以外のプロジェクトは、*開く*だけでも `dot-core` が必要で、ゲームは
+使っているアドオンすべてが必要です。これらのリンクは gitignore されています。
+利用者は代わりにフォルダーをコピーするからです。
+
+```bash
+cd dot-cloud   # 任意のアドオンプロジェクト
+ln -s ../../dot-core/addons/dot_core addons/dot_core
+```
+
+```bash
+cd game-arena
+for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
+            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
+            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
+  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
+done
+```
+
+[`dot-serve`](/learn/godot/tooling) にはこれらは不要です。シェルスクリプトで、
+実行時に Godot のバイナリーを探します。
+
+## 2 段階チェック
+
+CI はありません。どのプロジェクトも同じ 2 段階チェックを持ち、**どちらの段階も
+重要です**。
+
+```bash
+cd <プロジェクト>
+
+# 1. すべてのスクリプトがパースできる。
+godot --headless --path . --import
+find . -name '*.gd' -not -path './.godot/*' | while read f; do
+    godot --headless --path . --check-only --script "res://${f#./}"
+done
+
+# 2. 実際に動く。
+godot --headless --path . res://examples/<対象の例>.tscn
+```
+
+<Callout type="warning" title="--import のパスは省略できません">
+`class_name` のグローバルを登録するのがこれです。無いとファイルをまたぐ型参照が
+すべて失敗し、無関係なエラーが何十個も出ているように見えます。さらに、**新しい
+`class_name` を持つスクリプトを追加したら必ず実行し直してください**。さもないと
+識別子が解決されず、シーンが読み込めず、プロセスは失敗ではなく*ハング*します。
+`get_tree().quit()` に到達しないからです。
+</Callout>
+
+手順 2 は飛ばされがちで、しかも実際に何かを見つけるのはこちらです。きれいに
+パースできる GDScript でも、実行しないと分からない形で間違っていることがあり
+ます。観測者自身が所有するものを落としてしまう関心キャッシュ、パケット間で進ま
+ない描画タイムライン、参照のまま渡されてすべての「コピー」が 1 つのオブジェクト
+を共有していた `Dictionary`。自己テストの例はいずれも失敗時に非ゼロで終了する
+ので、そのままスモークテストとして使えます。
+
+<Callout type="info" title="ヘッドレス実行は必ず `timeout` で上限を付けてください">
+スクリプトがパースできないシーンは失敗せずハングします。スクリプトが無いシーンも
+同様です。4 つの例シーンは意図的に自己テストではなく、自分では終了しません。
+</Callout>
+
+## 3 つのターゲット、1 つのコードベース
+
+デスクトップ（Windows、macOS、Linux）、モバイル（Android、iOS）、そしてブラウザー。
+制約はブラウザーにあり、それらは読者任せにせずコード側に埋め込まれています。
+[規約](/learn/godot/conventions#the-browser-decides-half-of-this) を参照して
+ください。
+
+そのビルドが実際に何をできるかを最短で知る方法:
+
+```bash
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+出荷するターゲットごとに実行してください。web エクスポートにスレッドが無いこと
+や、端末がストレージ容量を報告しないことは、これで分かります。どちらも
+[`dot-cloud`](/learn/godot/addons/dot-cloud) のふるまいを変えます。
+
+<Related>
+- [規約](/learn/godot/conventions)
+- [アドオン一覧](/learn/godot/addons)
+- [ツール](/learn/godot/tooling) — コマンド 1 つでサーバーを起動する
+</Related>

@@ -1,0 +1,171 @@
+---
+title: dot-moderation
+description: Bans, kicks, chat gags, voice mutes and warnings as one durable record with pluggable storage — so a mute survives a reconnect and a community running several servers shares one list.
+navTitle: dot-moderation
+order: 210
+keywords:
+  - "moderation"
+  - "ban"
+  - "kick"
+  - "mute"
+  - "gag"
+  - "warning"
+  - "punishment"
+  - "immunity"
+  - "SQL"
+  - "sqlite"
+  - "postgres"
+  - "teleport"
+source:
+  - ../game-dev/godot/dot-moderation/README.md
+  - ../game-dev/godot/dot-moderation/CLAUDE.md
+---
+
+## Why this exists next to a server that already bans
+
+[`dot-server`](/learn/godot/addons/dot-server) has bans, kicks, admin flags with
+immunity and an audit log. What it does not have is a **mute that outlives a
+session**: `DotClientSession.silence()` sets two booleans on a session object,
+and a session is destroyed when its player disconnects. So a muted player
+reconnects and can talk again, which is the first thing anybody who has been
+muted tries.
+
+Bans persisting and mutes not is not a design. It is an accident of where the
+state happened to live.
+
+## The model
+
+A `DotPunishment` is a kind, a subject, a reason, an issuer, a moment it was
+issued and a moment it expires. `BAN`, `KICK`, `VOICE_MUTE`, `GAG` and `WARN`
+are the same record with a different kind, because a server asks the same four
+questions about each.
+
+- **The subject is an opaque durable key, never a peer id.** A peer id is reused
+  within minutes and means nothing after a disconnect.
+- **Expiry is answered on read, never swept on a timer.** A server that was off
+  overnight would otherwise come up enforcing yesterday's mutes.
+- **A revoke keeps the record.** The history is the point; it is what makes the
+  next decision defensible.
+- **A kick and a warning are never "active".** They happened; they are not still
+  happening.
+- **A subject is a person or a machine**, and `DotPunishmentSubject` decides how
+  each is spelled: `uid:backbone:abc` and `ip:203.0.113.9`, with the port and
+  any decoration stripped. Opaque is right — but "opaque" and "however each
+  caller felt like writing it" are not the same thing. A ban filed against
+  `1.2.3.4` and a check for `1.2.3.4:51234` are two strings that never meet, and
+  nothing errors.
+
+## Getting it enforced
+
+Nothing here can refuse a connection: there is no session list and no socket. So
+the manager publishes itself under **`dot_ban_source`**, and `dot-server` asks
+it on every join:
+
+```gdscript
+check_admission(uid: String, address: String) -> DotResult
+```
+
+Same shape as the `dot_mute_source` name
+[`dot-voice`](/learn/godot/addons/dot-voice) already looks up — one registry
+name, one method, neither addon naming the other. **With nothing registered, a
+`BAN` recorded here is a row in a file that stops nobody**, and
+`describe_lines()` says so where an operator looks.
+
+## Storage
+
+The table is defined once in `DotPunishmentSchema` and every backend holds the
+same fourteen columns.
+
+| Backend | Class | Status |
+| --- | --- | --- |
+| **JSON file** | `DotPunishmentStoreFile` | Works out of the box. Right for one server. |
+| **REST API** | `DotPunishmentStoreRest` | Works out of the box. Four endpoints; keep your own ban system. |
+| **SQLite** | `DotPunishmentStoreSql` + `DotSqlDriverSqlite` | Needs the godot-sqlite GDExtension. |
+| **PostgreSQL / MySQL** | `DotPunishmentStoreSql` + `DotSqlDriverGateway` | Needs a driver extension, or an HTTP gateway beside the database. |
+
+**Be aware of what Godot does not have.** There is no `SQLite`,
+`PostgreSQLClient` or `MySQL` class in the engine, and neither wire protocol can
+be spoken from GDScript without implementing an authentication handshake, a
+binary format and a connection pool. That is a project, not a file, and a
+half-finished one is a security problem rather than a missing feature.
+
+So the SQL half does everything that *can* be done here — the DDL per dialect,
+bound parameters, row mapping, upserts, indexes — and hands execution to a
+driver. **Putting the database behind HTTP is what most deployments should do
+anyway:** a game server holding a Postgres password is a game server whose
+compromise is a compromise of the database.
+
+Statements are **always parameterised**. A ban reason is typed by a moderator
+and quotes the offender's name half the time, so it is exactly the string that
+must never reach SQL by concatenation.
+
+### The REST contract
+
+```
+GET    {base}/punishments                  -> {"punishments": [ {...}, ... ]}
+GET    {base}/punishments?subject=uid:123  -> the same, filtered
+PUT    {base}/punishments/{id}             <- one record   -> {"ok": true}
+DELETE {base}/punishments/{id}                             -> {"ok": true}
+```
+
+A record is the JSON `DotPunishment.to_dictionary()` produces, which is what the
+file store writes. One format for every backend, so moving between them is one
+line.
+
+<Callout type="warning" title="A read failure is never an empty list">
+An API outage that read as "nobody is banned" would readmit everyone silently.
+Every error path returns a failure and the manager keeps what it already had.
+</Callout>
+
+## Mod tools
+
+`DotModTools` is what a moderator does to a player standing in front of them:
+`teleport`, `bring`, `goto`, `send`, and **`return_player`**.
+
+`return_player` is what makes the rest safe to use. Without an undo, "bring" is
+something a moderator hesitates to do mid-round, and a moderator who hesitates
+does not moderate. Every move saves a position first, including a `goto`.
+
+It knows nothing about your world: positions come from `position_fn` and moves
+go through `teleport_fn`, both yours. Positions are `Variant`, so **2D is a
+first-class user** rather than something to work around.
+
+## Where a game plugs in
+
+| To change | Where |
+| --- | --- |
+| Where punishments live | `DotPunishmentStore` subclass |
+| Which database | `DotSqlDriver` subclass, or `DotPunishmentStoreRest` |
+| Where a player is, and how to move them | `DotModTools.position_fn` / `teleport_fn` |
+| How a peer maps to a person | `DotModerationManager.key_for_peer` |
+| Which servers a punishment covers | `DotModerationManager.server_scope` |
+| Whether dot-server enforces these bans | `DotModerationManager.register_ban_source` |
+| The longest punishment allowed | `DotModerationManager.max_duration_sec` |
+| Whether equals may act on equals | `DotModerationManager.equal_immunity_may_act` |
+
+Signals: `punished`, `revoked`, `expired`, `refused`, `acted`.
+
+<Callout type="warning" title="Zero immunity means &quot;no immunity to respect&quot;, not &quot;the highest rank&quot;">
+A revoke path that required strictly greater immunity unconditionally meant 0
+could not act on 0 — which is every ordinary `unmute` on a server that has not
+configured immunity at all.
+</Callout>
+
+<Callout type="info" title="A server with no scope must still see its punishments">
+The unconfigured case is the only case a single-server community has, and it was
+the one that silently enforced nothing.
+</Callout>
+
+## What is deliberately not here
+
+Console commands (they belong to `dot-server`'s console, which already has
+permission checking and an audit trail), a second ban list to run alongside
+`DotBanManager`, a connection limit per address (that is admission), kicking
+anybody (there is no socket here), and an appeals workflow — `evidence` holds a
+ticket number, and the workflow is a website.
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [`dot-voice`](/learn/godot/addons/dot-voice)
+- [Community moderation on the site](/learn/community/moderation)
+</Related>

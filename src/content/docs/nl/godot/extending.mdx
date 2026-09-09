@@ -1,0 +1,390 @@
+---
+title: Uitbreidingspunten
+description: Elke plek waar een game op de Dot-collectie aansluit — de abstracte klassen om over te erven, de Callables om toe te wijzen, de resources om te maken, de registrynamen om onder te publiceren, en de instellingen om te stapelen.
+navTitle: Uitbreidingspunten
+order: 30
+keywords:
+  - "uitbreiden"
+  - "uitbreiding"
+  - "subklasse"
+  - "overschrijven"
+  - "haak"
+  - "hook"
+  - "plug-in"
+  - "callable"
+  - "interface"
+  - "abstract"
+  - "aanpassen"
+source:
+  - ../game-dev/CLAUDE.md
+---
+
+**Niets in de collectie zou een fork mogen vereisen.** Een wijziging die een van
+onderstaande punten moeilijker bereikbaar maakt, geldt als een regressie, ook als
+alle tests nog slagen.
+
+Er zijn vijf soorten uitbreidingspunten, en weten met welke soort je te maken
+hebt, vertelt je waar je moet zoeken.
+
+<Params>
+  <Param name="Een basisklasse overerven">
+    Een abstracte klasse met een gedocumenteerde set te overschrijven methoden
+    met `_`-voorvoegsel. Opslag, bronnen, codecs, regels, schermen, modules. Een
+    stuk of dertig.
+  </Param>
+  <Param name="Een Callable toewijzen">
+    Een veld op een knooppunt, meestal `*_fn` of `*_source` genoemd, dat die ene
+    vraag beantwoordt die de add-on bewust niet zelf kan beantwoorden: waar een
+    speler is, in welk team die zit, waar de bytes heen gaan. Zo'n vijftig.
+  </Param>
+  <Param name="Een Resource maken">
+    Een `.tres` die een ontwerper in de inspector bewerkt: bewegingswaarden,
+    schema's, catalogi, regels, stijlen, oppervlakken. Zonder ook maar één regel
+    code.
+  </Param>
+  <Param name="Publiceren onder een registrynaam">
+    Naden op basis van duck typing. Registreer een object met één methode onder
+    een afgesproken naam en twee add-ons werken samen zonder dat een van beide de
+    ander importeert.
+  </Param>
+  <Param name="Een instelling stapelen">
+    Elke `DotConfig`: geëxporteerde standaardwaarden, dan een JSON- of
+    YAML-bestand, dan de omgeving, dan de opdrachtregel.
+  </Param>
+</Params>
+
+## De hele index
+
+| Om te veranderen | Waar |
+| --- | --- |
+| Aan welk knooppunt een component hangt | `DotNodeRef` op elk component |
+| Contentbronnen (CDN, schijf, in-band) | subklasse van `DotCloudSource` |
+| Hoe een speler zich aanmeldt (Steam, Epic, je eigen) | subklasse van `DotAuthProvider`, `DotAuthServer.add_provider` |
+| Waar bans leven (gedeelde DB, HTTP-dienst) | subklasse van `DotBanStore` op `DotBanManager` |
+| Sitegroepen → serverrechten | `DotAuthAdminSource`, of elk object met `lookup()` / `source_name()` |
+| Serveropdrachten en -gedrag | subklasse van `DotModule`, of `DotConsole.command` |
+| Wat een serverquery over de game meldt | `DotQueryProvider`, of `DotModule.add_query_provider` |
+| Ergens op reageren of het tegenhouden | `DotEventBus.hook_pre` / `hook_post` |
+| Wat er repliceert, en hoe nauwkeurig | `DotNetVar`-declaraties; `Type.CUSTOM` voor elk type |
+| Simulatie, besturing, berichten | subklassen van `DotNetBehaviour`, `DotNetInput`, `DotNetMessage` |
+| Wie wat ziet | subklasse van `DotNetInterest` |
+| Hoe entiteiten worden gebouwd | `DotNetSpawner.register_factory` |
+| Waar de bytes heen gaan | `DotNetManager.send_fn`, subklasse van `DotTransport` |
+| Waar spraak vandaan komt of heen gaat | subklasse van `DotVoiceSource` / `DotVoiceSink` |
+| De spraakcodec | subklasse van `DotVoiceCodec`, `DotVoiceCodec.register` |
+| Wie wie hoort via spraak | `DotVoiceRouter.team_fn` / `position_fn` / `listener_filter` |
+| Wie überhaupt mag spreken | alles met `is_voice_muted(peer)` onder `dot_mute_source` |
+| Waar straffen leven | subklasse van `DotPunishmentStore` |
+| Welke database ze bewaart | subklasse van `DotSqlDriver`, of `DotPunishmentStoreRest` |
+| Hoe een peer op een persoon afbeeldt | `DotModerationManager.key_for_peer` |
+| Wiens banlijst een server handhaaft | alles wat als `dot_ban_source` geregistreerd is |
+| Hoeveel clients één adres mag hebben | `sv_max_connections_per_ip`, `DotAddressGuard` |
+| Hoe een moderator een speler aanduidt | `DotServer.find_sessions` — naam, gebruikersnaam, id, `ip:`, `@me` |
+| Waar een speler is, en hoe je die verplaatst | `DotModTools.position_fn` / `teleport_fn` |
+| Wat er gebeurt als een speler binnenkomt | `DotPlatformModule`, of `DotPlatformHub.admit` rechtstreeks |
+| Waar rechten vandaan komen | `DotPlatformHub.entitlement_source` |
+| Waar profielen leven | subklasse van `DotUserStore` op `DotUserManager` |
+| Wat een naam mag zijn | `DotUserManager.name_filter` |
+| Wat een speler mag dragen | `DotAvatarSchema` + `DotAvatarEntitlements` |
+| Waar avatars leven | subklasse van `DotAvatarStore` |
+| Hoe een onderdeel-id een asset wordt | `DotAvatarCatalogue.resolver` |
+| Het bewegingsgevoel | `DotFpsTunables`, per instantie of per JSON-bestand |
+| Een benoemde variant — zijwaarts, lage zwaartekracht, prebhop | `DotFpsStyle` + `DotTimerStyle`, gekoppeld op id |
+| Hoe één soort ondergrond zich gedraagt | `DotFpsSurface` in een `DotFpsSurfaceSet` |
+| Een tijdelijke verandering — boostplaat, verdoving, katapult | `DotFpsModifier` |
+| Een compleet nieuwe manier van bewegen — ladder, water, grijphaak | subklasse van `DotFpsMoveMode` |
+| Waar de speler tegenaan botst | subklasse van `DotFpsBody`, via `DotFpsController._make_body` |
+| Invoerapparaten, bots, demo-afspelen | `DotFpsSampler` / `Dot2DSampler`, of bouw het commando zelf |
+| Waar een timer in de wereld op reageert | `DotTimerZone.Kind`, in de editor getekend of met `DotTimerZonePainter` |
+| Waar records en scoreborden leven | subklasse van `DotTimerStore` / `DotLeaderboardStore` |
+| Wat een map is, en wat er hierna speelt | `DotMapDef` in een catalogus; `DotMapRotation`, `DotMapVote` |
+| Hoe een mapwissel de clients bereikt | `DotMapSyncHost.send_fn` / `DotMapSyncClient.send_fn` |
+| Wat een client laadt op gezag van de host | `DotMapSyncClient.accept_unknown_maps` |
+| Elk beleid in een stemming | `DotVoteRules`, 55 instellingen, gelaagd zoals elke `DotConfig` |
+| Waarop gestemd kan worden, en wat "speel dit" betekent | subklasse van `DotVoteSource`, of `DotVoteGameSource` / `DotVoteMapSource` / `DotVoteListSource` |
+| Wie in een stemming als speler, beheerder of toeschouwer telt | `DotVoteDirector.player_count_fn` / `is_admin_fn` / `is_spectator_fn` |
+| Wat de stem van één speler waard is | `DotVoteDirector.weight_fn` |
+| Hoe de stemopdrachten heten | `DotVoteCommands.prefix` / `names` |
+| Wat er neergezet mag worden, en hoeveel | `DotPropCatalogue`, `DotPropLimits` |
+| Een nieuw sandboxgereedschap, of een wapen | subklasse van `DotPropTool` |
+| Een prop met eigen code | `DotPropDef.meta.script`, een PAD |
+| Wat een wapen is | `DotWeapon`, en `DotDamageType` voor hoe het pijn doet |
+| Waar een schot heen gaat | subklasse van `DotTrace` — `DotTracePhysics` of `DotTraceFlat` |
+| Benoemde lichaamszones en hun vermenigvuldigers | `DotHitGroup`, een tabel in plaats van een enum |
+| Friendly fire, eigen schade, begrenzing | `DotDamageRules`, plus `DotDamageResolver.adjust` |
+| Lagcompensatie aanzetten | `DotCombatManager.rewind_fn` / `restore_fn`, twee callables |
+| Wat een item is, en wat waar in past | `DotItem`, `DotLoadoutSlot`, `DotLoadoutSchema` |
+| Waar loadouts leven | subklasse van `DotLoadoutStore` |
+| Wat winnen betekent | subklasse van `DotMatchRules` — `_round_outcome`, `_round_winner` |
+| Waar spelers verschijnen | `DotSpawnPoint`, `DotSpawnSelector.danger_fn` / `filter_fn` |
+| Wat een scherm is | subklasse van `DotScreen`, geregistreerd bij een `DotScreenStack` |
+| Hoe de interface eruitziet | `Theme`, of het palet van `DotUiTheme`. `dot-ui` levert geen graphics |
+| Hoe een instellingenscherm wordt gebouwd | Niets: `DotSettingsPanel` leest je `DotConfig` |
+| Hoe iets in 2D beweegt | `Dot2DTunables`, en `Dot2DMassRules` voor een massagebaseerde game |
+| Waar iets in 2D tegenaan botst | subklasse van `Dot2DBody` |
+| Lang werk zonder een frame te blokkeren | subklasse van `DotJob` op een `DotScheduler` |
+| Waar logregels heen gaan | `DotLogSink`, of `DotLog.add_sink` met een `Callable` |
+
+## Overervingspunten, per add-on
+
+Elk hiervan is een abstracte basis met een kleine, gedocumenteerde set methoden.
+Die met **moet** hebben geen bruikbare standaard.
+
+<Params>
+  <Param name="DotTransport" type="dot-core">
+    **`_create_server`**, **`_create_client`**, `_transport_name`,
+    `_is_available`, `supports_web_clients`, `scheme`. `_is_available` wordt vóór
+    gebruik gecontroleerd, zodat de fout bij het opstarten "deze build kan niet
+    via ENet hosten" is en niet drie aanroepen later een null-peer.
+  </Param>
+  <Param name="DotJob" type="dot-core">
+    **`_step`** (een begrensd stukje werk; geeft true als er meer is),
+    `_progress` (0..1, of **-1** als het echt onbekend is — een eerlijke
+    onbepaalde balk is beter dan een die terugspringt), `_setup`, `_teardown`,
+    `is_thread_safe`.
+  </Param>
+  <Param name="DotConfig" type="dot-core">
+    `env_prefix`, `cli_prefix`, `sensitive_keys`, `validate`.
+  </Param>
+  <Param name="DotLogSink" type="dot-core">
+    Een afhandelaar voor logregels. `DotLog.add_sink(callable)` is de
+    eenregelige variant.
+  </Param>
+  <Param name="DotCloudSource" type="dot-cloud">
+    `source_name`, `is_supported`, `can_serve(manifest)`, **`fetch`**. Een
+    `fetch` moet naar `DotCloudStore.partial_path` schrijven, waar mogelijk
+    hervatten vanaf `partial_size`, en afronden via `commit_partial` — de enige
+    plek waar de hash wordt geverifieerd. Direct in de objectenmap schrijven is
+    precies hoe ongeverifieerde content aangekoppeld raakt.
+  </Param>
+  <Param name="DotAuthProvider" type="dot-auth">
+    `_provider_name`, **`_handles(credential)`** (goedkoop en puur
+    structureel), **`_authenticate(credential)`**, `_validate`. Een provider die
+    een credential claimt en hem daarna afwijst, heeft een beslissing genomen: de
+    server valt daarna *niet* terug op een andere.
+  </Param>
+  <Param name="DotNetBehaviour" type="dot-net">
+    `_register_net_vars`, `_net_ready`, `_net_removed`, `_net_simulate`,
+    `_net_state_applied`, `_net_interpolated`, `_net_read_property`,
+    `_net_write_property`. De klasse waar een game het vaakst van overerft.
+  </Param>
+  <Param name="DotNetInput" type="dot-net">
+    **`_write`**, **`_read`**, `_sanitise` (begrenst alles wat een client zou
+    kunnen overdrijven — kwantisering begrenst elk veld al afzonderlijk; dit gaat
+    over de *verhoudingen* ertussen), `_equals` voor redundantieonderdrukking.
+  </Param>
+  <Param name="DotNetMessage" type="dot-net">
+    **`_type_name`** (met naamruimte; die van jou hoort niet met `net.` te
+    beginnen), **`_write`**, **`_read`**, `_validate`. Valideer in `_validate`,
+    niet in de handler: een handler die valideert is een handler die iemand
+    kopieert zonder de validatie.
+  </Param>
+  <Param name="DotNetInterest" type="dot-net">
+    `_is_relevant` (voor de meeste strategieën overschrijf je dit en niets
+    anders), `_candidates` voor een bulkfilter, `_prepare` om één keer per
+    snapshot een index te herbouwen, `_score` voor prioritering bij een krap
+    budget.
+  </Param>
+  <Param name="DotModule" type="dot-server">
+    **`_module_name`**, `_module_version`, `_module_description`,
+    `_module_author`, **`_module_load`**, `_module_unload`,
+    `_module_game_changed`. Opdrachten, cvars en hooks die via de helpers zijn
+    geregistreerd, worden automatisch ongedaan gemaakt; overschrijf
+    `_module_unload` voor timers, bestanden en sockets.
+  </Param>
+  <Param name="DotBanStore" type="dot-server">
+    `_store_name`, **`_load`**, `_put`, `_remove`, `_refresh`, `_writable`.
+  </Param>
+  <Param name="DotQueryProvider" type="dot-server">
+    `_provider_name`, **`_contribute(snapshot)`** — zo publiceert een game zijn
+    eigen toestand in een serverquery.
+  </Param>
+  <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
+    In alle drie dezelfde vorm: **`_fetch`**, `_store`, `_remove`, `_open`,
+    `_close`, `_writable`, `_store_name`. Een geslaagde **null** betekent "deze
+    speler heeft er geen", en dat is geen fout.
+  </Param>
+  <Param name="DotPunishmentStore" type="dot-moderation">
+    `store_name`, `is_writable`, **`load_all`**, `put`, `update`, `remove`.
+    Gecombineerd met `DotSqlDriver` (`dialect`, `open`, `execute`, `query`,
+    `batch`) wanneer de opslag een database is.
+  </Param>
+  <Param name="DotTimerStore / DotLeaderboardStore" type="dot-timer, dot-leaderboard">
+    `put`, `top` / `page`, `best_for` / `entry_for`, `rank_of`, `count_on`,
+    `remove`. De manager sorteert; de opslag hoeft dat niet te doen.
+  </Param>
+  <Param name="DotMatchRules" type="dot-match">
+    `_points_for_kill`, **`_round_outcome`**, `_round_winner`, `_respawn_delay`.
+    `DotRulesElimination` is een uitgewerkt voorbeeld van waar dit voor is.
+  </Param>
+  <Param name="DotTrace" type="dot-combat">
+    **`_world_ray`** en verder niets. Het aflopen van de hitboxes, de gelijkspel
+    die naar de muur gaat en het herstellen horen bij de basisklasse.
+  </Param>
+  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+    `sweep` / `move`, `overlaps`, `describe`. De botsingsquery's die de motor
+    nodig heeft, met een vlakke analytische implementatie voor determinisme en
+    een physics-variant voor echte geometrie.
+  </Param>
+  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+    `_name`, `_enter`, `_exit`, **`_simulate`**, `_uses_crouch`. Een ladder,
+    water, een grijphaak — met de botsing en versnelling van de motor zelf.
+  </Param>
+  <Param name="DotVoiceCodec" type="dot-voice">
+    `id`, **`encode`**, **`decode`**, `bytes_for`, `is_stateful`, `reset`,
+    `duplicate_codec`. Daarna `DotVoiceCodec.register(...)` en er verandert
+    verder niets. Dit is de naad waar een Opus-GDExtension in past.
+  </Param>
+  <Param name="DotVoiceSource / DotVoiceSink" type="dot-voice">
+    `start`, `stop`, `has_frame` / `can_accept`, `read_frame` / `write_frame`,
+    `is_running`. De apparaten achter een interface zetten is de enige reden dat
+    dit hele pad een headless testsuite heeft.
+  </Param>
+  <Param name="DotVoteSource" type="dot-vote">
+    `source_name`, **`choices`**, `current_id`, `supports_apply`, `apply`. Een
+    bron die niets kan veranderen is legitiem: de director zendt `change_due` uit
+    en de host handelt.
+  </Param>
+  <Param name="DotPropTool" type="dot-props">
+    `effective_reach`, `target`, `may_act_on`. `DotPhysGun` en `DotGravGun` zijn
+    de meegeleverde subklassen.
+  </Param>
+  <Param name="DotScreen / DotHudWidget" type="dot-ui">
+    `_screen_id`, `_on_push`, `_on_pop`, `_on_cover`, `_on_reveal`, `_can_pop`;
+    en `_on_value` voor een widget. Gebruik `_can_pop` spaarzaam — een scherm dat
+    weigert te sluiten, is een scherm waarin een speler vast kan komen te zitten.
+  </Param>
+</Params>
+
+## Callable-haken
+
+De add-on weet hoe het werk moet; jouw wereld kent hij niet. Dit zijn de vragen
+waar hij niet naar wil raden, gegroepeerd naar wat ze beantwoorden.
+
+**Waar de bytes heen gaan.** `DotNetManager.send_fn`, `DotVoiceManager.send_fn`,
+`DotVoiceRouter.send_fn`, `DotMapSyncHost.send_fn`, `DotMapSyncClient.send_fn`.
+Geen van deze add-ons bezit een socket, en daarom werkt `dot-net` over een
+loopback, over een echt transport, of over dat van jou.
+
+**Waar iets is.** `DotMatch.position_fn`, `DotVoiceRouter.position_fn`,
+`DotModTools.position_fn` / `teleport_fn`. `DotModTools` neemt met opzet
+`Variant`-posities, zodat 2D een volwaardige gebruiker is in plaats van iets om
+omheen te werken.
+
+**Wie als wat telt.** `DotDamageResolver.team_of`,
+`DotVoiceRouter.team_fn` / `listener_filter`,
+`DotVoteDirector.player_count_fn` / `is_admin_fn` / `is_spectator_fn` /
+`voters_fn` / `weight_fn`, `DotRulesElimination.alive_fn`,
+`DotModerationManager.key_for_peer`, `DotModTools.immunity_fn`.
+
+**Wat een speler bezit of hoe die mag heten.**
+`DotLoadoutManager.entitlement_source`, `DotPlatformHub.entitlement_source`,
+`DotUserManager.name_filter`, `DotItemCatalogue.resolver`,
+`DotAvatarCatalogue.resolver`.
+
+**Hoe ver een schot terugspoelt.** `DotCombatManager.rewind_fn` /
+`restore_fn`. Twee regels zetten lagcompensatie aan; niet toegewezen worden
+schoten tegen het heden opgelost — juist voor een listen server en fout voor
+iedereen met vertraging.
+
+**Al het overige.** `DotSpawnSelector.danger_fn` / `filter_fn`,
+`DotDamageResolver.adjust`, `DotFpsMotor.surface_resolver`,
+`DotPickupField.wants_fn` / `tags_fn`, `DotHudWidget.source`,
+`DotStatBar.max_source`, `DotConVar.validator`, `DotConCommand.completer`,
+`DotBackboneClient.roster_provider` / `stats_provider`,
+`DotVoteDirector.announce_fn`, `DotVoteListSource.apply_fn`,
+`DotVoiceManager.sink_factory`, `DotNetVar.read_fn` / `write_fn` /
+`change_handler`, `DotNetSpawner.register_factory`.
+
+<Callout type="warning" title="Een niet-toegewezen haak is geen fout">
+Bijna elk van deze heeft verdedigbaar gedrag als hij leeg blijft, en juist
+daarom is een vergeten haak lastig te vinden: een niet-aangesloten
+`entitlement_source` betekent dat een speler niets bezit, een niet-toegewezen
+`rewind_fn` betekent geen lagcompensatie, een niet-toegewezen `key_for_peer`
+betekent dat straffen op het verkeerde worden gesleuteld. De
+`describe_lines()` van elke add-on meldt welke ontbreken — lees die voordat je
+aanneemt dat de functie stuk is.
+</Callout>
+
+## Resources die je zelf maakt
+
+Geen code, geen subklasse — een `.tres` of een JSON-bestand.
+
+| Resource | Wat het bepaalt |
+| --- | --- |
+| `DotFpsTunables` | Elk getal van de beweging. Gelaagd: standaard < JSON < `DOT_FPS_*` < `--fps-*` |
+| `DotFpsSurface` / `DotFpsSurfaceSet` | IJs, modder, een lopende band. **Vermenigvuldigers, nooit absolute waarden**, zodat een hertuning van het basisgevoel doorwerkt |
+| `DotFpsModifier` | Een tijdelijke verandering: boostplaat, vertragingsveld, verdoving, katapult |
+| `DotFpsStyle` | Een benoemde variant — zijwaarts, achterwaarts, lage zwaartekracht, prebhop |
+| `Dot2DTunables` / `Dot2DMassRules` | Top-down, stuwkracht of blob; en hoe massa grootte, snelheid en het recht om iemand op te eten wordt |
+| `DotWeapon` / `DotDamageType` / `DotHitGroup` | Wat een wapen is, hoe het pijn doet, en wat een kopschot waard is |
+| `DotDamageRules` | Friendly fire, eigen schade, afval over afstand, begrenzing — in één volgorde, één keer |
+| `DotItem` / `DotLoadoutSlot` / `DotLoadoutSchema` | De uitrustingsregels van een spelmodus |
+| `DotAvatarSchema` / `DotAvatarSlot` / `DotAvatarPart` | Welke onderdelen bestaan en welke waarden geldig zijn |
+| `DotMatchRules` | Wat winnen betekent en wat een kill waard is |
+| `DotSpawnPoint` / `DotTeam` | Waar spelers verschijnen en aan welke kant ze staan |
+| `DotTimerZone` / `DotTimerZoneSet` / `DotTimerStyle` | Waar de timer op reageert, en wat een gewaardeerde stijl is |
+| `DotMapDef` in een catalogus-JSON | Een map: een id, een versie, een scène, eventueel een contentpakket |
+| `DotPropDef` / `DotPropCatalogue` / `DotPropLimits` | Wat er neergezet mag worden, en hoeveel |
+| `DotVoteRules` | Vijfenvijftig instellingen, van telmethode tot gelijkspelregel |
+| `DotLeaderboardDef` / `DotStatsSchema` | Waarop een scorebord ordent, en hoe een nieuwe meting een oude ontmoet |
+| `DotUiTheme` | Een compleet `Theme` uit een palet en een schaal. Geen assets |
+
+## Registry-naden
+
+Publiceer een object onder een van deze namen en iets anders vindt het, zonder
+dat een van beide kanten de ander importeert.
+
+| Naam | Gepubliceerd door | Geraadpleegd door |
+| --- | --- | --- |
+| `dot_ban_source` | `DotModerationManager` | de toelatingscontrole van `dot-server` |
+| `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
+| `dot_cloud_client` | `DotCloudClient` | de lader van `dot-map`, de gamewissel van `dot-server`, de catalogus van `dot-user-avatar` |
+| `dot_user_manager` | `DotUserManager` | `dot-server`, `dot-platform` |
+| `dot_avatar_manager` | `DotAvatarManager` | `dot-platform` |
+| `dot_auth_server` | `DotAuthServer` | `dot-server`, `dot-platform` |
+| `dot_platform` | `DotPlatformHub` | `DotPlatformModule` |
+| `dot_server`, `dot_console`, `dot_event_bus`, `dot_game_manager`, `dot_module_host`, `dot_admin_manager`, `dot_ban_manager`, `dot_chat_manager`, `dot_audit_log`, `dot_rcon_server`, `dot_query_server`, `dot_query_source`, `dot_a2s_server`, `dot_vote_manager` | `dot-server` | modules, en je eigen code |
+| `dot_client_link` | `DotClientLink` | de clientcode van een game |
+| `dot_net_manager` | `DotNetManager` | bruggen |
+| `dot_match`, `dot_combat`, `dot_loadout`, `dot_fps_controller`, `dot_screen_stack`, `dot_2d_arena`, `dot_2d_controller`, `dot_voice_manager`, `dot_voice_router`, `dot_moderation`, `dot_mod_tools`, `dot_vote_director` | hun eigen managers | alles dat ze nodig heeft |
+
+Managers die legitiem meer dan eens in één boom kunnen bestaan, nemen een
+`service_scope`, zodat er twee onder verschillende namen registreren.
+
+## Servergebeurtenissen die je kunt haken of tegenhouden
+
+`DotEventBus.hook_pre(name, callable)` draait vóór de gebeurtenis en **mag hem
+annuleren**; `hook_post` draait erna. Haken draaien in registratievolgorde, en
+een haak die annuleert stopt de resterende pre-haken — een geannuleerde
+gebeurtenis hoort niet de helft van zijn handlers uit te voeren.
+
+| Gebeurtenis | Annuleerbaar |
+| --- | --- |
+| `server_start`, `server_shutdown` | nee |
+| `client_connect`, `client_disconnect` | nee |
+| `client_spawn` | nee |
+| `client_kicked` | nee |
+| `player_chat` | **ja** |
+| `player_command` | **ja** |
+| `game_changing` | **ja** |
+| `game_changed` | nee |
+| `vote_started`, `vote_ended` | nee |
+| `admin_action` | nee |
+
+`declare(name, description)` registreert die van jezelf, en dat is wat ze laat
+verschijnen in de consoleopdracht `event_list` — zo ontdekt een moduleschrijver
+waar hij op kan haken zonder de broncode te lezen.
+
+<Callout type="warning" title="`client_spawn` draagt `userid`, niet `peer_id`">
+Een module die de sessie op `peer_id` opzoekt, krijgt elke keer null en voegt
+niemand toe, **stilletjes**, omdat een null-sessie iets legitiems is om te
+vinden. Dit is de meest herhaalde bug in de geschiedenis van de collectie: twee
+verschillende games hebben hem uitgeleverd, en geen van beide gaf een fout.
+</Callout>
+
+<Related>
+- [Conventies](/learn/godot/conventions)
+- [De add-ons](/learn/godot/addons) — elke pagina noemt zijn eigen haken in context
+- [Referentiegames](/learn/godot/games) — waar de bruggen echt geschreven worden
+</Related>

@@ -1,0 +1,198 @@
+---
+title: Dot für Godot
+description: Die Dot-Sammlung — zweiundzwanzig quelloffene Godot-4-Addons, ein Starter, ein Serverwerkzeug und fünf Referenzspiele, die Identität, Inhaltsauslieferung, Netzcode, dedizierte Server und einen ganzen Genre-Baukasten auf Standard-Godot aufsetzen.
+navTitle: Dot für Godot
+order: 0
+keywords:
+  - "godot"
+  - "gdscript"
+  - "dot-core"
+  - "Addon"
+  - "Erweiterung"
+  - "Plugin"
+  - "Asset"
+  - "Spieleentwicklung"
+  - "Engine"
+  - "4.7"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/PLATFORM.md
+---
+
+**Dot** ist die Godot-4-Sammlung von The Modding Community: zweiundzwanzig
+Addons, ein Kommandozeilen-Starter, ein Serverwerkzeug und fünf Spiele, die es
+gibt, damit die Addons zusammen laufen. Auf der Seite stehen sie als
+[Dot-Asset-Sammlung](/co/4-dot-assets), auf GitHub unter
+[`modcommunity`](https://github.com/modcommunity).
+
+Sie ergänzen die Teile einer Spieleplattform, die keine Engine-Funktionen sind
+— Konten, Avatare, Inhaltsauslieferung, Netzcode, dedizierte Server,
+Moderation, Timer, Bestenlisten — als **Schichten über Standard-Godot**. Ein
+Spiel, das nichts davon will, bleibt ein ganz normales Godot-Projekt.
+
+<Cards>
+  <Card title="Die Addons" href="/learn/godot/addons">
+    Alle zweiundzwanzig, wofür jedes da ist und welche Haken es anbietet.
+  </Card>
+  <Card title="Erweiterungspunkte" href="/learn/godot/extending">
+    Der eine Index über alles, was sich ableiten, zuweisen oder registrieren
+    lässt — und das Versprechen, dass nichts davon einen Fork verlangt.
+  </Card>
+  <Card title="Konventionen" href="/learn/godot/conventions">
+    Die Regeln, die jedes Addon einhält: keine Autoloads, `DotResult`,
+    `DotNodeRef`, geschichtete Konfiguration, und warum der Browser die Hälfte
+    davon entscheidet.
+  </Card>
+  <Card title="Installation" href="/learn/godot/installing">
+    Einen Ordner kopieren, ein Plugin anhaken. Dazu die Engine-Version, die
+    Links fürs lokale Arbeiten und die anschließende zweistufige Prüfung.
+  </Card>
+</Cards>
+
+<Callout type="warning" title="Betrachte das als halb getestet">
+Jedes Asset hat seine eigene Testsuite ohne Anzeige, und diese Suites laufen
+durch — aber sehr wenig davon war bisher vor echten Spielern. Rechne mit rauen
+Kanten und melde, worüber du stolperst. Die Sammlung wurde mit Claude Code
+gebaut und wird genauso weitergepflegt; das steht offen in jedem README, statt
+vergraben zu sein.
+</Callout>
+
+## Wir forken Godot nicht
+
+Das gehört zuerst geklärt, denn „ein Godot-Fork“ und „Addons für Godot“ führen
+zu verschiedenen Projekten, und nur eines davon lässt sich fertigstellen.
+
+Ein Fork heißt: den Veröffentlichungstakt der Engine übernehmen, ihre
+Export-Vorlagen für sechs Plattformen, ihren Web-Build und jeden Rebase für
+immer — und sobald der Fork abdriftet, kann ein Spiel für ihn nichts mehr aus
+der Godot-Asset-Bibliothek verwenden. Was Leute wirklich meinen, wenn sie
+„Plattform“ sagen, sind keine Engine-Funktionen: Identität, Avatare,
+Inhaltsauslieferung, dedizierte Server, Moderation, Auffindbarkeit. Jedes davon
+ist eine Schicht *über* einer Engine.
+
+Also: **Standard-Godot, plus Addons, plus ein offenes Backend-Protokoll.**
+
+## Nur `dot-core` ist je eine harte Abhängigkeit
+
+Das ist die Regel, um die herum die ganze Sammlung gebaut ist, und in GDScript
+ist sie nicht bloß eine Vorliebe: **ein Skript, das einen im Projekt fehlenden
+`class_name` auch nur *erwähnt*, scheitert beim Parsen** und reißt jedes Skript
+mit, das es referenziert. Ein Addon, das ein anderes importiert, macht dieses
+andere für alle zur Pflicht.
+
+Alles Übrige wird deshalb zur Laufzeit gefunden, per Duck-Typing aufgelöst oder
+vom Spiel überbrückt:
+
+- `dot-server` findet `dot-auth` und `dot-cloud` über
+  [`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
+  und importiert keines von beiden.
+- `dot-net` braucht nur `dot-core` und schiebt Bytes durch ein `Callable`.
+- `dot-fps-controller`, `dot-combat`, `dot-loadout`, `dot-match` und `dot-2d`
+  liefern je eine `*NetSync`-Klasse, die **als Daten** beschreibt, was
+  repliziert wird — Eigenschafts- und Typnamen als *Zeichenketten* —, was eine
+  Brücke mit `DotNetVar.Type[spec.type]` auflöst. Keines nennt einen
+  `dot-net`-Bezeichner.
+- `dot-combat` nimmt Lag-Kompensation als zwei `Callable` entgegen.
+- `dot-ui` nennt nichts außerhalb von `dot-core`: sein Feed bekommt farbige
+  Fragmente, seine Tabelle Zeilen aus Dictionaries.
+- `dot-user` und `dot-user-avatar` importieren einander nicht, und
+  `dot-loadout` trägt aus demselben Grund seine eigene Kopie einer
+  Speicherschlüsselprüfung.
+
+<Callout type="info" title="Doppelung ist hier Absicht">
+Wenn zwei Addons dieselben zwanzig Zeilen tragen, ist das der Preis für die
+Regel oben, kein Versehen. Sie in einen gemeinsamen Import zu ziehen ist genau
+der Weg, auf dem ein Addon zur Abhängigkeit eines anderen wird.
+</Callout>
+
+## Wie die Teile aufeinander aufbauen
+
+```
+                        ┌──────────────┐
+                        │   dot-core   │  logging, capabilities, paths,
+                        │              │  node refs, config, jobs,
+                        └──────┬───────┘  transports, HTTP
+      ┌───────────┬────────────┼────────────┬───────────┬──────────┐
+      ▼           ▼            ▼            ▼           ▼          ▼
+┌───────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌────────┐ ┌────────┐
+│ dot-cloud │ │ dot-auth │ │ dot-net │ │dot-server│ │ dot-ui │ │ dot-2d │
+└─────┬─────┘ └────┬─────┘ └─────────┘ └────┬─────┘ └────────┘ └────────┘
+      │            │                        │
+┌─────┴─────┐ ┌────┴───────────┐    ┌───────┴────────┐
+│ dot-user  │ │dot-user-avatar │    │  dot-platform  │
+└───────────┘ └────────────────┘    └────────────────┘
+
+      ┌──────────────────┬──────────────┬─────────────┐
+      ▼                  ▼              ▼             ▼
+┌────────────┐    ┌────────────┐  ┌───────────┐ ┌──────────────────┐
+│ dot-combat │    │dot-loadout │  │ dot-match │ │dot-fps-controller│
+└────────────┘    └────────────┘  └───────────┘ └──────────────────┘
+      └──────────────────┴──────────────┴─────────────┘
+                               │  jedes davon braucht
+                               ▼  NUR dot-core
+                    ┌──────────────────────┐
+                    │     dein Spiel       │  hier leben die Brücken
+                    └──────────────────────┘
+```
+
+Die Pfeile sind überall *optionale* Beziehungen, außer in der obersten Reihe.
+Lies sie als „funktioniert besser mit“, nicht als „braucht“.
+
+## Die drei Gruppen
+
+**Die Plattformhälfte** — `dot-core`, `dot-cloud`, `dot-auth`, `dot-net`,
+`dot-server`, `dot-user`, `dot-user-avatar`, `dot-platform`. Wer ein Spieler
+ist, wie er aussieht, wie er an Inhalte kommt und mit welchem dedizierten
+Server er sich verbindet.
+
+**Die Spielhälfte** — `dot-fps-controller`, `dot-2d`, `dot-combat`,
+`dot-loadout`, `dot-match`, `dot-ui`. Bewegung, Waffen, Ausrüstung, die
+Partieschleife und die Oberfläche. Jedes braucht nur `dot-core`.
+
+**Der Genre-Baukasten** — `dot-timer`, `dot-map`, `dot-props`,
+`dot-leaderboard`, `dot-stats`, `dot-voice`, `dot-moderation`, `dot-vote`.
+Alles, was man braucht, um *einen Server zu betreiben*, zu dem Leute
+zurückkommen: eine Rekordtabelle, eine Kartenrotation, eine Abstimmung über das
+Nächste, Strafen, die eine Sitzung überdauern.
+
+## Der Genre-Baukasten ist eine Strategie, keine Funktionsliste
+
+Das Problem der Sammlung war nie fehlende Funktionalität. Es ist, dass
+**niemand einen Grund hat, der erste Mensch auf einer neuen Plattform zu
+sein**, und eine allgemeine Addon-Familie liefert keinen. Ein Genre schon.
+
+Gewählt wurde Surf und Bunny-Hop — die Bewegungsszene von Counter-Strike, die
+2026 noch immer Source-Server mit einem Timer-Plugin betreibt, das für ein
+zuletzt 2013 geöffnetes SDK geschrieben wurde. Aus vier Gründen ein gutes
+erstes Genre, und nur der vierte handelt von uns:
+
+1. **Bewegung ist das Schwerste, das man richtig hinbekommen muss.** Kaum
+   jemand reproduziert Quakes Beschleunigung und Sources `TryPlayerMove` so
+   genau, dass jemand, der seit zehn Jahren surft, den Unterschied nicht sofort
+   spürt.
+2. **Es hat die Form eines Servers.** Eine Surf-Community *ist* ein Server:
+   eine Rotation, eine Rekordtabelle, ein Admin, der neue Karten zoniert, und
+   Stammgäste, denen die Bestenliste wichtig ist.
+3. **Seine Inhalte sind portabel und von der Community.** Karten kommen von
+   Mappern, Zonen von Admins, und beides wird als Datei getauscht.
+4. **Es ist klein genug, um fertig zu werden.** Vier Addons und ein spielbares
+   Spiel.
+
+## Alles ist MIT, außer dem Backend
+
+Die Addons, die Spiele und das Werkzeug sind quelloffen unter MIT. Das Einzige,
+was es nicht ist, ist die **Web-Backend-Infrastruktur** — TMCs eigener Betrieb.
+Jedes Addon, das mit ihr spricht, tut das über ein dokumentiertes
+HTTP-Protokoll und zeigt auf eine änderbare `backbone_url`; ein Projekt mit
+eigenem Backend baut es und ändert eine Einstellung.
+
+<Related>
+- [Die Addons](/learn/godot/addons) — alle zweiundzwanzig, mit ihren Haken
+- [Erweiterungspunkte](/learn/godot/extending) — der ganze Index in einer Tabelle
+- [Konventionen](/learn/godot/conventions) — die Regeln, die alle einhalten
+- [Referenzspiele](/learn/godot/games) — wo die Nahtstellen wirklich laufen
+- [Werkzeuge](/learn/godot/tooling) — `dotserve` und TMCs Serverwerkzeug
+- [Integrations-API](/learn/api/integration) — die Backend-Hälfte von `dot-stats`,
+  `dot-leaderboard` und dem Servermelder
+</Related>

@@ -1,0 +1,75 @@
+---
+title: The addons
+description: All twenty-two Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
+order: 40
+keywords:
+  - "addons"
+  - "catalogue"
+  - "list"
+  - "dot-core"
+  - "dot-net"
+  - "dot-server"
+source:
+  - ../game-dev/godot/NOTES.md
+---
+
+Twenty-two addons that work together and, apart from `dot-core`, work
+independently. Each is its own repository under
+[`modcommunity`](https://github.com/modcommunity), each ships one
+`addons/<name>/` folder, and each has its own headless test suite.
+
+## The foundation
+
+| | Depends on | |
+| --- | --- | --- |
+| [dot-core](/learn/godot/addons/dot-core) | — | Logging, platform capabilities, paths, configurable node references, layered config, frame-budgeted jobs, multiplayer transports, HTTP. |
+
+## Platform
+
+| | Depends on | |
+| --- | --- | --- |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | Runtime content delivery: signed manifests, a content-addressed cache, resumable parallel downloads, namespaced pack mounting. |
+| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | Device-code authentication against the backbone, signed connect tickets, server-side identity. |
+| [dot-net](/learn/godot/addons/dot-net) | dot-core | Netcode: tick sync, a bit-packed wire format, state replication, snapshot interpolation, client-side prediction, lag compensation, interest management. |
+| [dot-server](/learn/godot/addons/dot-server) | dot-core, *optionally* dot-auth + dot-cloud | The dedicated server: console, RCON, queries, permissions, moderation, votes, modules, dynamic game switching. |
+| [dot-user](/learn/godot/addons/dot-user) | dot-core | Profiles that follow a person between servers, under a per-scope pseudonymous id. |
+| [dot-user-avatar](/learn/godot/addons/dot-user-avatar) | dot-core | Avatars as data: a bounded document a server validates against a schema and entitlements without loading a mesh. |
+| [dot-platform](/learn/godot/addons/dot-platform) | dot-core, dot-server | Joins identity, profile and avatar into one admission flow and binds it to a server. |
+
+## Gameplay
+
+| | Depends on | |
+| --- | --- | --- |
+| [dot-fps-controller](/learn/godot/addons/dot-fps-controller) | dot-core | First-person movement: Quake/Source acceleration, air-strafing, stair stepping, crouching with headroom tests. Deterministic and command-driven. |
+| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | The 2D counterpart: deterministic top-down, thrust and mass-based movement, a spatial hash for thousands of entities, deterministic scatter fields. |
+| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | Health, damage and weapons: analytic hitboxes, deterministic spread, lag-compensated hit registration. |
+| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | What a player takes into a match, as a document a server validates without loading any content. Plus deterministic world pickups. |
+| [dot-match](/learn/godot/addons/dot-match) | dot-core | The match loop: warmup, rounds, scoring, teams, spawning, respawning. Everything in ticks, driven by one call. |
+| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Screens, HUD and menus with no art assets. A screen stack, a settings panel generated from any `DotConfig`, a rebinder with conflict detection. |
+
+## The genre kit
+
+| | Depends on | |
+| --- | --- | --- |
+| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | Speedrun timers: zones, tracks, stages, styles, replays, records. Sub-tick, so 64 Hz and 128 Hz runs are comparable. 2D and 3D. |
+| [dot-map](/learn/godot/addons/dot-map) | dot-core, *optionally* dot-cloud | Maps as content rather than as builds: a catalogue, a rotation, nominations and voting, and a loader that fetches through dot-cloud. |
+| [dot-props](/learn/godot/addons/dot-props) | dot-core | A sandbox layer: spawnable props, per-player budgets, an undo stack, a physics gun and a gravity gun. Server-authoritative. |
+| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core, *optionally* dot-auth | Boards, per-player statistics, ranking points, a store interface, and a batched reporter for the backbone. |
+| [dot-stats](/learn/godot/addons/dot-stats) | dot-core, *optionally* dot-auth | Statistics a game declares once — counters, gauges, bests, lowests — reported as coalesced deltas. |
+| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Voice chat: capture, a pluggable codec, a jitter buffer per speaker, and server-side routing to everybody, a team or a radius. |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Bans, kicks, gags, voice mutes and warnings as one durable record with a pluggable store. Publishes the mute and ban sources. |
+| [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optionally* dot-server + dot-map | Voting for what plays next, as one configurable engine: rtv, nominations, four counting methods, five tie-breaks. |
+
+<Callout type="info" title="Optional means discovered at run time">
+Everything in the *optionally* column is duck-typed or found through
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads).
+None of these addons imports another, and none of them names another's
+identifiers — because in GDScript a script that mentions a missing `class_name`
+fails to parse and takes everything referencing it down with it.
+</Callout>
+
+<Related>
+- [Extension points](/learn/godot/extending) — the whole index in one table
+- [Conventions](/learn/godot/conventions)
+- [Reference games](/learn/godot/games)
+</Related>

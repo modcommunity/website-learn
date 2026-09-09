@@ -1,0 +1,121 @@
+---
+title: dot-core
+description: 所有 Dot 插件共用的基础——结果类型、能力检测、节点引用、分层配置、带帧预算的作业、可替换传输层、HTTP 与日志。
+navTitle: dot-core
+order: 10
+keywords:
+  - "DotResult"
+  - "DotError"
+  - "DotPlatform"
+  - "DotNodeRef"
+  - "DotConfig"
+  - "DotScheduler"
+  - "DotTransport"
+  - "DotHttp"
+  - "DotRegistry"
+  - "基础"
+source:
+  - ../game-dev/godot/dot-core/README.md
+  - ../game-dev/godot/dot-core/CLAUDE.md
+---
+
+它是所有其他部分底下的公共层，也是**这套合集里唯一的硬依赖**。它用一份代码同时面向
+桌面、移动端和浏览器，并且把浏览器的限制写进代码里，而不是假装它们不存在。
+
+```bash
+cp -r dot-core/addons/dot_core my-game/addons/
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+## 里面有什么
+
+| | |
+| --- | --- |
+| `DotResult` / `DotError` | 所有可能失败的操作的返回类型。带稳定的 `CODE_*` 值供调用方分支；对失败结果读 `.value` 会报错，而不是给回一个默认值。 |
+| `DotPlatform` | 带缓存的能力检测——线程、UDP、能否监听、能否挂载资源包、存储类别、唯一 id。问能力，别问平台名。 |
+| `DotNodeRef` | 一份可在检查器里编辑的“到底是哪个节点”的描述：相对、绝对、分组、注册表、按类型找最近的祖先或后代，或者没有就创建。 |
+| `DotConfig` | 分层配置：导出的默认值 < 文件 < 环境变量 < 命令行，键通过反射发现，并保护敏感键。 |
+| `DotRegistry` / `DotRegistryBus` | 按名字查找，以及静态类无法声明的那些信号。 |
+| `DotScheduler` / `DotJob` | 把长任务切片。有线程的地方用工作线程，没有的地方在每帧时间预算内跑。 |
+| `DotTransport` | 可替换的多人传输层。`DotTransportAuto` 在 WebSocket 与 ENet 之间做选择，并记录原因。 |
+| `DotHttp` | 基于 `HTTPRequest` 的客户端，带重试、带抖动的退避、`Retry-After`、按 range 续传，以及连接复用。 |
+| `DotLog` / `DotLogBus` / `DotLogSink` | 带级别和通道的日志，支持结构化字段、滚动文件和 UDP 转发。 |
+| `DotPaths` | 路径净化：遇到目录穿越是*拒绝*而不是“清理”；还有原子写入和 web 文件系统刷写。 |
+| `DotHash` / `DotHashJob` | SHA-256、HMAC、常数时间比较、base64url、CSPRNG 令牌。 |
+| `DotRateLimiter` | 一个令牌桶，用在每一条客户端能驱动的路径上。 |
+| `DotSemVer` | 版本比较，用于内容和引擎最低版本。 |
+| `DotWeb` | 只在浏览器里才有的调用：文件系统同步、安全上下文判断、存储配额估算。 |
+
+## 游戏从哪里接入
+
+<Params>
+  <Param name="DotTransport 的子类">
+    `_create_server`、`_create_client`、`_transport_name`、`_is_available`、
+    `supports_web_clients`、`scheme`。可用性会在使用*之前*检查，于是不可用的传输层
+    在启动时就带着原因失败，而不是三次调用之后变成一个空 peer。
+  </Param>
+  <Param name="DotJob 的子类">
+    `_step`（做有界的一小段；还有剩就返回 true）、`_progress`、`_setup`、
+    `_teardown`、`is_thread_safe`。要哈希一个分块，而不是一整个文件：调度器可以不再
+    调用 `_step`，但没法打断正在执行的那一次。
+  </Param>
+  <Param name="DotConfig 的子类">
+    `env_prefix()`、`cli_prefix()`、`sensitive_keys()`、`validate()`。你只要声明
+    `@export` 属性，分层、反射和设置界面都会随之而来。
+  </Param>
+  <Param name="DotLogSink，或 DotLog.add_sink(callable)">
+    日志去哪。`Callable` 形式一行就够；类的形式则负责文件、滚动和转发。
+  </Param>
+  <Param name="每个组件上的 DotNodeRef">
+    整套合集对“哪个节点”这个问题的统一答案。每个插件的每个节点至少导出一个。
+  </Param>
+</Params>
+
+## `DotResult` 不是可有可无的礼貌
+
+```gdscript
+var res := await cloud.acquire(url)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        retry_after(res.error.retry_after)
+    return
+var scene_path: String = res.value
+```
+
+按 `DotError.CODE_*` 分支，绝不按消息文本分支。`res.wrap(...)` 在不丢弃根因的前提下
+补充上下文，所以三层之下的一次失败仍然能说清它在每一层各自在做什么。
+
+## `DotScheduler` 与浏览器
+
+构建里有线程时，`DotScheduler` 把作业放到工作线程上；没有线程时就在主线程上按帧预算
+切片执行——因为 web 导出除非模板是带线程构建的，否则根本没有线程，而该问的问题是
+`DotPlatform.has_threads()`，不是 `OS.get_name()`。
+
+<Callout type="warning" title="作业的 `finished` 信号总是在主线程上送达">
+曾经不是这样：`await` 在工作线程上恢复，紧接着的一行就在主线程之外碰了场景树。
+`_teardown` 在结算这个作业的那个线程上执行，只能用线程安全的 API；任何碰场景树的
+东西都属于 `finished` 的处理函数。
+</Callout>
+
+## 传输层
+
+`DotTransportAuto` 是默认值，会替你做选择。这个选择不是偏好问题：
+
+- **浏览器没有 UDP**，而且 web 模板里根本没有 `ENetMultiplayerPeer`——所以
+  `DotTransportENet` 通过 `ClassDB.instantiate` 和 `Object.call` 去够 ENet，绝不
+  按名字引用。一个只是*提到*该标识符的脚本，在 web 导出里就编译不了。
+- **一个监听套接字只讲一种协议。** 想接收浏览器客户端的服务器就得监听 WebSocket，
+  于是它的*所有*客户端都得走 WebSocket。这就是 `require_web_clients` 默认为
+  `true` 的原因。
+
+<Callout type="info" title="`DotWeb.is_secure_context()` 不等于“页面是 HTTPS”">
+浏览器把 `http://localhost` 和 `http://127.0.0.1` 当作可信来源，所以在普通 HTTP
+页面上它也是真——而真正决定 `ws://` 是否被允许的混合内容拦截，恰恰豁免了这两类来源。
+按错误的问题去升级协议，正是这里的东西此前从未在浏览器中成功加载过的原因。
+</Callout>
+
+<Related>
+- [约定](/learn/godot/conventions) —— 本页几乎全部内容的规则化表述
+- [扩展点](/learn/godot/extending)
+- [`dot-cloud`](/learn/godot/addons/dot-cloud)、[`dot-net`](/learn/godot/addons/dot-net)
+</Related>

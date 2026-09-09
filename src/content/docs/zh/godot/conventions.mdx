@@ -1,0 +1,231 @@
+---
+title: 约定
+description: 每个 Dot 插件都遵守的规则——不用自动加载、任何可能失败的操作都返回 DotResult、用 DotNodeRef 取代场景路径、分层配置，以及决定了其中一半规则的浏览器约束。
+order: 20
+keywords:
+  - "DotResult"
+  - "DotNodeRef"
+  - "DotRegistry"
+  - "DotConfig"
+  - "自动加载"
+  - "单例"
+  - "describe"
+  - "约定"
+  - "web 导出"
+  - "IndexedDB"
+source:
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-core/README.md
+---
+
+这些规则在每个插件里都成立。破坏其中一条，就是横跨二十二个仓库的破坏性变更，所以
+在对其中任何一个写代码之前，值得先知道它们。
+
+## 用 `DotRegistry`，不用自动加载
+
+**没有任何一个插件在任何地方带自动加载。**
+
+自动加载会在每个使用它的项目中占用一个全局标识符、固定初始化顺序，而且无法实例化
+两次——这就排除了在同一个进程里同时跑服务器和客户端，或者在同一个编辑器会话里跑两台
+服务器。而这套合集经常要做这两件事。
+
+所以组件都是你自己摆放的 `Node`，彼此按名字查找：
+
+```gdscript
+DotRegistry.register(&"dot_server", self)
+
+var cloud: Object = DotRegistry.get_service(&"dot_cloud_client")
+if cloud != null:
+    ...
+```
+
+大多数管理器在 `_enter_tree` 里注册、在 `_exit_tree` 里注销，使用一个 `SERVICE`
+常量，配合 `register_service` 开关，以及在同一棵树里跑两份时用的 `service_scope`。
+
+静态类没法声明信号，这正是 `DotLogBus` 和 `DotRegistryBus` 要与 `DotLog`、
+`DotRegistry` 并存的原因。
+
+## 作为接缝的那几个注册名
+
+其中三个是*契约*，而不是简单的查表——一个名字、一个方法，两边插件都不提对方：
+
+<Params>
+  <Param name="dot_ban_source">
+    任何带 `check_admission(uid, address) -> DotResult` 的对象。
+    [`dot-server`](/learn/godot/addons/dot-server) 在每次加入时都会问它；
+    [`dot-moderation`](/learn/godot/addons/dot-moderation) 把自己发布在这个名字下。
+  </Param>
+  <Param name="dot_mute_source">
+    任何带 `is_voice_muted(peer) -> bool` 的对象。
+    [`dot-voice`](/learn/godot/addons/dot-voice) 的路由器在转发一帧之前会查询它。
+  </Param>
+  <Param name="dot_cloud_client">
+    任何能讲 `ensure(content_id, version)` 和 `is_mounted(content_id, version)`
+    的对象。[`dot-map`](/learn/godot/addons/dot-map) 的加载器与
+    [`dot-server`](/learn/godot/addons/dot-server) 的切换游戏，都通过它拿到内容。
+  </Param>
+</Params>
+
+完整的服务名列表在[扩展点](/learn/godot/extending#registry-seams)页面上。
+
+## 没有任何地方写死场景路径
+
+任何需要宿主项目中某个节点的组件，都会导出一个 **`DotNodeRef`**：一份可在检查器里
+编辑的“到底是哪个节点”的描述——相对、绝对、自身、父节点、某个分组、注册表里的服务、
+某个类型最近的祖先或后代，或者“没有就创建”。
+
+```gdscript
+session.world_ref = DotNodeRef.of_path(^"../World")
+spawner.world_ref = DotNodeRef.of_group(&"world_root")
+```
+
+由宿主决定，按实例决定，在检查器里决定。一个把 `$"../../World"` 写死的插件，等于
+逼你采用它的场景结构。
+
+<Callout type="warning" title="`of_self()` 解析到的是持有这个引用的那个节点">
+在控制器上，那意味着*控制器本身*，而不是它下面的角色身体——控制器是个普通的
+`Node`，于是 `setup()` 拒绝执行，玩家从来没有被模拟过。这在一个测试套件里造成了九处
+失败，而没有任何一处指向这个引用。
+</Callout>
+
+## 任何可能失败的操作都返回 `DotResult`
+
+永远不返回 null，不返回 `Array` 二元组，也不返回一个光秃秃的 `false`。
+
+```gdscript
+var res := await manager.resolve(identity)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        wait(res.error.retry_after)
+    return
+var profile: DotUserProfile = res.value
+```
+
+调用方按 `DotError.CODE_*` 分支，**绝不按消息文本分支**——错误码是稳定的，消息是写给
+人看的。`res.wrap(...)` 在不丢弃根因的前提下补充上下文；在失败结果上读 `.value`
+会直接抛错，而不是给回一个看起来合理的默认值。
+
+## 配置分层，各处一致
+
+```
+导出的默认值  <  JSON 文件  <  环境变量  <  命令行
+```
+
+所有 `DotConfig` 子类只需声明 `@export` 属性；发现过程是反射式的，所以新增一个设置
+不需要写解析代码。有四个钩子决定它的形状：
+
+<Params>
+  <Param name="env_prefix()" type="String">
+    例如 `"DOT_SERVER_"`。返回 `""` 可以彻底关闭环境变量覆盖——对于描述*内容*而不是
+    部署的配置来说这才是对的，因为在那里让一个外部环境变量改变行为只会让人意外。
+  </Param>
+  <Param name="cli_prefix()" type="String">
+    例如 `"--sv-"`。
+  </Param>
+  <Param name="sensitive_keys()" type="PackedStringArray">
+    绝不允许从环境变量或命令行设置的属性。在多数系统上这两者都能被其他进程读到，也
+    都会出现在 `ps` 的输出和被粘贴出来的错误报告里。
+  </Param>
+  <Param name="validate()" type="DotResult">
+    捕捉反射抓不到的问题：端口不在 1–65535 之间、tickrate 为零、URL 没有协议头。
+    由 `load_layered()` 调用。
+  </Param>
+</Params>
+
+同一个 `sensitive_keys()` 也是
+[`DotSettingsPanel`](/learn/godot/addons/dot-ui) 不会把密钥显示到屏幕上的原因。
+
+## 任何带运行时状态的东西都实现 `describe()`
+
+每个有状态的组件都响应 `describe()` / `describe_lines()`，好让一条控制台命令或一份
+错误报告把它导出来。这也是插件说明自己在当前配置下*做不到什么*的地方：
+`dot-moderation` 会报告没有任何东西注册为 `dot_ban_source`——也就是说，一次封禁只是
+文件里一行拦不住任何人的记录——而且就说在运营者会看的位置。
+
+## 一切都带 `Dot` 前缀
+
+在 Godot 里 `class_name` 是全局的，而这些插件会被并排安装，所以每个类都带 `Dot`
+前缀。`dot-2d` 用的是 `Dot2D*`，因为标识符不能以数字开头，而 `Dot2D` 比 `DotTwoD`
+好读。
+
+## 询问能力，而不是平台
+
+用 `DotPlatform.has_threads()`，而不是 `OS.get_name() == "Web"`。两者并非一一对应
+——web 模板*可以*带线程构建，而桌面构建也可能缺少你以为一定有的东西。
+
+## 注释解释“为什么”
+
+这份代码里有很多并不显然的取舍，约定是：注释要说明“显而易见的那个替代方案为什么是错
+的”。否则下一个读者就会把它“简化”回一个 bug——这种事发生得够多，以至于这些推理被当作
+源码的一部分对待。
+
+## 其中一半是浏览器决定的
+
+桌面、移动和浏览器共用一份代码。下面每一条约束都写进了代码里，而不是留给读者自己记：
+
+| 约束 | 后果 |
+| --- | --- |
+| 没有 UDP；web 模板里没有 `ENetMultiplayerPeer` | `DotTransportENet` 通过 `ClassDB.instantiate` 和 `Object.call` 去够 ENet，绝不按名字引用——一个*提到*该标识符的脚本在 web 上根本编译不了 |
+| 一个监听套接字只讲一种协议 | 要接收浏览器客户端的服务器就得监听 WebSocket，于是它的*所有*客户端都得走 WebSocket。这就是 `DotTransportAuto.require_web_clients` 默认为 `true` 的原因 |
+| 浏览器标签页无法监听 | web 构建只能做客户端 |
+| 没有 `HTTPClient`，只有 `HTTPRequest` | `DotHttp` 无条件使用 `HTTPRequest` |
+| 除非模板是带线程构建的，否则没有线程 | `DotScheduler` 在主线程上按帧预算切片执行 |
+| `user://` 是 IndexedDB 的镜像，需要显式刷写 | 每条写入路径都会调用 `DotWeb.sync_filesystem()` |
+| 存储配额，用户可以拒绝 | `DotCloudStore` 会等待 `navigator.storage.estimate()`，从不假设无限 |
+| CORS，而且 `fetch()` 拒绝告诉你为什么失败 | 内容主机需要有文档的响应头；同源可以绕开这一切 |
+| **挂载后的资源包在任何平台上都无法卸载** | `dot-cloud` 用 `id/version` 给每份内容划出命名空间，于是永远不需要替换任何东西 |
+
+最后一条对 [`dot-cloud`](/learn/godot/addons/dot-cloud) 的塑造超过其他所有因素。
+
+<Callout type="warning" title="挂载资源包里的 `class_name` 全局名不会被注册">
+实测：在分发的 `.pck` 内部，所有跨文件的类型引用都编译失败。于是资源包挂上了、场景
+也加载了，而里面每个脚本都是死的。`preload("res://x.gd")` 和 `extends "res://x.gd"`
+两种写法都能用。**这决定了一个可分发的游戏能长成什么样**——看
+[game-playground](/learn/godot/games#game-playground)，它的实体和武器正是因为这个
+原因才用*路径*来命名脚本。
+</Callout>
+
+## 这套合集为之付过学费的 GDScript 陷阱
+
+在写桥接代码之前值得知道，因为它们都不会报错。
+
+- **`==` 的结合力强于 `as`。** `a == [x] as Array[StringName]` 会被解析成
+  `(a == [x]) as Array[StringName]`，编译不过。
+- **`await x.f().ok` 把 await 绑到了属性访问上**，而不是那次调用，于是协程从未被
+  等待。先赋给一个变量。
+- **当 `f` 返回 `Variant` 时，`var x := f()` 是解析错误**（在这些项目的警告设置下）。
+  应写成 `var x: Variant = f()`。`Array.duplicate()` 返回的是无类型数组，所以对它取
+  下标正是这种情况。
+- **lambda 按值捕获局部变量。** 在信号处理器里自增的计数器，在外面仍然是零。改为捕获
+  一个 `Array` 并往里 append。
+- **`Dictionary` 是引用。** 如果 `to_dictionary()` 把自己的字典直接交出去，那么这份
+  “副本”与原件共享同一个对象，改一个就悄悄改了另一个。
+- **对 `StringName` 调用 `Array.sort()` 不会按字典序排序**——Godot 比较的是驻留指针，
+  所以两个对端可能把同一个列表排成不同顺序。
+- **`Vector3` 的分量是 32 位，而 GDScript 的算术是 64 位。** 站在 `y = 0` 上的脚，
+  算出来是 `-2.4e-8`。
+- **`String.is_valid_identifier()` 对数字返回 false**，因为标识符不能以数字*开头*。
+- **除非两端声明了完全相同的 `@rpc` 方法集合，否则 Godot 会拒绝 RPC**，并且按相对于
+  `MultiplayerAPI` 根节点的节点路径进行路由。一侧多出一个 `@rpc` 方法，就会让两者之间
+  的*每一次* RPC 都失败——握手也在内，而它唯一的症状就是超时。
+
+### 并发跑 N 个协程再等待
+
+两种想当然的写法都是错的。可行的写法是裸调用语句加上一个**成员计数器**，这样从未挂起
+的 worker 也已经被计入：
+
+```gdscript
+_workers_finished = 0
+for i in range(n):
+    _worker(i)              # 跑到它第一个 await，或者一路跑完
+while _workers_finished < n:
+    await _worker_done      # 如果全都跑完了，就根本不会进入
+```
+
+每一条返回路径都必须既增加计数器*又*发出信号。
+
+<Related>
+- [扩展点](/learn/godot/extending)
+- [安装](/learn/godot/installing)
+- [`dot-core`](/learn/godot/addons/dot-core) —— 这些东西大多住在这里
+</Related>

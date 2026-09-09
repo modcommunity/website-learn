@@ -1,0 +1,108 @@
+---
+title: dot-platform
+description: Joins dot-auth, dot-user and dot-user-avatar into one admission flow and binds it to a dot-server — the one place an account id becomes a scoped key.
+navTitle: dot-platform
+order: 60
+keywords:
+  - "admission"
+  - "join flow"
+  - "scoped id"
+  - "onboarding"
+  - "entitlements"
+  - "hub"
+source:
+  - ../game-dev/godot/dot-platform/README.md
+  - ../game-dev/godot/dot-platform/CLAUDE.md
+---
+
+`dot-auth` says who you are. `dot-user` says what we know about you.
+`dot-user-avatar` says what you look like. None of them knows about the others —
+that is what makes them adoptable one at a time — and so nothing joined them up.
+This does.
+
+It requires `dot-core` and [`dot-server`](/learn/godot/addons/dot-server), and
+finds the other three at run time. **Any subset works, including none.**
+
+```gdscript
+var hub := DotPlatformHub.new()
+add_child(hub)
+
+var admitted := await hub.admit(identity)
+var player: DotPlatformPlayer = admitted.value
+
+player.key()            # scoped id — what everything else uses
+player.display_name()   # from the profile, falling back to the identity
+player.avatar           # resolved, conformed, entitlement-checked
+```
+
+On a `dot-server`, load the module instead and it does that per connection:
+
+```gdscript
+server.modules.load_module("res://addons/dot_platform/dot_platform_module.gd")
+```
+
+It finds the hub through `DotRegistry`, admits every authenticated client, puts
+the result on `session.data["platform"]`, applies the profile's name, releases
+the state when they leave, and adds `platform_status` and `platform_name` to the
+console.
+
+## The translation it exists to do
+
+```
+identity.uid          "backbone:acc-1"     global; a server must never see this
+   -> profile.user_key  "sWrM4ym4beWFH0Nx"  scoped; what everything else keys on
+   -> avatar filed under the SAME scoped key
+```
+
+Keying the avatar on the account id instead works perfectly in testing and
+quietly hands every server operator a global identifier for every player.
+`DotPlatformHub` is the only place that translation happens, and
+`DotPlatformPlayer.account_uid()` is named to be conspicuous at the call site.
+
+## Everything optional stays optional
+
+| Installed | What happens |
+| --- | --- |
+| all three | profile, avatar, entitlements, onboarding flag |
+| `dot-user` only | a profile and a scoped key; nobody has an avatar and nothing asks |
+| neither | a player with a name from the identity and no scoped key |
+| a broken store | the player still gets in, visible, with nothing persisted over |
+
+A sandbox that required all three to start would be unusable on the first day of
+a project, which is the day people decide whether to adopt something.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotPlatformModule">
+    Load it into a `dot-server` and admission is wired. Subclass it, or call
+    `DotPlatformHub.admit` directly, for a different join flow.
+  </Param>
+  <Param name="DotPlatformHub.entitlement_source" type="Callable">
+    Where "what does this player own" comes from — a purchase, a season pass, a
+    site group. Unset, a player owns nothing, which is the loud default rather
+    than the silent one.
+  </Param>
+  <Param name="DotPlatformConfig">
+    Timeouts, whether onboarding is required, and what an absent subsystem
+    means.
+  </Param>
+  <Param name="Signals">
+    `player_admitted`, `player_refused`, `player_released`, `avatar_changed`.
+  </Param>
+</Params>
+
+<Callout type="info" title="Running the seams is what finds the bugs">
+`seam_selftest` puts all four addons through one process with real RSA keys, a
+real ticket and real stores; `sandbox_server` boots a real `DotServer`, loads
+the module and connects a real `DotClientLink` over a real socket. Doing that
+found two bugs in `dot-server` on the first run, **both of which made joining
+impossible in every configuration**, and neither of which was reachable from
+dot-server's own 300-check suite.
+</Callout>
+
+<Related>
+- [`dot-auth`](/learn/godot/addons/dot-auth)
+- [`dot-user`](/learn/godot/addons/dot-user)
+- [`dot-user-avatar`](/learn/godot/addons/dot-user-avatar)
+</Related>

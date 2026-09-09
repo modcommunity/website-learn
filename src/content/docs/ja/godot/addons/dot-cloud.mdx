@@ -1,0 +1,143 @@
+---
+title: dot-cloud
+description: Godot 向けの実行時コンテンツ配信。署名付きマニフェスト、内容アドレス方式のキャッシュ、再開可能な並列ダウンロード、バージョンで名前空間を切ったマウント。ブラウザーでも動きます。
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "ダウンロード"
+  - "マニフェスト"
+  - "pck"
+  - "リソースパック"
+  - "マウント"
+  - "キャッシュ"
+  - "署名"
+  - "DLC"
+  - "パッチ"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+サーバーがクライアントにマニフェストを渡し、クライアントは足りないものを
+ダウンロードし、検証し、マウントします。Windows、macOS、Linux、Android、iOS、
+そしてブラウザーで。
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+公開はヘッドレスの CLI で行い、出力は**静的なディレクトリー**です。
+`manifest.json` と `objects/` ツリーだけなので、どんな web サーバーや CDN でも
+設定なしで配信できます。
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## すべてを形作った 2 つの制約
+
+**Godot はリソースパックをアンマウントできません。** ゆっくりでも、回避策でも
+なく、API が存在しません。そこで各コンテンツセットにはバージョンつきの独自パス
+`res://<root>/<content_id>/<version>/` を与え、何かを置き換える必要が生じない
+ようにしています。「アンロード」は参照を手放すことであって、ファイルテーブルを
+取り戻すことではありません。この 1 点こそが、実行中のゲーム切り替えを成り立たせて
+います。
+
+**署名されていないコンテンツはリモートコード実行です。** Godot のパックには
+スクリプトを入れられるので、何が実行されるかはマニフェストが決めます。
+`require_signed_manifests` は既定で有効で、信頼できる鍵が無ければ設定の検証自体を
+拒否します。LAN や自前サーバー向けに切ることもできますが、毎回警告が出ます。
+
+## できること
+
+- **内容アドレス方式のキャッシュ。** ファイルは SHA-256 の下に置かれるので、
+  同じアセットを共有する 2 本のゲームはそれを 1 度だけダウンロードし、再公開時は
+  変わった分だけ再取得します。
+- **再開可能な並列ダウンロード。** ミラー切り替え、HTTP レンジによる再開、
+  ソースごとのサーキットブレーカー、帯域制限、そして正直な進捗と残り時間。
+- **3 種類のソース。** HTTP/CDN、ローカルディレクトリー（開発・LAN・同梱
+  コンテンツ）、そして web ホストを持たないサーバー向けにゲーム接続を通す
+  インバンド。
+- **容量への配慮。** ブラウザーのストレージ見積り、モバイル向けの上限、そして
+  使用中のコンテンツは決して追い出さない LRU 方式の退避。
+
+## ゲームが差し込める場所
+
+<Params>
+  <Param name="DotCloudSource のサブクラス">
+    `source_name()`、`is_supported()`、`can_serve(manifest)`、`fetch(...)`。
+    3 つが同梱されています——`DotCloudSourceHttp`、`DotCloudSourceLocal`、
+    `DotCloudSourceNetchan`——4 つ目はあなたのものです。torrent、プラットフォーム
+    固有の CDN、署名付き S3 URL の発行元など。
+
+    `fetch` は**必ず**、そのファイルのハッシュに対応する
+    `DotCloudStore.partial_path` に書き、可能なら `partial_size` から再開し、
+    `commit_partial` で完了させてください。ハッシュが検証されるのはそこだけで、
+    オブジェクトディレクトリーへ直接書くのは、検証されていないコンテンツが
+    マウントされる典型的な経路です。
+  </Param>
+  <Param name="can_serve() と is_supported() の違い">
+    この区別は元が取れています。ソースが完全に健全でも、*この*マニフェストには
+    到達手段が無いことがあります。`base_urls` の無い HTTP ソースと、ミラーを
+    持たないマニフェストの組み合わせがそれです。`can_serve` から失敗を返すのは
+    「このマニフェストでは自分を飛ばしてくれ、理由はこれだ」という意味で、
+    サーキットブレーカーの失敗としては**数えられません**。
+  </Param>
+  <Param name="priority" type="int">
+    すべてのソースにあります。小さいほうが先に走り、インバンドのフォールバックは
+    意図的に最後です。
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`、`require_signed_manifests`、`cache_bytes`、
+    `mobile_cache_bytes`、`web_quota_fraction`、`parallel_downloads`、
+    `max_attempts_per_file`、`throttle_bytes_per_sec`、`mount_root`、
+    `verify_before_mount`、`resume_downloads`。どの `DotConfig` とも同じく
+    階層化されています。
+  </Param>
+  <Param name="シグナル">
+    `phase_changed`、`progress_changed`、`file_finished`、`sync_finished`、
+    `content_ready`、`content_released`、`failed`。
+  </Param>
+</Params>
+
+## 他のアドオンが期待するコンテンツ用インターフェース
+
+`DotCloudClient` を登録すると、`dot_cloud_client` という名前で自分を公開します。
+`dot-map` のローダーと `dot-server` のゲーム切り替えは、その名前で到達して次を
+呼びます。
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="クラウドクライアントが無い構成も正当です">
+どの呼び出し側も「`dot_cloud_client` が無い」を「このデプロイはコンテンツを
+ビルドに同梱している」と解釈します。多くの場合それは本当なので、登録に失敗した
+クライアントと区別がつきません。配信されたマップやゲームが無言で何もしないときは、
+まずレジストリーを見てください。
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) — コンテンツとしてのマップ
+- [`dot-server`](/learn/godot/addons/dot-server) — 接続中のプレイヤーの下でゲームを切り替える
+- [規約](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

@@ -1,0 +1,136 @@
+---
+title: dot-vote
+description: One configurable engine for voting on what plays next — games, maps or modes. Rock the vote, nominations, per-choice time limits, four counting methods, five tie-breaks, quorums and cooldowns.
+navTitle: dot-vote
+order: 220
+keywords:
+  - "vote"
+  - "rtv"
+  - "rock the vote"
+  - "nominate"
+  - "mapchooser"
+  - "timeleft"
+  - "nextmap"
+  - "instant runoff"
+  - "quorum"
+  - "tie break"
+source:
+  - ../game-dev/godot/dot-vote/README.md
+  - ../game-dev/godot/dot-vote/CLAUDE.md
+---
+
+The shape every server in this genre has had since 2005 — `rtv`, `nominate`,
+`mapchooser`, `timeleft`, `extend` — rebuilt so that a community that wants it
+to work differently **changes a number rather than forking it**.
+
+```gdscript
+var votes := DotVoteDirector.new()
+votes.rules = DotVoteRules.new()
+votes.source = DotVoteGameSource.of(server.games)   # or a map catalogue, or your own
+votes.player_count_fn = func() -> int: return players.size()
+add_child(votes)
+
+votes.begin(&"lobby")        # what is running now
+votes.advance(delta)         # once per tick
+```
+
+That is the whole integration. Everything else is configuration.
+
+## The one seam
+
+**The thing being voted for is an id, and a `DotVoteSource` says what an id
+means.** That is the only reason one engine drives
+[`dot-server`](/learn/godot/addons/dot-server)'s games and
+[`dot-map`](/learn/godot/addons/dot-map)'s catalogue without naming either.
+
+```gdscript
+DotVoteGameSource.of(server.games)          # dot-server's games
+DotVoteMapSource.of(catalogue, session)     # dot-map's maps
+DotVoteListSource.of(my_choices)            # anything else, with a Callable
+```
+
+Both integrations are duck-typed, so this addon installs in a project that has
+never heard of either. Per-choice settings live in the thing's own metadata, so
+a game's time limit is written beside the game:
+
+```yaml
+# content/arena/game.yml
+metadata:
+  vote:
+    time_limit_sec: 2400
+    weight: 2.0
+```
+
+A source that cannot change anything is legitimate: the director runs the whole
+vote and emits `change_due` for the host to act on, which is exactly what a
+client mirroring a server's ballot does.
+
+## What it does
+
+| | |
+| --- | --- |
+| **Rock the vote** | A fraction of the players, a minimum player count, a delay at the start of every map, idempotent per player, and votes withdrawn when their owner disconnects. |
+| **Nominations** | Per-player caps, a total cap, seconding, admin bypass, and reserved ballot places so three organised players cannot decide every map. |
+| **Time limits** | In seconds, in rounds, or both — **per choice**, so a forty-minute surf map and a ten-minute bhop map are not forced under one number. |
+| **The ballot** | Up to N options, filled five ways, with "extend" and "none of these" as options a server turns on or off. Opens a configurable lead time *before* the map ends, so the change happens on time. |
+| **Counting** | Plurality, approval, instant runoff, or a majority runoff. Quorums, weighted ballots, and five tie-breaks — four of which a player watching can predict. |
+| **Cooldowns** | In plays or in wall-clock minutes, per choice, clamped against the pool so a long cooldown on a short rotation cannot exclude everything. |
+| **Applying** | Immediately, at the end of the round, or when the clock runs out — with a delay so players can read the result. |
+| **Commands** | `nominate`, `rtv`, `votefor`, `timeleft`, `nextmap`, `revote`, `extend`, `endvote`, on a console and in chat. Every name configurable. |
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotVoteSource subclass">
+    `source_name`, `choices`, `current_id`, `supports_apply`, `apply`. Or use
+    `DotVoteListSource` and hand it a `Callable`.
+  </Param>
+  <Param name="DotVoteRules">
+    Every policy decision, as one `DotConfig`. **Fifty-five settings**, layered
+    `defaults < file < DOT_VOTE_* < --vote-*`, and enum settings written by name
+    (`method: instant_runoff`). The self-test fails if any one of them is read
+    by nothing.
+  </Param>
+  <Param name="DotVoteDirector callables">
+    `player_count_fn`, `is_admin_fn`, `is_spectator_fn`, `voters_fn`,
+    `weight_fn`, `announce_fn`. Who counts as a player, an admin or a spectator;
+    what one player's vote is worth; and how the result reaches the room.
+  </Param>
+  <Param name="DotVoteCommands.prefix / names">
+    What the commands are called. `voter_fn` maps a speaker to a voter id.
+  </Param>
+  <Param name="DotVoteDirector.begin_on_apply">
+    Whether the director announces the change it just made, or leaves that to
+    the host's own `game_loaded` signal. **Both firing halves every cooldown** —
+    two entries in the play history for one play, so a "played in the last 5"
+    cooldown is quietly a cooldown of 2 or 3.
+  </Param>
+  <Param name="Signals">
+    `vote_due`, `vote_opened`, `vote_cast`, `tally_updated`, `vote_closed`,
+    `change_due`, `changed`, `nominated`, `rocked`, `extended`, `warning`,
+    `expired`, `round_ended`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="A vote that could not open was the last one that would ever be offered">
+The clock fires once and latches — it has to, or an expired limit opens a ballot
+on every tick. So a `vote_due` arriving during a cooldown, or with too few
+players, was dropped with one warning. The most ordinary sequence there is
+reaches it: a vote fails for want of a quorum, somebody rocks the vote thirty
+seconds later, and **the server never changes anything again.**
+</Callout>
+
+<Callout type="warning" title="Two documented policies can be one behaviour">
+`extend_needs_majority` erases "extend" from a tie when it is on. With it off,
+the ordinary tie-break ran — and every pseudo-option sorts last in ballot order,
+so `BALLOT_ORDER` handed the tie to the new thing as well. Two settings, one
+outcome. Nothing short of testing **both positions** of a setting can see it,
+and the usual mechanical detector (a name that occurs exactly once) does not
+fire, because the name occurs twice and one branch is a no-op.
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map)
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [TMC's server tool](/learn/godot/tooling#tmcs-server-tool)
+</Related>

@@ -1,0 +1,157 @@
+---
+title: 参考游戏
+description: 用 Dot 合集做出来的五个游戏——每个各自要证明什么，以及为什么插件之间的接缝只有在游戏里才会被真正跑起来。
+navTitle: 参考游戏
+order: 50
+keywords:
+  - "示例"
+  - "样例"
+  - "演示"
+  - "game-arena"
+  - "game-hungario"
+  - "game-playground"
+  - "game-g2gfast"
+  - "大厅"
+  - "死斗"
+  - "沙盒"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+五个游戏，而且它们不是演示。每个插件的测试套件都是**在其他插件缺席的情况下**跑那个
+插件的，所以插件之间的接合只存在于游戏里——按这套合集反复得到的教训：*只有一种部署
+形态才能走到的代码路径，就是从来没被跑过的代码路径。*
+
+<Callout type="info" title="bug 就在这里">
+把玩法类插件放进同一个进程里跑，找出了七个 bug，其中六个在*别的*仓库里，而且没有
+一个能从那个仓库自己的测试套件里触及。把整套东西端到端跑起来，又找出十二个。用真
+浏览器客户端连真服务器，之后还找出七个。这个规律每次都成立。
+</Callout>
+
+## game-arena
+
+**一个用开发贴图的 3D 竞技场死斗。参考游戏。** 它存在的意义是证明这些插件能组合起来、
+展示桥接代码长什么样，以及成为新游戏抄写的模板。
+
+用到 `dot-core`、`dot-fps-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
+`dot-ui`、`dot-server` 和 `dot-net`。
+
+有四个文件很关键，而它们各自属于*游戏*而不是插件的理由每次都一样：
+
+- **`maps/arena_map.gd`** —— 一个关卡就是一串盒子，而这串盒子会变成三样东西：网格、
+  物理体，以及给无界面服务器用的解析几何。分别构建就会得到三份互相漂移的描述，而这种
+  漂移在子弹开始穿过客户端看得见的东西之前都是不可见的。
+- **`game/arena_player.gd`** —— 移动、武器、生命和碰撞盒装在同一个 body 上。所有插件
+  都说这种接线属于游戏，因为由插件来做就等于替你规定了场景结构。
+- **`game/arena_game.gd`** —— 那道接缝。六个插件各自都对；这五十行正是战斗击杀变成
+  对局得分、对局重生变成一套配装的地方。
+- **`game/arena_module.gd`** —— 唯一提到 `dot-server` 的文件。约四十行，这就是整个
+  专用服务器集成。
+
+四把武器，因为它们是对“我怎么拉近距离”这个问题四个真正不同的答案，而武器更少的死斗
+只有一个正确答案。配装是在六点预算下带两把武器——四个数字，而不是一个枚举。
+
+```bash
+godot --headless --path . res://examples/headless_match.tscn   # 完整跑一局死斗
+godot --headless --path . res://examples/headless_net.tscn     # 服务器 + 客户端，20% 丢包
+godot --headless --path . res://examples/dedicated.tscn        # 一台真正的 DotServer
+```
+
+## game-hungario
+
+**一个靠吃东西长大的竞技场游戏，你操纵的是怪物，骑在它身上的是你的形象。** 这是合集
+里第一个能玩的客户端、第一个网络代码真跑在真实套接字上的游戏，也是玩法一半和身份一半
+唯一同时运行的地方。
+
+用到 `dot-2d`、`dot-net`、`dot-server`、`dot-match`、`dot-ui`、`dot-user-avatar`、
+`dot-loadout`、`dot-platform` 和 `dot-cloud` —— 除 `dot-fps-controller` 和
+`dot-combat` 之外的全部。
+
+它同时是**通往浏览器那一栏的最短路径**：体量小、不需要线程，而且在没有其他东西碍事的
+情况下把每一条浏览器约束都踩了一遍。它的 `web/README.md` 就是部署契约：用 WebSocket
+是因为浏览器没有 UDP；只做客户端是因为标签页无法监听；用 `wss://` 是因为 HTTPS 页面
+不允许打开不安全的套接字；关掉线程支持是因为打开它就需要在每个响应上做跨源隔离，会
+搞坏页面上所有第三方嵌入内容。
+
+## game-playground
+
+**一个经典物理沙盒形态的沙盒。** 按住 Q 打开菜单，里面有十四种道具、四个带脚本的 NPC
+和三把武器；点一下它就是你的了。物理枪能抓取和冻结，重力枪能把东西轰出去。三张地图、
+一台专用服务器、二十条控制台命令，还有 `pg_lobby` 奖励赛道上一条九级平台的跳跃路线
+——因为跳跃路线不属于任何移动类型，而正是它说明了
+[`dot-timer`](/learn/godot/addons/dot-timer) 并非只服务于 surf 和 bunny-hop。
+
+用到 `dot-fps-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+`dot-ui` 和 `dot-server`。
+
+<Callout type="warning" title="实体和武器都是按“路径”命名的脚本">
+不是按 `class_name`。挂载的 `dot-cloud` 资源包无法注册 `class_name` 全局名——这是实测
+结论——所以在资源包挂上、场景也加载得好好的同时，包内所有跨文件的类型引用统统编译失败。
+**路径是可分发实体唯一能采用的形式**，这个游戏就是为此刻意这么写的。
+</Callout>
+
+这是 `dot-fps-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+`dot-ui` 和 `dot-server` 在同一个进程里一起跑的唯一场所。它的测试套件找出了九个
+bug，其中三个在别的仓库里；截图又找出了四个。
+
+## game-g2gfast
+
+**Counter-Strike 形态的 bunny-hop 与 surf 计时服务器。** Source 的单位与 cvar、
+Source 的视场角、第一人称与第三人称，以及把每位玩家都画成形象——他们从平台带来的那个，
+或者一个默认形象。
+
+用到 `dot-fps-controller`、`dot-timer`、`dot-map`、`dot-leaderboard`、`dot-server`、
+`dot-user-avatar` 和 `dot-ui`。
+
+```
+sv_tickrate 100
+sv_autobunnyhopping 1
+sv_airaccelerate 1000        // surf 用 150
+sv_gravity 800
+sv_allow_thirdperson 1
+sv_replay_bot 1              // 把服务器纪录当作可见的幽灵跑出来
+```
+
+然后从控制台给一张作者从没用过这个引擎的地图划分区域：
+
+```
+g2g_zone start
+g2g_zone_mark          // 站到一个角上
+g2g_zone_mark          // 再站到另一个角上
+g2g_zone stage main 1
+g2g_zone_save
+```
+
+## game-simple-lobby
+
+**一个大厅。** 一个带聊天、在场名单和进出提示的小型 2D 房间——服务器在不跑别的东西时
+跑的就是它，也是仍然能把准入、成员、复制、预测和聊天全都用上的最小一件东西。
+
+没加载游戏的服务器是完全合理的运行状态，`dot-server` 一直都支持；缺的只是“有东西可
+看”，而一个连上去什么都看不到的玩家，是分不清这和一台坏掉的服务器的。它同时也是通用
+浏览器客户端最先下载的那个游戏。
+
+## 跑这些游戏教会了什么
+
+有四条教训反复出现，在你动手写自己的桥接代码之前值得先知道。
+
+**一个被正确算出来却没人读的值，看上去和算错了的值一模一样。** 插值后的位置、兴趣
+集合和云端客户端，三者都算得没错却没人读，而每一次表面症状都指向生产方。
+
+**一个被两个游戏读取却没人产生的值，是同一个 bug 把两端调了个个儿。**
+`DotTimer.effect_requested` 声明了、转发了、也连上了——却没有任何一行代码发出它，于是
+在两个游戏里，每张地图的坠落体积都只是装饰。
+
+**界面的 bug 对断言是不可见的**，因为每个属性都对，也没有任何东西失败。两棵 0 × 0 的
+`Control` 树和一个黑屏，是靠渲染出一帧并且真的去看它才发现的，不是靠测试。
+
+**动态也一样。** 每个套件里的每条检查断言的都是*模拟出来的*值，而在让浏览器客户端没法
+玩的那次抖动里，所有模拟数值全都是对的。bug 出在从模拟到屏幕的这一段映射上，而任何
+关于模拟的断言都够不到那里。
+
+<Related>
+- [全部插件](/learn/godot/addons)
+- [扩展点](/learn/godot/extending)
+- [工具](/learn/godot/tooling)
+</Related>

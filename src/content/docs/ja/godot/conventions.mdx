@@ -1,0 +1,258 @@
+---
+title: 規約
+description: すべての Dot アドオンが守るルール。オートロードを使わない、失敗しうる処理は DotResult、シーンパスの代わりに DotNodeRef、階層化された設定、そしてその半分を決めているブラウザーの制約。
+order: 20
+keywords:
+  - "DotResult"
+  - "DotNodeRef"
+  - "DotRegistry"
+  - "DotConfig"
+  - "オートロード"
+  - "シングルトン"
+  - "describe"
+  - "規約"
+  - "web エクスポート"
+  - "IndexedDB"
+source:
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-core/README.md
+---
+
+これらはすべてのアドオンで成り立つルールです。1 つ破れば 22 のリポジトリを
+またぐ破壊的変更になるので、どれかに対してコードを書く前に知っておく価値が
+あります。
+
+## オートロードではなく `DotRegistry`
+
+**どのアドオンも、どこにもオートロードを持ち込みません。**
+
+オートロードは利用側プロジェクトすべてでグローバルな識別子を占有し、初期化順を
+固定し、二重にインスタンス化できません。つまり 1 プロセスでサーバーとクライアント
+を動かすことも、1 回のエディターセッションで 2 台のサーバーを動かすこともでき
+なくなります。このコレクションはどちらも日常的に行います。
+
+そこでコンポーネントは自分で配置する `Node` であり、互いを名前で見つけます。
+
+```gdscript
+DotRegistry.register(&"dot_server", self)
+
+var cloud: Object = DotRegistry.get_service(&"dot_cloud_client")
+if cloud != null:
+    ...
+```
+
+ほとんどのマネージャーは `SERVICE` 定数のもと `_enter_tree` で登録し、
+`_exit_tree` で登録解除します。`register_service` フラグと、1 つのツリーで 2 つ
+動かすための `service_scope` もあります。
+
+静的クラスはシグナルを宣言できません。`DotLog` と `DotRegistry` の隣に
+`DotLogBus` と `DotRegistryBus` があるのはそのためです。
+
+### 継ぎ目になっているレジストリ名
+
+そのうち 3 つは単なる検索ではなく*契約*です。名前 1 つ、メソッド 1 つ、そして
+どちらのアドオンも相手を名指ししません。
+
+<Params>
+  <Param name="dot_ban_source">
+    `check_admission(uid, address) -> DotResult` を持つもの。
+    [`dot-server`](/learn/godot/addons/dot-server) が参加のたびに問い合わせ、
+    [`dot-moderation`](/learn/godot/addons/dot-moderation) がこの名前で自分を
+    公開します。
+  </Param>
+  <Param name="dot_mute_source">
+    `is_voice_muted(peer) -> bool` を持つもの。
+    [`dot-voice`](/learn/godot/addons/dot-voice) のルーターがフレームを中継する
+    前に参照します。
+  </Param>
+  <Param name="dot_cloud_client">
+    `ensure(content_id, version)` と `is_mounted(content_id, version)` を話せる
+    もの。[`dot-map`](/learn/godot/addons/dot-map) のローダーと
+    [`dot-server`](/learn/godot/addons/dot-server) のゲーム切り替えは、どちらも
+    これ経由でコンテンツに到達します。
+  </Param>
+</Params>
+
+サービス名の全一覧は[拡張ポイント](/learn/godot/extending#registry-seams)の
+ページにあります。
+
+## シーンパスをハードコードしない
+
+ホストプロジェクトのノードを必要とするコンポーネントは、すべて **`DotNodeRef`**
+をエクスポートします。これは*どのノードか*をインスペクターで編集できる形で
+記述したものです。相対、絶対、自分自身、親、グループ、レジストリのサービス、
+特定の型の最も近い祖先や子孫、あるいは「無ければ作る」。
+
+```gdscript
+session.world_ref = DotNodeRef.of_path(^"../World")
+spawner.world_ref = DotNodeRef.of_group(&"world_root")
+```
+
+決めるのはホストであり、インスタンスごとに、インスペクターで決めます。
+`$"../../World"` をハードコードするアドオンは、そのシーン構成をあなたが受け入れ
+なければならないアドオンです。
+
+<Callout type="warning" title="`of_self()` は参照が置かれているノードに解決されます">
+コントローラー上ではそれは*コントローラー*であって、その下のキャラクター
+ボディではありません。コントローラーはただの `Node` なので `setup()` は拒否し、
+プレイヤーは一度もシミュレートされません。あるスイートで 9 件の失敗を招き、その
+どれもこの参照を指し示しませんでした。
+</Callout>
+
+## 失敗しうるものは `DotResult`
+
+null を返さない、`Array` のペアを返さない、素の `false` も返さない。
+
+```gdscript
+var res := await manager.resolve(identity)
+if not res.ok:
+    if res.error.code == DotError.CODE_RATE_LIMITED:
+        wait(res.error.retry_after)
+    return
+var profile: DotUserProfile = res.value
+```
+
+呼び出し側は `DotError.CODE_*` で分岐します。**メッセージでは分岐しません。**
+コードは安定していて、メッセージは人間向けだからです。`res.wrap(...)` は原因を
+捨てずに文脈を足し、失敗に対して `.value` を読むともっともらしい既定値ではなく
+エラーになります。
+
+## 設定はどこでも同じように階層化されます
+
+```
+エクスポートされた既定値  <  JSON ファイル  <  環境変数  <  コマンドライン
+```
+
+`DotConfig` のサブクラスは `@export` プロパティを宣言するだけです。発見はリフレ
+クションなので、新しい設定にパース用のコードは要りません。形を決めるフックは
+4 つです。
+
+<Params>
+  <Param name="env_prefix()" type="String">
+    例: `"DOT_SERVER_"`。`""` を返すと環境変数による上書きを完全に無効化します。
+    デプロイではなく*コンテンツ*を記述する設定ではこれが正解で、周囲の環境変数で
+    ふるまいが変わるのは驚きでしかないからです。
+  </Param>
+  <Param name="cli_prefix()" type="String">
+    例: `"--sv-"`。
+  </Param>
+  <Param name="sensitive_keys()" type="PackedStringArray">
+    環境変数やコマンドラインからは絶対に設定できてはいけないプロパティ。多くの
+    システムでどちらも他プロセスから読め、どちらも `ps` の出力や貼り付けられた
+    バグ報告に残ります。
+  </Param>
+  <Param name="validate()" type="DotResult">
+    リフレクションでは捕まえられないものを捕まえます。1–65535 の外のポート、
+    ゼロのティックレート、スキームの無い URL。`load_layered()` から呼ばれます。
+  </Param>
+</Params>
+
+同じ `sensitive_keys()` が、
+[`DotSettingsPanel`](/learn/godot/addons/dot-ui) が秘密情報を画面に出すのを
+防いでいます。
+
+## 実行時状態を持つものには `describe()`
+
+状態を持つコンポーネントはすべて `describe()` / `describe_lines()` に応答し、
+コンソールコマンドやバグ報告がその中身をダンプできます。ここは、現在の構成で
+アドオンが*何をできないか*を言う場所でもあります。`dot-moderation` は
+`dot_ban_source` として何も登録されていないことを報告します。つまり BAN は
+誰も止めないファイルの 1 行だということを、運営者が実際に見る場所で伝えます。
+
+## すべて `Dot` 接頭辞
+
+Godot では `class_name` はグローバルで、これらのアドオンは並べてインストール
+されるため、すべてのクラスに `Dot` を付けます。`dot-2d` は `Dot2D*` を使います。
+識別子は数字で始められず、`Dot2D` のほうが `DotTwoD` より読みやすいからです。
+
+## プラットフォームではなく能力を尋ねる
+
+`OS.get_name() == "Web"` ではなく `DotPlatform.has_threads()`。対応は 1 対 1 では
+ありません。web テンプレートはスレッド付きでビルド*できます*し、デスクトップ
+ビルドに前提としていた何かが無いこともあります。
+
+## コメントは理由を書く
+
+このコードには自明でないトレードオフが多く、規約として、コメントは「なぜ明らかな
+代替案が間違いなのか」を書きます。そうしないと次の読者がそれを「単純化」して
+バグに戻してしまいます。実際に何度も起きたので、この理由づけはソースの一部として
+扱われています。
+
+## この半分はブラウザーが決めています
+
+デスクトップ、モバイル、ブラウザーを 1 つのコードベースから。以下の制約はどれも、
+読者任せにせずコードに埋め込まれています。
+
+| 制約 | 帰結 |
+| --- | --- |
+| UDP が無く、web テンプレートに `ENetMultiplayerPeer` が無い | `DotTransportENet` は `ClassDB.instantiate` と `Object.call` で ENet に到達し、名前では触れません。識別子を*書いた*だけのスクリプトは web でコンパイルできません |
+| 待ち受けソケット 1 つが話せるプロトコルは 1 つ | ブラウザークライアントを受けるサーバーは WebSocket で待ち受け、そうすると*すべての*クライアントがそうなります。`DotTransportAuto.require_web_clients` の既定が `true` なのはこのためです |
+| ブラウザーのタブは待ち受けできない | web ビルドはクライアント専用です |
+| `HTTPClient` が無く `HTTPRequest` だけ | `DotHttp` は無条件に `HTTPRequest` を使います |
+| テンプレートがスレッド付きでビルドされていなければスレッドは無い | `DotScheduler` はフレーム予算内でメインスレッドを刻みます |
+| `user://` は明示的なフラッシュが必要な IndexedDB のミラー | 書き込み経路はすべて `DotWeb.sync_filesystem()` を呼びます |
+| ユーザーが拒否できるストレージ容量 | `DotCloudStore` は `navigator.storage.estimate()` を待ち、無制限とは決して仮定しません |
+| CORS。しかも `fetch()` は失敗理由を教えてくれない | コンテンツホストには文書化されたヘッダーが要ります。同一オリジンなら避けられます |
+| **マウントしたリソースパックはどのプラットフォームでも決してアンマウントできない** | `dot-cloud` はコンテンツを `id/version` で名前空間化し、何も置き換えなくて済むようにします |
+
+最後の 1 つが [`dot-cloud`](/learn/godot/addons/dot-cloud) を何よりも強く形作り
+ました。
+
+<Callout type="warning" title="マウントしたパックの `class_name` グローバルは登録されません">
+計測済みです。配信された `.pck` の中では、ファイルをまたぐ型参照がすべてコンパイル
+に失敗します。パックはマウントされ、シーンも読み込まれるのに、中のスクリプトは
+全部死んでいます。`preload("res://x.gd")` と `extends "res://x.gd"` はどちらも
+動きます。**これは配信されるゲームがどんな形を取れるかを決めます。**
+[game-playground](/learn/godot/games#game-playground) のエンティティと武器が
+まさにこの理由で*パス*指定のスクリプトになっているのを見てください。
+</Callout>
+
+## このコレクションが授業料を払った GDScript の罠
+
+橋渡しコードを書く前に知っておくべきものです。どれもエラーを出さないからです。
+
+- **`==` は `as` より強く結合します。** `a == [x] as Array[StringName]` は
+  `(a == [x]) as Array[StringName]` と解釈され、コンパイルできません。
+- **`await x.f().ok` は await をプロパティアクセスに結び付けます。** 呼び出しに
+  ではありません。したがってコルーチンは待たれません。まず変数に代入してください。
+- **`f` が `Variant` を返すときの `var x := f()` はパースエラー**です（これらの
+  プロジェクトの警告設定では）。`var x: Variant = f()` と書いてください。
+  `Array.duplicate()` は型なし配列を返すので、その要素参照がまさにこの例です。
+- **ラムダはローカル変数を値でキャプチャします。** シグナルハンドラー内で
+  インクリメントしたカウンターは、外ではゼロのままです。`Array` をキャプチャして
+  append してください。
+- **`Dictionary` は参照です。** `to_dictionary()` が自分の辞書をそのまま渡すと、
+  「コピー」がそれを共有し、片方への編集がもう片方を黙って書き換えます。
+- **`StringName` に対する `Array.sort()` は辞書順になりません。** Godot は
+  インターンされたポインターを比較するので、2 つのピアが同じリストを別々の順序に
+  並べることがあります。
+- **`Vector3` の成分は 32 ビットで、GDScript の演算は 64 ビットです。**
+  `y = 0` に乗っている足元は `-2.4e-8` として計算されます。
+- **`String.is_valid_identifier()` は数字に対して false です。** 識別子は数字で
+  *始まれない*からです。
+- **Godot は両端が同じ `@rpc` メソッド集合を宣言していない限り RPC を拒否**し、
+  `MultiplayerAPI` のルートからの相対ノードパスでルーティングします。片側に
+  `@rpc` メソッドが 1 つ多いだけで、両者間の*すべての* RPC が失敗します。
+  ハンドシェイクも含めてです。唯一の症状はタイムアウトです。
+
+### N 個のコルーチンを走らせて待つ
+
+思いつく 2 つの書き方はどちらも誤りです。正しいのは、素の文としての呼び出しと
+**メンバーのカウンター**の組み合わせです。一度も中断しなかったワーカーもすでに
+勘定に入るからです。
+
+```gdscript
+_workers_finished = 0
+for i in range(n):
+    _worker(i)              # 最初の await まで、あるいは最後まで走る
+while _workers_finished < n:
+    await _worker_done      # 全部終わっていれば一度も入らない
+```
+
+すべての return 経路でカウンターを増やし、*かつ* シグナルを発行してください。
+
+<Related>
+- [拡張ポイント](/learn/godot/extending)
+- [インストール](/learn/godot/installing)
+- [`dot-core`](/learn/godot/addons/dot-core) — この大半が住んでいる場所
+</Related>

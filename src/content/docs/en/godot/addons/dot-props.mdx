@@ -1,0 +1,128 @@
+---
+title: dot-props
+description: A sandbox layer — a catalogue of spawnable props, per-player budgets and an undo stack, a physics gun that holds and freezes, and a gravity gun that punts.
+navTitle: dot-props
+order: 170
+keywords:
+  - "sandbox"
+  - "props"
+  - "spawn menu"
+  - "physics gun"
+  - "gravity gun"
+  - "gmod"
+  - "undo"
+  - "budget"
+  - "cleanup"
+source:
+  - ../game-dev/godot/dot-props/README.md
+  - ../game-dev/godot/dot-props/CLAUDE.md
+---
+
+Spawnable props, the limits that keep a server alive, and the tools that move
+them.
+
+## Server-authoritative, and not predicted
+
+Rigid-body physics is not reproducible across machines — the solver's iteration
+order and the last bits of every float differ — so a predicted prop is a prop
+that is corrected constantly. **The server owns every prop; the client draws
+what it is told; the tools send intent.**
+
+```gdscript
+var spawner := DotPropSpawner.new()
+spawner.authoritative = true                  # on the server only
+spawner.catalogue = DotPropCatalogue.load_json("res://props.json").value
+spawner.limits = DotPropLimits.new()
+spawner.world_ref = DotNodeRef.of_path(^"../World")
+add_child(spawner)
+
+spawner.refused.connect(func(player, prop, reason): tell(player, reason))
+
+spawner.advance(delta)
+spawner.spawn(&"crate", player_id, aim_point, Basis.IDENTITY)
+```
+
+```json
+{
+  "format": 1,
+  "props": [
+    {"id": "crate", "name": "Crate", "category": "props",
+     "scene": "res://props/crate.tscn", "mass": 20},
+    {"id": "safe", "category": "props",
+     "scene": "res://props/safe.tscn", "mass": 900, "cost": 8},
+    {"id": "pillar", "category": "scenery",
+     "scene": "res://props/pillar.tscn", "can_grab": false}
+  ]
+}
+```
+
+## The tools
+
+```gdscript
+var gun := DotPhysGun.new()
+gun.spawner = spawner
+gun.wielder = player_id
+
+gun.grab(space_state, eye_position, aim_direction, view_basis)
+gun.hold(eye_position, aim_direction, view_basis, delta)   # every physics tick
+gun.push(scroll_amount, delta)
+gun.release()
+gun.freeze_held()
+```
+
+```gdscript
+var grav := DotGravGun.new()
+grav.pull(space_state, eye_position, aim_direction)
+grav.carry(eye_position, aim_direction, delta)
+grav.punt(space_state, eye_position, aim_direction)
+```
+
+The physics gun holds with a **spring**, not a transform: setting a transform on
+a rigid body fights the solver and produces a prop that jitters and shoves
+everything it touches.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotPropCatalogue / DotPropDef">
+    What can be spawned. Id, name, category, scene, mass, cost, `can_grab`, and
+    a `meta` dictionary.
+  </Param>
+  <Param name="DotPropDef.meta.script" type="a PATH">
+    A prop that has code. **A path, not a `class_name`** — a mounted `.pck`
+    cannot register `class_name` globals, so a path is the only shape a
+    delivered prop can take. See
+    [game-playground](/learn/godot/games#game-playground).
+  </Param>
+  <Param name="DotPropLimits">
+    Per-player counts, per-player frozen counts, a spawn cooldown, an undo
+    depth, a total cap, and grab mass limits. Each one is defending against a
+    specific way a sandbox server dies.
+  </Param>
+  <Param name="DotPropTool subclass">
+    `effective_reach`, `target`, `may_act_on`. A new sandbox tool, or a weapon.
+    `DotPhysGun` and `DotGravGun` are the shipped ones.
+  </Param>
+  <Param name="Signals">
+    `spawned`, `removed`, `refused`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="Ownership and undo are two lists">
+When they were one, trimming it to the undo depth removed props from their
+owner's *account* as well as their history — so a player could hold `undo_depth`
+props against their budget and any number beyond it for free, and
+`clear_player` left the rest in the world.
+</Callout>
+
+<Callout type="warning" title="`DotPropDef.mass` has to reach the body">
+A catalogue saying 900 kg over a scene saved at 20 kg gives a prop a physics gun
+refuses for being too heavy and a gravity gun throws like a beach ball. It shows
+the moment a game ships one scene for a dozen props, which is the cheap way to
+do it.
+</Callout>
+
+<Related>
+- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller)
+- [game-playground](/learn/godot/games#game-playground)
+</Related>

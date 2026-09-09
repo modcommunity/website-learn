@@ -1,0 +1,195 @@
+---
+title: dot-net
+description: Multiplayer netcode for Godot — tick synchronisation, a bit-packed wire format, declarative replication, snapshot interpolation, client-side prediction with reconciliation, lag compensation and interest management.
+navTitle: dot-net
+order: 40
+keywords:
+  - "netcode"
+  - "multiplayer"
+  - "replication"
+  - "prediction"
+  - "reconciliation"
+  - "interpolation"
+  - "lag compensation"
+  - "rollback"
+  - "snapshot"
+  - "interest management"
+  - "bandwidth"
+source:
+  - ../game-dev/godot/dot-net/README.md
+  - ../game-dev/godot/dot-net/CLAUDE.md
+---
+
+Netcode that needs only `dot-core`. Use it with
+[`dot-server`](/learn/godot/addons/dot-server), with Godot's raw multiplayer, or
+with your own transport — **it never owns a socket**.
+
+```gdscript
+var net := DotNetManager.new()
+net.is_server = true
+net.config = DotNetConfig.new()
+add_child(net)
+
+net.spawner.register_prefab(&"player", preload("res://player.tscn"))
+net.interest = DotNetInterestGrid.new()
+net.send_fn = func(peer, payload, delivery): my_transport.send(peer, payload)
+
+net.start()
+```
+
+Make something networked by adding a `DotNetIdentity` and **declaring** what
+replicates:
+
+```gdscript
+class_name PlayerMovement extends DotNetBehaviour
+
+var position: Vector3
+var velocity: Vector3
+var ammo: int
+
+func _register_net_vars() -> void:
+    replicate(&"position", DotNetVar.Type.VECTOR3_POSITION).interpolated()
+    replicate(&"velocity", DotNetVar.Type.VECTOR3_VELOCITY).with_epsilon(0.05)
+    replicate(&"ammo", DotNetVar.Type.UINT).bits(9).to_owner_only()
+
+func _net_simulate(tick: int, delta: float) -> void:
+    position += velocity * delta      # server AND owning client
+```
+
+Dirty tracking, quantisation, audience filtering, rate limiting, interpolation
+and prediction all follow from that declaration.
+
+## What it gives you
+
+**A wire format that fits.** Positions quantised to a centimetre over a 4 km
+world cost 19 bits an axis instead of 32. Rotations use smallest-three: 29 bits
+instead of 128, accurate to under a degree. Bit packing, varints, per-property
+deadbands, and a `describe_budget()` that says what your settings cost per
+client per second.
+
+**Prediction that converges.** The owning client simulates immediately, the
+server corrects, and the client replays its unacknowledged inputs on top of the
+correction. Small errors ease out over a tenth of a second; large ones snap,
+because easing across a teleport drags you through geometry.
+
+**Interpolation that hides jitter.** Remote entities render slightly in the
+past, far enough that the bracketing snapshots have arrived. The buffer grows
+quickly under jitter and shrinks slowly.
+
+**Lag compensation.** The server rewinds every other entity to where the shooter
+saw them — accounting for both their latency and their interpolation buffer —
+tests the shot, and restores. Bounded by `max_rewind_sec`, so a client cannot
+claim an arbitrary rewind.
+
+**Bandwidth budgeting.** A per-client byte budget with a priority accumulator,
+so important entities update often, unimportant ones update eventually, and
+nothing is starved — with an explicit bound on how long "eventually" can be.
+
+**Stats that name the cause.** Netcode fails quietly and players call every
+failure "lag". A high correction rate is a determinism bug; high starvation is
+bandwidth; high late-input counts are the clock. Different fixes.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotNetBehaviour subclass">
+    The class a game subclasses most. `_register_net_vars`, `_net_ready`,
+    `_net_removed`, `_net_simulate`, `_net_state_applied`, `_net_interpolated`,
+    `_net_read_property`, `_net_write_property`.
+  </Param>
+  <Param name="DotNetInput subclass">
+    Your game's controls. `_write`, `_read`, `_sanitise`, `_equals`.
+    `_sanitise` is for the *relationships* between fields — quantisation already
+    bounds each one individually.
+  </Param>
+  <Param name="DotNetMessage subclass">
+    `_type_name` (namespaced; yours should not start with `net.`), `_write`,
+    `_read`, `_validate`. Validate in `_validate`, not in the handler: a handler
+    that validates is a handler somebody copies without the validation.
+  </Param>
+  <Param name="DotNetInterest subclass">
+    `_is_relevant` — override this and nothing else for most strategies. Plus
+    `_candidates` for a bulk filter, `_prepare` to rebuild an index once per
+    snapshot, and `_score` for prioritisation. `DotNetInterestAll`,
+    `DotNetInterestDistance` and `DotNetInterestGrid` ship.
+
+    This is the biggest lever on bandwidth **and the only anti-cheat that
+    actually works**: data never sent cannot be drawn on a wallhack.
+  </Param>
+  <Param name="DotNetVar.Type.CUSTOM">
+    With a `write_fn` / `read_fn` pair, replicates any type at all.
+    `on_change(handler)` adds a per-property callback.
+  </Param>
+  <Param name="DotNetSpawner.register_factory(id, callable)">
+    How entities are constructed, when a prefab scene is not enough.
+    `register_prefab` is the simple form.
+  </Param>
+  <Param name="DotNetManager.send_fn" type="Callable">
+    `func(peer_id, payload, delivery)`. The whole transport boundary. Receiving
+    is `receive(payload, from_peer_id)`.
+  </Param>
+  <Param name="DotNetConfig">
+    `tick_rate`, `snapshot_rate`, `mtu`, `per_client_budget`,
+    `per_client_packet_rate`, `interpolation_buffer`, `adaptive_interpolation`,
+    `max_extrapolation_sec`, `enable_prediction`, `reconcile_smooth_sec`,
+    `reconcile_snap_distance`, `input_margin_ticks`, `adaptive_input_margin`,
+    `enable_lag_compensation`, `max_rewind_sec`, `history_sec`,
+    `interest_cell_size`, `interest_linger_sec`, `max_entities_per_snapshot`,
+    `max_tracked_entities`, `world_extent`, `position_step`, `velocity_bits`,
+    `rotation_bits`.
+  </Param>
+  <Param name="Signals">
+    `ticked`, `snapshot_sent`, `snapshot_applied`, `entity_spawned`,
+    `entity_despawned`, `registered`, `unregistered`, `owner_changed`,
+    `became_owner`, `net_spawned`, `net_despawned`.
+  </Param>
+</Params>
+
+## Determinism is a requirement, not an aspiration
+
+`_net_simulate` must be deterministic across machines or reconciliation will not
+converge — which rules out Godot's physics for anything needing exact agreement.
+Read nothing that differs between machines: no wall clock, no unseeded random,
+no other players' unpredicted state.
+
+<Callout type="warning" title="`_net_state_applied` must not move the node on a predicted entity">
+`receive_snapshot` calls it *before* `DotNetPredictor.reconcile`, and the first
+thing reconcile does is capture the node as "what the client is showing" in
+order to measure the correction. Writing the server's position there first makes
+the measured error the entire replay distance: the correction rate reads 0.9,
+every reconciliation logs a snap, and the simulation was right the whole time.
+Three separate games shipped this line.
+</Callout>
+
+<Callout type="warning" title="`_net_interpolated` is a different hook, and you need both">
+`_net_state_applied` runs when a *snapshot* arrives — a few times a second — and
+is where a game adopts authoritative state. `_net_interpolated` runs every
+*frame* on a remote entity, after the smoothed value has been written. Without
+it a game copies replicated state into its nodes at the snapshot rate while the
+interpolated value sits in a property nobody read, and it looks exactly like a
+broken interpolator.
+</Callout>
+
+## Three things a host has to do that nothing here can
+
+- **Feed `DotNetStats.note_rtt`.** `receive_snapshot` reads
+  `rtt_percentile(0.5)` on every snapshot to drive the clock, and dot-net never
+  touches a transport — so nothing inside it can write a sample. Point an
+  `rtt_source` at your link's ping.
+- **Adopt the server's tick rate on the client**, including
+  `Engine.physics_ticks_per_second`. A client counting at its own rate replays
+  prediction at the wrong step and reconstitutes every replicated time through
+  the wrong divisor.
+- **Interpolate at a fractional tick.** `clock.server_tick()` returns an int and
+  only moves inside `advance()`, so a renderer sampling it draws the same
+  instant on every frame inside one physics step. A renderer wants
+  `Engine.get_physics_interpolation_fraction()`.
+
+Each of those was a real bug whose every *simulated* value was correct. Nothing
+in this collection renders between ticks by default; that mapping is the game's.
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server) — the dedicated server around it
+- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller) — a simulation built to be predicted
+- [Reference games](/learn/godot/games) — where the bridges are written
+</Related>

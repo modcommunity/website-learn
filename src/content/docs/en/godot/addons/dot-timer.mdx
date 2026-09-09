@@ -1,0 +1,160 @@
+---
+title: dot-timer
+description: Speedrun timers for bunny-hop, surf, KZ and anything against the clock — zones a mapper draws in the world, tracks, stages, styles, practice checkpoints, replays and records, counted in ticks with sub-tick crossings.
+navTitle: dot-timer
+order: 150
+keywords:
+  - "timer"
+  - "speedrun"
+  - "surf"
+  - "bhop"
+  - "KZ"
+  - "zones"
+  - "records"
+  - "splits"
+  - "replay"
+  - "checkpoint"
+  - "practice"
+  - "tickrate"
+  - "sub-tick"
+source:
+  - ../game-dev/godot/dot-timer/README.md
+  - ../game-dev/godot/dot-timer/CLAUDE.md
+---
+
+**The whole design is one sentence: a time is a tick count plus two sub-tick
+fractions.**
+
+A float accumulator drifts. A tick counter alone quantises every run to the
+server's tickrate, so the same play is worth up to 15 ms more at 64 Hz than at
+128 Hz — and on a leaderboard sorted to the millisecond, the tickrate then
+decides the ordering. Two servers cannot share a records table until that is
+gone, and a shared records table is the whole social object of this genre.
+Measured: 64 Hz and 128 Hz agree to under a millisecond, where counting whole
+ticks puts them 7.8 ms apart.
+
+```gdscript
+var manager := DotTimerManager.new()
+manager.authoritative = true          # on the server. A client leaves this false.
+manager.store = DotTimerStoreFile.at("user://records")
+add_child(manager)
+
+manager.set_styles(DotTimerStyle.defaults())
+manager.adopt_engine_tick_rate()      # whatever sv_tickrate says
+manager.load_zones("res://maps/surf_beginner.zones.json")
+manager.add_player(&"p1", "Christian")
+
+manager.record_accepted.connect(func(record, previous, rank):
+    print("%s — rank %d" % [record.formatted_time(), rank]))
+```
+
+and once per **simulated** tick, from your movement loop:
+
+```gdscript
+manager.tick_player(&"p1", state.position, state.velocity,
+                    state.is_grounded(), alive, state.yaw, state.pitch)
+```
+
+<Callout type="warning" title="Not from `_process`">
+A timer sampled per frame counts a different number of ticks on a 144 Hz monitor
+than on a 60 Hz one, and the player's time then depends on their hardware. The
+rate comes from `sv_tickrate` through `Engine.physics_ticks_per_second`, never
+from an export on a node — a timer counting 128 a second on a server stepping 64
+produces times exactly twice what they should be, with nothing erroring.
+</Callout>
+
+## It depends on nothing but `dot-core`
+
+Deliberately. `DotTimerSample` asks for a position, a velocity and a grounded
+flag — naming `DotFpsState` would make the addon fail to parse in a project
+without it. That is what lets the same timer, records and replay format serve a
+3D surf map **and** a 2D racing course, into the same table.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotTimerZone.Kind">
+    What the timer reacts to in the world. `START`, `END`, `STAGE`,
+    `CHECKPOINT`, `RESPAWN`, `STOP`, `SLAY`, `TELEPORT`, `SPAWN`,
+    `SPEED_LIMIT`, `GRAVITY`, `AIR_ACCELERATE`, `PUSH`, `NO_JUMP`, `AUTO_HOP`,
+    `EASY_BHOP`, `FREESTYLE`, `SLIDE`, and **`CUSTOM`** with a `payload`
+    dictionary for anything a game invents.
+
+    Numbering is deliberately compatible with the zone types the genre's
+    existing tools use, because zones are traded between admins as files.
+  </Param>
+  <Param name="DotTimerZonePainter">
+    Drawing zones from inside the game, the way these maps have been zoned for
+    twenty years: walk to one corner, run a command, walk to the other, run it
+    again. It adds height above the marked corners for you, because both marks
+    are taken at your feet and a zone with no height is one nothing ever enters.
+  </Param>
+  <Param name="DotTimerZoneVolume2D / DotTimerZoneVolume3D">
+    Or draw them in the editor. `flatten_for_2d()` makes a box unbounded on Z,
+    which a 2D game needs — its positions are `(x, y, 0)` and a box authored
+    with a zero-thickness third axis contains nothing at all.
+  </Param>
+  <Param name="DotTimerStyle">
+    A ranking weight, a minimum time and the rules for a named style. Pair it
+    with a [`DotFpsStyle`](/learn/godot/addons/dot-fps-controller) of the same
+    id and the movement transform follows.
+  </Param>
+  <Param name="DotTimerStore subclass">
+    `put`, `top`, `best_for`, `rank_of`, `count_on`, `remove`. File and memory
+    ship; past a few thousand rows per board, point it at a database.
+  </Param>
+  <Param name="DotTimerRules">
+    What `can_record` refuses, and why. Each refusal is defending against a
+    specific exploit.
+  </Param>
+  <Param name="DotTimerConfig">
+    Layered like a server config, including `max_replay_seconds` — a recorder
+    with no ceiling is a player idling in a run for hours.
+  </Param>
+  <Param name="DotTimerHud">
+    Clock, split against a personal best or the record, speedometer, strafe
+    statistics. No art, no theme.
+  </Param>
+  <Param name="Signals">
+    `run_started`, `run_finished`, `run_stopped`, `stage_reached`,
+    `zone_entered`, `zone_exited`, `zones_changed`, `player_started`,
+    `player_finished`, `player_staged`, `player_stopped`, `stage_requested`,
+    `record_accepted`, `record_refused`, `effects_changed`, and
+    **`effect_requested`**.
+  </Param>
+</Params>
+
+<Callout type="warning" title="`effect_requested` is the one you must connect">
+The timer must **not** act on a respawn — what "respawn" means differs in a
+first-person game, a 2D game and a replay being scrubbed. So `RESPAWN`, `SLAY`
+and `TELEPORT` zones emit and the game acts. When nothing was emitting it, a
+player who fell off a surf map fell for ever and every map's pit volume was
+decoration, in two games, with nothing erroring anywhere — because "reached a
+RESPAWN zone and did nothing" is indistinguishable from correct behaviour at
+every point inside the timer.
+</Callout>
+
+## Replays and practice
+
+**Replays** are quantised and delta-encoded to under 12 bytes a frame, with
+playback sampled *at a time* so it runs at the right speed on any monitor.
+
+**Practice mode** is `+cp` / `+tp` checkpoints with the taint rules the genre
+expects — saving is free, restoring costs you the run.
+`DotTimerStyle.allow_checkpoints` gates whether a *practised* run can be
+**ranked**, not whether practice exists at all: a ranked style nobody can learn
+the map on is the opposite of what a records server wants.
+
+<Callout type="info" title="A thin zone is the classic way to lose a run">
+A player crossing a finish line at 30 m/s covers 23 cm in one tick at 128 Hz and
+47 cm at 64 Hz. A finish volume thinner than that is not sampled on the tick the
+player is inside it, and the run never ends. `min_thickness()` is advisory and
+is the first thing to check when a zone "does not work".
+</Callout>
+
+<Related>
+- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller) — the movement half
+- [`dot-map`](/learn/godot/addons/dot-map) — where the zones come from
+- [`dot-leaderboard`](/learn/godot/addons/dot-leaderboard) — where the times go
+- [game-g2gfast](/learn/godot/games#game-g2gfast)
+</Related>

@@ -1,0 +1,142 @@
+---
+title: dot-map
+description: Maps as content rather than as builds — a catalogue, a rotation with a cooldown, a map time limit with rock-the-vote, nominations and voting, and a loader that fetches through dot-cloud.
+navTitle: dot-map
+order: 160
+keywords:
+  - "maps"
+  - "levels"
+  - "rotation"
+  - "changelevel"
+  - "nextmap"
+  - "rtv"
+  - "nominate"
+  - "catalogue"
+  - "map sync"
+source:
+  - ../game-dev/godot/dot-map/README.md
+  - ../game-dev/godot/dot-map/CLAUDE.md
+---
+
+**One Godot game, a hundred maps, switched under live players.**
+
+The obvious way to ship a hundred surf maps is a hundred Godot projects. At map
+forty that is a hundred export pipelines, a hundred copies of every addon, a
+player who downloads a whole game to try one map, and records that cannot be
+compared because each project has its own.
+
+A map here is an id, a version, a scene path and optionally a
+[`dot-cloud`](/learn/godot/addons/dot-cloud) pack.
+
+```gdscript
+var session := DotMapSession.new()
+session.world_ref = DotNodeRef.of_path(^"../World")
+add_child(session)
+
+session.load_catalogue("res://maps/catalogue.json")
+await session.change_to(&"surf_beginner")
+```
+
+```json
+{
+  "format": 1,
+  "maps": [
+    {
+      "id": "surf_beginner", "version": "1.0.0", "name": "Surf Beginner",
+      "kind": "surf", "tier": 1,
+      "scene": "res://maps/surf_beginner/map.tscn",
+      "zones": "res://maps/surf_beginner/zones.json"
+    },
+    {
+      "id": "surf_kitsune", "version": "2.1.0", "kind": "surf", "tier": 6,
+      "content": "surf_pack_2024",
+      "scene": "res://packs/surf_pack_2024/kitsune/map.tscn"
+    }
+  ]
+}
+```
+
+The second map is **delivered**: its scene lives inside a pack that is fetched
+and mounted before the scene is loaded.
+
+## Rotation, time limit and voting
+
+```gdscript
+session.rotation.mode = DotMapRotation.Mode.RANDOM
+session.rotation.cooldown = 5          # recently played, off the menu
+
+session.map_seconds = 1800.0
+session.time_limit.rtv_fraction = 0.6
+
+session.map_over.connect(func(map, reason):
+    await session.change_to(session.rotation.choose(player_count).id))
+
+session.advance(delta)                 # once per simulated tick
+session.rock_the_vote(player_id, player_count)
+```
+
+The catalogue is deliberately **not** the rotation: what maps exist and what
+plays next are different questions, and a server that answers them with one list
+cannot have a map installed but out of rotation.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotMapDef in a catalogue">
+    Id, version, name, kind, tier, scene, zones, content pack, and a `meta`
+    dictionary for whatever your game needs. A JSON file an operator edits.
+  </Param>
+  <Param name="DotMapRotation / DotMapVote">
+    What plays next: modes, cooldowns, a pool that respects player count,
+    nominations and a tally. Or hand the whole question to
+    [`dot-vote`](/learn/godot/addons/dot-vote) through `DotVoteMapSource`.
+  </Param>
+  <Param name="DotMapTimeLimit">
+    Seconds, warnings, extending with a cap, and the rock-the-vote fraction.
+  </Param>
+  <Param name="DotMapLoader">
+    Resolves a map to a scene, reaching `dot_cloud_client` **through the
+    registry** rather than by name — so a project with no `dot-cloud` still
+    parses and still loads maps off its disk.
+  </Param>
+  <Param name="DotMapSyncHost.send_fn / DotMapSyncClient.send_fn" type="Callable">
+    How a map change reaches clients: announce, progress, ready, load, abort.
+    `on_timeout_fn` decides what to do about a straggler.
+  </Param>
+  <Param name="DotMapSyncClient.accept_unknown_maps">
+    What a client will load on a host's say-so. Off is the safe default.
+  </Param>
+  <Param name="Signals">
+    `changing`, `changed`, `change_failed`, `change_finished`,
+    `change_aborted`, `fetching`, `fetch_progress`, `fetch_failed`,
+    `content_ready`, `sync_progress`, `peer_progress`, `peer_timed_out`,
+    `map_over`, `time_warning`, `extended`, `rocked`, `opened`, `voted`,
+    `closed`.
+  </Param>
+</Params>
+
+<Callout type="warning" title="A map change is not a game change">
+Changing a **game** replaces the module, the netcode and the client's scene and
+puts everybody through signon. Changing a **map** replaces the world and nothing
+else, and happens every few minutes. `addons/dot_map/net/` is deliberately its
+own protocol rather than dot-server's game change.
+
+Before it existed, `DotMapSession` swapped the world in its own process and said
+nothing to any peer — so a dedicated server changing map left every client
+playing a world that no longer existed.
+</Callout>
+
+<Callout type="info" title="`ensure` and `is_mounted`, not `acquire` and `is_ready`">
+The loader has asked a cloud client for `ensure(content_id, version)` and
+`is_mounted(content_id, version)` since the day it was written. When `dot-cloud`
+offered a different pair, every *delivered* map failed with "the registered
+cloud client does not speak the content interface" — and the only loader test
+ran with no cloud client at all, taking the branch that falls back to the disk
+and passes.
+</Callout>
+
+<Related>
+- [`dot-cloud`](/learn/godot/addons/dot-cloud)
+- [`dot-timer`](/learn/godot/addons/dot-timer) — the zones a map carries
+- [`dot-vote`](/learn/godot/addons/dot-vote)
+</Related>

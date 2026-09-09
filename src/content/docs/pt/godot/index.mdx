@@ -1,0 +1,198 @@
+---
+title: Dot para Godot
+description: A coleção Dot — vinte e dois complementos de código aberto para Godot 4, um lançador, uma ferramenta de servidor e cinco jogos de referência que acrescentam identidade, entrega de conteúdo, código de rede, servidores dedicados e um kit de género por cima do Godot normal.
+navTitle: Dot para Godot
+order: 0
+keywords:
+  - "godot"
+  - "gdscript"
+  - "dot-core"
+  - "complemento"
+  - "addon"
+  - "plugin"
+  - "recurso"
+  - "desenvolvimento de jogos"
+  - "motor"
+  - "4.7"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/PLATFORM.md
+---
+
+**Dot** é a coleção de recursos para Godot 4 da The Modding Community: vinte e
+dois complementos, um lançador de linha de comandos, uma ferramenta de servidor
+e cinco jogos que existem para pôr os complementos a funcionar em conjunto. No
+site estão como a [coleção de recursos Dot](/co/4-dot-assets) e no GitHub em
+[`modcommunity`](https://github.com/modcommunity).
+
+Acrescentam as partes de uma plataforma de jogo que não são funcionalidades do
+motor — contas, avatares, entrega de conteúdo, código de rede, servidores
+dedicados, moderação, cronómetros, classificações — como **camadas por cima do
+Godot normal**. Um jogo que não queira nada disto continua a ser um projeto
+Godot vulgar.
+
+<Cards>
+  <Card title="Os complementos" href="/learn/godot/addons">
+    Os vinte e dois, para que serve cada um e todos os ganchos que expõe.
+  </Card>
+  <Card title="Pontos de extensão" href="/learn/godot/extending">
+    O índice único de tudo o que se pode derivar, atribuir ou registar — e a
+    promessa de que nada disso obriga a um fork.
+  </Card>
+  <Card title="Convenções" href="/learn/godot/conventions">
+    As regras que cada complemento cumpre: sem autoloads, `DotResult`,
+    `DotNodeRef`, configuração em camadas, e porque é o navegador a decidir
+    metade delas.
+  </Card>
+  <Card title="Instalação" href="/learn/godot/installing">
+    Copiar uma pasta, ativar um plugin. Mais a versão do motor, as ligações para
+    desenvolvimento local e a verificação em dois passos a seguir.
+  </Card>
+</Cards>
+
+<Callout type="warning" title="Trate isto como parcialmente testado">
+Cada recurso tem o seu próprio conjunto de testes sem interface e esses testes
+passam, mas muito pouco disto esteve à frente de jogadores reais. Conte com
+arestas por limar e reporte o que encontrar. A coleção foi construída com o
+Claude Code e é mantida da mesma forma — isso está dito logo no README de cada
+repositório em vez de escondido.
+</Callout>
+
+## Não estamos a bifurcar o Godot
+
+Vale a pena resolver isto primeiro, porque «um fork do Godot» e «complementos
+para o Godot» levam a projetos diferentes e só um deles se consegue terminar.
+
+Um fork significa assumir o ritmo de lançamentos do motor, os seus modelos de
+exportação para seis plataformas, a sua compilação web e todos os rebases para
+sempre — e assim que diverge, um jogo escrito para ele deixa de poder usar o
+que quer que seja da biblioteca de recursos do Godot. O que as pessoas querem
+mesmo dizer com «plataforma» não são funcionalidades do motor: identidade,
+avatares, entrega de conteúdo, servidores dedicados, moderação, descoberta.
+Cada uma delas é uma camada *por cima* de um motor.
+
+Portanto: **Godot normal, mais complementos, mais um protocolo de backend
+aberto.**
+
+## Só o `dot-core` é alguma vez uma dependência rígida
+
+É a regra à volta da qual toda a coleção foi construída e, em GDScript, não é
+uma mera preferência: **um script que apenas *menciona* um `class_name` que o
+projeto não tem falha a analisar** e leva atrás todos os scripts que o
+referenciam. Um complemento que importasse outro tornaria esse outro
+obrigatório para toda a gente.
+
+Por isso tudo o resto é descoberto em tempo de execução, resolvido por *duck
+typing*, ou ligado pelo próprio jogo:
+
+- O `dot-server` encontra o `dot-auth` e o `dot-cloud` através do
+  [`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads) e
+  não importa nenhum deles.
+- O `dot-net` só precisa do `dot-core` e move bytes através de um `Callable`.
+- O `dot-fps-controller`, o `dot-combat`, o `dot-loadout`, o `dot-match` e o
+  `dot-2d` trazem cada um uma classe `*NetSync` que descreve o que replicar
+  **como dados** — nomes de propriedades e de tipos em *cadeias de caracteres* —
+  que uma ponte resolve com `DotNetVar.Type[spec.type]`. Nenhum nomeia um
+  identificador do `dot-net`.
+- O `dot-combat` recebe a compensação de latência como dois `Callable`.
+- O `dot-ui` não nomeia nada fora do `dot-core`: o seu histórico recebe
+  fragmentos coloridos e a sua tabela recebe linhas de dicionários.
+- O `dot-user` e o `dot-user-avatar` não se importam mutuamente, e o
+  `dot-loadout` traz a sua própria cópia de uma verificação de chave de
+  armazenamento pela mesma razão.
+
+<Callout type="info" title="Aqui a duplicação é deliberada">
+Quando dois complementos partilham as mesmas vinte linhas, isso é o preço da
+regra acima, não um descuido. Juntá-las numa importação partilhada é exatamente
+como um complemento se torna dependência de outro.
+</Callout>
+
+## Como as peças se empilham
+
+```
+                        ┌──────────────┐
+                        │   dot-core   │  logging, capabilities, paths,
+                        │              │  node refs, config, jobs,
+                        └──────┬───────┘  transports, HTTP
+      ┌───────────┬────────────┼────────────┬───────────┬──────────┐
+      ▼           ▼            ▼            ▼           ▼          ▼
+┌───────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌────────┐ ┌────────┐
+│ dot-cloud │ │ dot-auth │ │ dot-net │ │dot-server│ │ dot-ui │ │ dot-2d │
+└─────┬─────┘ └────┬─────┘ └─────────┘ └────┬─────┘ └────────┘ └────────┘
+      │            │                        │
+┌─────┴─────┐ ┌────┴───────────┐    ┌───────┴────────┐
+│ dot-user  │ │dot-user-avatar │    │  dot-platform  │
+└───────────┘ └────────────────┘    └────────────────┘
+
+      ┌──────────────────┬──────────────┬─────────────┐
+      ▼                  ▼              ▼             ▼
+┌────────────┐    ┌────────────┐  ┌───────────┐ ┌──────────────────┐
+│ dot-combat │    │dot-loadout │  │ dot-match │ │dot-fps-controller│
+└────────────┘    └────────────┘  └───────────┘ └──────────────────┘
+      └──────────────────┴──────────────┴─────────────┘
+                               │  cada um destes precisa
+                               ▼  APENAS do dot-core
+                    ┌──────────────────────┐
+                    │      o teu jogo      │  as pontes vivem aqui
+                    └──────────────────────┘
+```
+
+As setas são relações *opcionais* em todo o lado menos na linha de topo. Leia-as
+como «funciona melhor com», não como «exige».
+
+## Os três grupos
+
+**A metade de plataforma** — `dot-core`, `dot-cloud`, `dot-auth`, `dot-net`,
+`dot-server`, `dot-user`, `dot-user-avatar`, `dot-platform`. Quem é um jogador,
+qual é o seu aspeto, como obtém conteúdo, e o servidor dedicado a que se liga.
+
+**A metade de jogabilidade** — `dot-fps-controller`, `dot-2d`, `dot-combat`,
+`dot-loadout`, `dot-match`, `dot-ui`. Movimento, armas, equipamento, o ciclo da
+partida e a interface. Cada um precisa apenas do `dot-core`.
+
+**O kit de género** — `dot-timer`, `dot-map`, `dot-props`, `dot-leaderboard`,
+`dot-stats`, `dot-voice`, `dot-moderation`, `dot-vote`. Tudo o que é preciso
+para *manter um servidor* a que as pessoas voltam: uma tabela de recordes, uma
+rotação de mapas, uma votação sobre o que se joga a seguir, sanções que
+sobrevivem a uma sessão.
+
+## O kit de género é uma estratégia, não uma lista de funcionalidades
+
+O problema da coleção nunca foi faltarem funcionalidades. É que **ninguém tem
+motivo para ser a primeira pessoa numa plataforma nova**, e uma família de
+complementos generalista não fornece esse motivo. Um género, sim.
+
+O escolhido foi o surf e o bunny-hop — a comunidade de movimento do
+Counter-Strike, que em 2026 continua a correr servidores Source com um plugin
+de cronómetro escrito para um SDK aberto pela última vez em 2013. É um bom
+primeiro género por quatro razões, e só a quarta é sobre nós:
+
+1. **O movimento é o mais difícil de acertar.** Quase ninguém reproduz a
+   aceleração do Quake e o `TryPlayerMove` do Source ao ponto de quem faz surf
+   há dez anos não sentir logo a diferença.
+2. **Tem o formato de um servidor.** Uma comunidade de surf *é* um servidor: uma
+   rotação, uma tabela de recordes, um administrador que zona mapas novos,
+   habituais que se importam com a classificação.
+3. **O seu conteúdo é portátil e feito pela comunidade.** Os mapas vêm de quem
+   os desenha, as zonas de administradores, e ambos são trocados como ficheiros.
+4. **É pequeno o suficiente para se terminar.** Quatro complementos e um jogo
+   jogável.
+
+## Tudo é MIT, exceto o backend
+
+Os complementos, os jogos e as ferramentas são de código aberto sob licença MIT.
+A única coisa que não é é a **infraestrutura web do backend** — a instalação da
+própria TMC. Cada complemento que fala com ela fá-lo por um protocolo HTTP
+documentado e aponta para um `backbone_url` que se pode mudar: um projeto que
+queira o seu próprio backend constrói-o e muda uma definição.
+
+<Related>
+- [Os complementos](/learn/godot/addons) — os vinte e dois, com os seus ganchos
+- [Pontos de extensão](/learn/godot/extending) — o índice completo numa tabela
+- [Convenções](/learn/godot/conventions) — as regras que todos cumprem
+- [Jogos de referência](/learn/godot/games) — onde as costuras são mesmo postas a correr
+- [Ferramentas](/learn/godot/tooling) — o `dotserve` e a ferramenta de servidor da TMC
+- [API de integração](/learn/api/integration) — a metade de backend do `dot-stats`,
+  do `dot-leaderboard` e do repórter do servidor
+</Related>

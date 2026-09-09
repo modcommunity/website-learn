@@ -1,0 +1,153 @@
+---
+title: Outillage
+description: dotserve, le lanceur shell qui démarre un dot-server sans qu'il faille savoir comment dot-server fonctionne, et l'outil serveur de TMC — configuration en YAML, jeux chargés depuis un dossier, et un client navigateur.
+navTitle: Outillage
+order: 60
+keywords:
+  - "dotserve"
+  - "lanceur"
+  - "server.cfg"
+  - "systemd"
+  - "docker"
+  - "YAML"
+  - "hébergement"
+  - "client navigateur"
+  - "export web"
+source:
+  - ../game-dev/godot/dot-serve/README.md
+  - ../game-dev/godot/dot-server-setup-test/README.md
+---
+
+[`dot-server`](/learn/godot/addons/dot-server) est profondément configurable —
+cvars, flags, `server.cfg`, `autoexec.cfg`, arguments `+command`, RCON, et
+configuration en couches depuis un fichier, l'environnement et argv. Ce qui lui
+manquait, c'était une porte d'entrée. Voici la sonnette.
+
+## `dotserve`
+
+La seule pièce de la collection qui n'est pas un module Godot : un script shell
+qui a besoin de `bash` et d'un binaire Godot 4.7+.
+
+```bash
+./install.sh                 # crée des liens dans ~/.local/bin
+PREFIX=/usr/local/bin sudo ./install.sh
+```
+
+```bash
+dotserve                            # valeurs raisonnables, affiche une adresse de connexion
+dotserve --game res://games/arena   # un jeu précis
+dotserve --port 27015 --web         # écoute aussi les clients navigateur
+dotserve --restart                  # redémarre après un plantage
+dotserve -- +sv_cheats 1 +map dm_arena
+```
+
+Le premier lancement écrit un `server.cfg` commenté sous `~/.config/dotserve`,
+génère un mot de passe RCON et l'affiche une fois. Tous les lancements suivants
+lisent le fichier et n'y touchent jamais.
+
+### Ce qu'il fait et qu'on oublie facilement
+
+**Il affiche l'adresse qu'un ami peut coller**, y compris une adresse du réseau
+local — parce que « il dit qu'il a démarré et mon ami ne peut pas se connecter »
+est presque toujours une adresse d'écoute ou un pare-feu, et la première chose
+utile est de savoir sur quelle adresse le serveur se trouve vraiment.
+
+**Il refuse de démarrer avec un mot de passe RCON devinable.** Un mot de passe
+vide est acceptable et signifie que l'écouteur RCON ne s'ouvre pas du tout. Ce
+qui est refusé, c'est un texte de remplacement livré tel quel, copié d'un forum,
+ou laissé dans un modèle.
+
+**Le mot de passe RCON n'est jamais sur une ligne de commande.** `server.cfg` est
+écrit en mode 600 avant qu'on y mette quoi que ce soit. argv et l'environnement
+sont lisibles par tout autre processus de la machine et finissent tous deux dans
+des rapports de bug collés — la même raison pour laquelle
+`DotConfig.sensitive_keys` les refuse.
+
+**Il n'écrase jamais votre `server.cfg`.** Vos modifications *sont* la
+configuration du serveur.
+
+### Options qui valent la peine
+
+| | |
+| --- | --- |
+| `--dry-run` | Affiche la commande qu'il lancerait, et sort. |
+| `--print-config` | Affiche la configuration résolue, et sort. |
+| `--install-service [NOM]` | Affiche une unité systemd pour cette invocation. |
+| `--restart` | Redémarre après un plantage, avec un recul exponentiel plafonné à 60 secondes. |
+| `--web` / `--ws-port N` | Écoute aussi les clients navigateur. Par défaut `--port` + 1. |
+
+Les codes de sortie ont un sens, pour qu'un superviseur distingue une mauvaise
+configuration d'un plantage : `2` usage, `3` pas de Godot, `4` pas de projet,
+`5` mauvaise config, `6` port occupé. L'unité systemd générée les liste tous sous
+`RestartPreventExitStatus`.
+
+## L'outil serveur de TMC
+
+`dot-server-setup-test` est l'endroit où la collection se rassemble en quelque
+chose qu'un propriétaire de serveur démarre en une commande. C'est un projet
+Godot qui démarre un `dot-server`, lit sa configuration dans `cfg/*.yml`, charge
+des jeux depuis `content/` et sert un client navigateur — et il **ne livre aucun
+jeu à lui**.
+
+```bash
+./setup.sh              # trouve un runtime, câble les modules, écrit ./server
+./server                # démarrez-le
+
+docker compose up -d    # ou la même chose dans un conteneur
+```
+
+Windows : `setup.bat` (un habillage de `setup.ps1`), puis `server.cmd`.
+
+### Ce qu'il donne à un opérateur
+
+- **Une commande pour démarrer.** `setup.sh` trouve un runtime Godot, câble les
+  modules, écrit un `cfg/` commenté et écrit `./server`. Il n'écrase jamais un
+  fichier de configuration existant. RCON est livré désactivé.
+- **Configuration en YAML**, découpée par sujet — `server.yml`, `net.yml`,
+  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`. Tout ce
+  que `dot-server` expose en variable de console peut y figurer sous son propre
+  nom.
+- **Des rôles, pas des flags.** Le modèle de permissions de dot-server est fait
+  de flags, délibérément ; `groups.yml` est la traduction, donc un opérateur
+  écrit `admin: [kick, ban, mute]` et un joueur reçoit les flags.
+- **Des jeux chargés à l'exécution.** Un dossier sous `content/` contenant un
+  `game.yml` est un jeu, et `changelevel` passe de l'un à l'autre avec les
+  joueurs encore connectés.
+- **Les joueurs choisissent le jeu suivant.** `!nominate`, `!rtv`, `!votefor`,
+  `!timeleft`, `!nextmap` sur les jeux de `content/`, via
+  [`dot-vote`](/learn/godot/addons/dot-vote). Chaque jeu a sa propre limite de
+  temps dans son propre `game.yml`.
+- **Un client navigateur.** `./server export-web` le construit ; un seul export
+  sert tous les serveurs, parce que l'adresse vient de `?server=`.
+
+### La disposition, et pourquoi elle se divise en trois
+
+```
+cfg/       ce qu'un opérateur modifie
+content/   ce que le serveur sert
+data/      ce que le serveur écrit — from_yaml.cfg, admins.json, bans.json, audit.jsonl
+host/      le démarrage : YAML -> DotServer
+client/    la coquille du client. Elle ne connaît aucun jeu
+web/       la build navigateur, et la page qui prend ?server= dans l'URL
+```
+
+Un conteneur monte les deux premiers en lecture seule et le troisième en
+lecture-écriture, et une unité systemd pointe `ReadWritePaths` sur exactement un
+dossier.
+
+<Callout type="info" title="`data/from_yaml.cfg` est ce que votre YAML est devenu">
+Lisez-le quand un réglage semble ignoré. Le YAML est une **surface au-dessus du
+vocabulaire propre de dot-server**, pas un second vocabulaire, et ce fichier est
+la traduction.
+</Callout>
+
+C'est aussi le seul endroit où trois jeux sont compilés dans une même build et
+échangés sous des joueurs connectés, et le premier endroit où quoi que ce soit de
+cette collection a été chargé dans un navigateur.
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [`dot-vote`](/learn/godot/addons/dot-vote)
+- [Jeux de référence](/learn/godot/games)
+- [Référencer votre serveur sur le site](/learn/servers/listing)
+</Related>

@@ -1,0 +1,140 @@
+---
+title: dot-cloud
+description: Runtime content delivery for Godot — signed manifests, a content-addressed cache, resumable parallel downloads and version-namespaced mounting, in the browser as well as on desktop.
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "download"
+  - "manifest"
+  - "pck"
+  - "resource pack"
+  - "mount"
+  - "cache"
+  - "signature"
+  - "DLC"
+  - "patching"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+A server hands a client a manifest; the client downloads what it is missing,
+verifies it, and mounts it — on Windows, macOS, Linux, Android, iOS and in the
+browser.
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+Publishing is a headless CLI that produces a **static directory** — a
+`manifest.json` plus an `objects/` tree — that any web server or CDN hosts with
+no configuration:
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## The two constraints that shaped everything
+
+**Godot cannot unmount a resource pack.** Not slowly, not with a workaround —
+the API does not exist. So every content set gets its own versioned path,
+`res://<root>/<content_id>/<version>/`, and nothing ever needs replacing.
+"Unloading" means dropping references, not reclaiming the file table. That one
+fact is why swapping games at run time works at all.
+
+**Unsigned content is remote code execution.** A Godot pack can contain scripts,
+so a manifest decides what gets executed. `require_signed_manifests` defaults to
+on and the config refuses to validate without a trusted key. You can turn it off
+for a LAN or a first-party server; it warns every time.
+
+## What it does
+
+- **Content-addressed cache.** Files are stored under their SHA-256, so two
+  games sharing an asset download it once and republishing re-downloads only
+  what changed.
+- **Resumable parallel downloads.** Mirror failover, HTTP range resume, a
+  circuit breaker per source, bandwidth throttling, honest progress and ETA.
+- **Three sources.** HTTP/CDN, a local directory (development, LAN, bundled
+  content), and in-band over the game connection for a server with no web host.
+- **Quota awareness.** Browser storage estimates, mobile ceilings, and
+  least-recently-used eviction that never evicts content currently in use.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotCloudSource subclass">
+    `source_name()`, `is_supported()`, `can_serve(manifest)`, `fetch(...)`.
+    Three ship — `DotCloudSourceHttp`, `DotCloudSourceLocal`,
+    `DotCloudSourceNetchan` — and a fourth is yours: a torrent, a
+    platform-specific CDN, a signed S3 URL minter.
+
+    A `fetch` **must** write to `DotCloudStore.partial_path` for the file's
+    hash, resume from `partial_size` where it can, and finish through
+    `commit_partial`. That is the only place the hash is verified, and writing
+    into the object directory directly is exactly how unverified content gets
+    mounted.
+  </Param>
+  <Param name="can_serve() vs is_supported()">
+    The distinction earns its keep. A source can be perfectly healthy and still
+    have no way to reach *this* manifest — an HTTP source with no `base_urls`
+    against a manifest carrying no mirrors. Returning a failure from `can_serve`
+    means "skip me for this manifest, and say why", and is **not** recorded
+    against the circuit breaker.
+  </Param>
+  <Param name="priority" type="int">
+    On every source. Lower runs first; the in-band fallback deliberately sits
+    last.
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
+    `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
+    `verify_before_mount`, `resume_downloads`. Layered like every `DotConfig`.
+  </Param>
+  <Param name="Signals">
+    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
+    `content_ready`, `content_released`, `failed`.
+  </Param>
+</Params>
+
+## The content interface other addons expect
+
+Register a `DotCloudClient` and it publishes itself under `dot_cloud_client`.
+`dot-map`'s loader and `dot-server`'s game change both reach it through that
+name and call:
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="An absent cloud client is a legitimate configuration">
+Every call site treats "no `dot_cloud_client`" as "this deployment ships its
+content inside the build" — which is true for most of them, and is therefore
+indistinguishable from a client that failed to register. When a delivered map or
+a delivered game silently does nothing, check the registry first.
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) — maps as content
+- [`dot-server`](/learn/godot/addons/dot-server) — switching games under live players
+- [Conventions](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

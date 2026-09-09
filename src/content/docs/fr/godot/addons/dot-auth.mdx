@@ -1,0 +1,199 @@
+---
+title: dot-auth
+description: Connecte un joueur au service central, puis prouve qui il est à un serveur de jeu communautaire sans jamais confier à ce serveur une credential de son compte.
+navTitle: dot-auth
+order: 30
+keywords:
+  - "authentification"
+  - "connexion"
+  - "login"
+  - "code d'appareil"
+  - "PKCE"
+  - "ticket"
+  - "JWT"
+  - "RS256"
+  - "jeton de rafraîchissement"
+  - "invité"
+  - "2FA"
+source:
+  - ../game-dev/godot/dot-auth/README.md
+  - ../game-dev/godot/dot-auth/CLAUDE.md
+---
+
+Un serveur communautaire doit savoir qui est un joueur. Il ne doit **pas** se voir
+confier une credential valable pour tout son compte : un opérateur qui la
+détiendrait pourrait agir en tant que n'importe quel joueur ayant jamais rejoint
+son serveur. `dot-auth` répond à cela, et sa forme est celle des tickets de
+session Steam.
+
+```
+client ──(code d'appareil + PKCE)──> service central   qui suis-je
+client ──(jeton d'accès)───────────> DotAuthIssuer     interne, tenu par l'éditeur
+client <──(ticket signé)──────────── DotAuthIssuer     un serveur, quelques minutes
+client ──(ticket)──────────────────> serveur de jeu    vérifié HORS LIGNE
+```
+
+Le ticket est limité à une audience, de courte durée, à usage unique et signé en
+RS256. Un serveur peut le vérifier mais pas en émettre, et un ticket capté sur un
+serveur est refusé par tous les autres. Les opérateurs reçoivent une clé publique
+et rien d'autre.
+
+## Client
+
+```gdscript
+var auth := DotAuthClient.new()
+add_child(auth)
+auth.config = DotAuthConfig.new()
+auth.config.backbone_url = "https://moddingcommunity.com"
+auth.config.client_name = "Mon jeu"
+
+auth.device_code_ready.connect(func(user_code, url, _expires):
+    code_label.text = user_code
+    OS.shell_open(url))
+
+var res := await auth.sign_in()
+```
+
+Un flux par code d'appareil plutôt qu'un champ mot de passe : le mot de passe
+n'est donc jamais tapé ailleurs que sur le site, et le même code marche sur
+bureau, mobile, console et navigateur. Les joueurs qui reviennent ne voient jamais
+de code — `sign_in()` restaure depuis un jeton de rafraîchissement rotatif
+stocké.
+
+## Serveur
+
+```gdscript
+var auth := DotAuthServer.new()
+auth.config.strategy = DotAuthConfig.Strategy.TICKET
+auth.config.server_id = "eu-west-1"
+auth.config.ticket_public_key = ISSUER_PUBLIC_KEY
+add_child(auth)
+
+var res := await auth.authenticate({"ticket": from_client}, peer_address)
+```
+
+La vérification se fait hors ligne — pas d'aller-retour vers le service central à
+chaque connexion.
+
+## Quatre stratégies
+
+| | |
+| --- | --- |
+| `TICKET` | Serveurs publics. Le flux ci-dessus. |
+| `INTROSPECT` | Serveurs internes uniquement — l'opérateur détient une credential de compte vivante. Avertit au démarrage. |
+| `LOCAL` | Réseau local et développement. Des comptes dans un fichier JSON. |
+| `ANONYMOUS` | Tout le monde est invité. Les bannissements ne peuvent rien signifier. Avertit. |
+
+## Des comptes sans nuage
+
+`allow_local_profiles` permet à un visiteur de se créer un compte qui vit **sur ce
+serveur et nulle part ailleurs**, avec un profil et un avatar, persistant d'une
+visite à l'autre. C'est un *fournisseur* et non une stratégie, donc cela se
+compose : un serveur peut accepter en même temps des tickets du service central et
+des profils locaux.
+
+**C'est le serveur qui émet la credential — le client ne revendique pas une
+identité.** C'est là la différence avec les comptes hors ligne d'ailleurs, où le
+nom *est* l'identité et où quiconque tape le vôtre est vous.
+
+<Callout type="info" title="Un identifiant machine n'est délibérément pas utilisé">
+`OS.get_unique_id()` est vide sur web et iOS, il est fourni par le client et donc
+exactement aussi falsifiable qu'un nom, et il est partagé par tous les
+utilisateurs de cet ordinateur. Il est noté comme indice et seulement journalisé.
+(Ce n'est pas non plus une question qui échoue discrètement : le moteur émet une
+erreur *puis* renvoie `""`, d'où l'existence de `DotPlatform.has_unique_id()`
+pour demander d'abord.)
+</Callout>
+
+L'identifiant qu'il émet est une clé de joueur de 22 caractères, de la même forme
+que tout le reste ici : [`dot-user`](/learn/godot/addons/dot-user) et
+[`dot-user-avatar`](/learn/godot/addons/dot-user-avatar) rangent donc le profil et
+l'avatar d'un joueur local via leurs backends locaux ordinaires. Une plateforme
+complète, sans aucun service central.
+
+## Où un jeu se branche
+
+<Params>
+  <Param name="Sous-classe de DotAuthProvider">
+    `_provider_name()`, `_handles(credential)`, `_authenticate(credential)`,
+    `_validate()`. Enregistrez-la avec `DotAuthServer.add_provider`. C'est là que
+    viennent Steam, Epic, un bot Discord ou votre propre service.
+
+    Gardez `_handles` bon marché et purement structurel : « ce dictionnaire
+    contient-il mon champ ». Un fournisseur qui y fait du réseau le fait à chaque
+    tentative de connexion, y compris celles destinées à quelqu'un d'autre. Et un
+    fournisseur qui revendique une credential puis la refuse **a tranché** : le
+    serveur ne passe pas au suivant.
+  </Param>
+  <Param name="DotAuthAdminSource">
+    Fait correspondre groupes, rôles et revendications du site aux flags de
+    permission et niveaux d'immunité de
+    [`dot-server`](/learn/godot/addons/dot-server) — `group_flags`, `role_flags`,
+    `claim_flags`, `user_flags`, `group_immunity`, `base_immunity`. Ainsi « tous
+    les membres du groupe `moderators` peuvent expulser ici » tient en une règle
+    au lieu d'une liste d'utilisateurs éditée à la main. N'importe quel objet doté
+    de `lookup()` et `source_name()` peut le remplacer.
+
+    Les invités ne reçoivent jamais de permissions, et les rôles du site
+    n'accordent rien tant que vous ne les avez pas mappés.
+  </Param>
+  <Param name="DotBackboneClient">
+    Un serveur dédié qui rapporte son propre nombre de joueurs, sa carte et sa
+    liste de présents à sa fiche sur le site, avec la protection contre le rejeu
+    qu'exige l'[API d'intégration](/learn/api/integration). `roster_provider` et
+    `stats_provider` sont les deux `Callable` qui disent quoi rapporter.
+  </Param>
+  <Param name="DotAuthIssuer">
+    Le seul composant qui a besoin de la clé privée. Il fonctionne seul en
+    n'utilisant que des endpoints déjà existants : déployer le flux de tickets
+    n'exige donc aucune modification du service central.
+  </Param>
+  <Param name="DotAuthConfig">
+    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
+    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
+    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
+    `encrypt_token_store`, `web_handoff`.
+  </Param>
+  <Param name="Signaux">
+    `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
+    `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
+    `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
+    `profile_recognised`.
+  </Param>
+</Params>
+
+## Deux choses plus faibles qu'elles n'en ont l'air
+
+**`DotAuthServer.hash_password` est du SHA-256 salé × 4096, pas de l'argon2.**
+Godot ne livre aucune fonction de dérivation de clé pour mots de passe. Elle
+existe pour qu'un serveur de réseau local ne stocke pas de texte en clair ; les
+vrais comptes appartiennent au service central.
+
+**Sur le web, le chiffrement du magasin de jetons est de l'obscurcissement**,
+parce que la clé et le texte chiffré partagent une même origine.
+
+Les deux sont documentées là où cela compte, plutôt que présentées comme plus
+qu'elles ne sont.
+
+<Callout type="warning" title="Un endpoint par défaut est une propriété de sécurité">
+`backbone_url` a un temps pointé vers un domaine que personne ne possédait. Tout
+déploiement qui ne le remplaçait pas dirigeait la première requête d'un flux
+d'authentification vers un nom que n'importe quel inconnu pouvait acheter. Cela a
+échoué bruyamment uniquement parce que le nom ne résolvait pas — le jour où
+quelqu'un l'aurait enregistré, cela aurait commencé à échouer *silencieusement*.
+Le bon hôte est `moddingcommunity.com`.
+</Callout>
+
+<Callout type="info" title="Un navigateur n'a ni environnement ni argv">
+`DOT_AUTH_BACKBONE_URL` ne peut donc pas atteindre un client web. C'est à la place
+un fichier JSON embarqué dans l'export — délibérément **pas** un paramètre de
+requête, parce que cette URL décide où un code de connexion à usage unique est
+échangé, et qu'un lien capable de la détourner serait un lien de transfert de
+credential.
+</Callout>
+
+<Related>
+- [`dot-user`](/learn/godot/addons/dot-user) — le profil derrière l'identité
+- [`dot-platform`](/learn/godot/addons/dot-platform) — tout cela réuni
+- [API de l'application](/learn/api/app/auth) — l'autre moitié du code d'appareil
+</Related>

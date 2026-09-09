@@ -1,0 +1,146 @@
+---
+title: dot-cloud
+description: Entrega de conteúdo em tempo de execução para o Godot — manifestos assinados, uma cache endereçada por conteúdo, descargas paralelas retomáveis e montagem com espaço de nomes por versão, também no navegador.
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "descarga"
+  - "manifesto"
+  - "pck"
+  - "pacote de recursos"
+  - "montar"
+  - "cache"
+  - "assinatura"
+  - "DLC"
+  - "atualizações"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+Um servidor entrega um manifesto a um cliente; o cliente descarrega o que lhe
+falta, verifica-o e monta-o — em Windows, macOS, Linux, Android, iOS e no
+navegador.
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+A publicação é feita por uma CLI sem interface que produz um **diretório
+estático** — um `manifest.json` mais uma árvore `objects/` — que qualquer
+servidor web ou CDN serve sem configuração:
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## As duas restrições que moldaram tudo
+
+**O Godot não consegue desmontar um pacote de recursos.** Nem devagar, nem com um
+truque — a API não existe. Por isso cada conjunto de conteúdo recebe o seu
+próprio caminho com versão, `res://<root>/<content_id>/<version>/`, e nada tem
+nunca de ser substituído. «Descarregar» significa largar referências, não
+recuperar a tabela de ficheiros. Esse facto isolado é o que faz a troca de jogo em
+tempo de execução funcionar de todo.
+
+**Conteúdo não assinado é execução remota de código.** Um pacote do Godot pode
+conter scripts, por isso é um manifesto que decide o que se executa. O
+`require_signed_manifests` vem ligado e a configuração recusa validar-se sem uma
+chave de confiança. Pode desligá-lo para uma rede local ou um servidor próprio;
+avisa sempre.
+
+## O que faz
+
+- **Cache endereçada por conteúdo.** Os ficheiros ficam guardados sob o seu
+  SHA-256, por isso dois jogos que partilhem um recurso descarregam-no uma vez e
+  republicar só volta a descarregar o que mudou.
+- **Descargas paralelas retomáveis.** Troca entre espelhos, retoma por intervalos
+  HTTP, um disjuntor por fonte, limitação de largura de banda, e progresso e
+  estimativa honestos.
+- **Três fontes.** HTTP/CDN, uma pasta local (desenvolvimento, rede local,
+  conteúdo incluído) e em banda pela ligação do jogo, para um servidor sem
+  alojamento web.
+- **Consciência de quota.** Estimativas de armazenamento do navegador, tetos para
+  telemóvel, e remoção do menos usado recentemente que nunca remove conteúdo em
+  uso.
+
+## Onde um jogo se liga
+
+<Params>
+  <Param name="Subclasse de DotCloudSource">
+    `source_name()`, `is_supported()`, `can_serve(manifest)`, `fetch(...)`. Vêm
+    três — `DotCloudSourceHttp`, `DotCloudSourceLocal`, `DotCloudSourceNetchan` —
+    e a quarta é sua: um torrent, um CDN específico de uma plataforma, um gerador
+    de URLs S3 assinadas.
+
+    Um `fetch` **tem de** escrever em `DotCloudStore.partial_path` para o hash do
+    ficheiro, retomar a partir de `partial_size` quando puder, e terminar por
+    `commit_partial`. É o único sítio onde o hash é verificado, e escrever
+    diretamente no diretório de objetos é exatamente como conteúdo não verificado
+    acaba montado.
+  </Param>
+  <Param name="can_serve() versus is_supported()">
+    A distinção ganha o seu lugar. Uma fonte pode estar perfeitamente saudável e
+    ainda assim não ter forma de alcançar *este* manifesto — uma fonte HTTP sem
+    `base_urls` perante um manifesto sem espelhos. Devolver uma falha em
+    `can_serve` significa «salta-me para este manifesto, e a razão é esta», e
+    **não** conta para o disjuntor.
+  </Param>
+  <Param name="priority" type="int">
+    Em todas as fontes. O mais baixo corre primeiro; a alternativa em banda fica
+    propositadamente em último.
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
+    `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
+    `verify_before_mount`, `resume_downloads`. Em camadas como qualquer
+    `DotConfig`.
+  </Param>
+  <Param name="Sinais">
+    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
+    `content_ready`, `content_released`, `failed`.
+  </Param>
+</Params>
+
+## A interface de conteúdo que os outros complementos esperam
+
+Registe um `DotCloudClient` e ele publica-se sob `dot_cloud_client`. O carregador
+do `dot-map` e a troca de jogo do `dot-server` chegam-lhe por esse nome e chamam:
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="Um cliente de conteúdo ausente é uma configuração legítima">
+Todos os pontos de chamada tratam «não há `dot_cloud_client`» como «esta
+instalação traz o conteúdo dentro da compilação» — o que é verdade para a maioria
+deles, e portanto indistinguível de um cliente que não chegou a registar-se.
+Quando um mapa ou um jogo entregue não faz nada em silêncio, olhe primeiro para o
+registo.
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) — mapas como conteúdo
+- [`dot-server`](/learn/godot/addons/dot-server) — trocar de jogo com jogadores ligados
+- [Convenções](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

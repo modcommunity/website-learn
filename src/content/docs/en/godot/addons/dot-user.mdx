@@ -1,0 +1,123 @@
+---
+title: dot-user
+description: Player profiles that follow a person between servers without letting those servers work out that it is the same person — a per-scope pseudonymous id, display-name validation and pluggable storage.
+navTitle: dot-user
+order: 70
+keywords:
+  - "profile"
+  - "display name"
+  - "username"
+  - "pseudonymous"
+  - "HMAC"
+  - "scoped id"
+  - "privacy"
+  - "correlation"
+source:
+  - ../game-dev/godot/dot-user/README.md
+  - ../game-dev/godot/dot-user/CLAUDE.md
+---
+
+Display name, avatar reference, preferences. Resolved once on join, cached, and
+never re-read on the hot path.
+
+```gdscript
+var manager := DotUserManager.new()
+manager.server_id = "eu-west-1"
+add_child(manager)
+
+# identity is anything with uid, display_name and is_guest.
+var resolved := await manager.resolve(identity)
+```
+
+It imports nothing and is not an autoload. `DotUserManager` registers itself as
+`dot_user_manager`, which is how `dot-server` and `dot-user-avatar` find it.
+
+## The identity problem, and the answer
+
+The natural key for a profile is the account id. Hand it to every community-run
+server and any two operators can compare logs and reconstruct where a person has
+been. Nobody has to be malicious; it is a property of the identifier.
+
+So a server never sees the account id. It sees a **scoped id**:
+
+```
+scoped_id = base64url(HMAC-SHA256(key, scope + U+001F + account_id))[:22]
+```
+
+Stable for that player on that server, so bans and profiles work. Different on
+every other scope, so operators cannot correlate. Not reversible, because the
+key never leaves whoever mints identities.
+
+A player who *wants* to be recognised across a set of servers opts into a shared
+scope. A standalone server with no issuer generates its own key on first run and
+gets the same isolation for free.
+
+<Callout type="warning" title="Three properties, and dropping any one makes it theatre">
+The key never leaves the issuer. The derivation is a **keyed MAC**, not a hash —
+an unkeyed hash of a numeric id is reversible by enumeration in seconds. And
+opting into a shared scope is **per-scope**, not global: "recognise me across
+this community's servers" must not mean "recognise me everywhere".
+</Callout>
+
+## Display names
+
+A display name is the most hostile string a platform accepts — it is shown to
+every other player and chosen by the person it is shown for. `DotUserName`
+strips bidirectional overrides, zero-width characters, stacked combining marks
+and control characters, collapses whitespace, and refuses names that are empty,
+over-long, or made entirely of punctuation.
+
+It says nothing about whether a name is *offensive*. That is a policy question
+with a different answer in every community.
+
+By default an authenticated player cannot rename themselves — their name comes
+from their account, and a player who can override it can appear as somebody
+else. Guests have no account name, so they can pick one.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotUserStore subclass">
+    `_fetch`, `_store`, `_remove`, `_open`, `_close`, `_writable`,
+    `_store_name`. `Memory`, `Local` (JSON files) and `Backbone` (HTTP) ship.
+
+    **Absent is not an error.** A first-time player is the common case, and a
+    store that failed for them would make every new player a support ticket. A
+    failure means the store could not *answer*, which the manager treats
+    differently.
+  </Param>
+  <Param name="DotUserManager.name_filter" type="Callable">
+    The policy hook for what a name may be, on top of the structural
+    sanitising.
+  </Param>
+  <Param name="DotUserScope">
+    The derivation above, plus verification and key persistence. Point it at
+    your own issuer's key.
+  </Param>
+  <Param name="DotUserConfig">
+    Layered: exported defaults < JSON < `DOT_USER_*` < `--user-*`. Includes
+    `resolve_timeout_sec` — a store that never answers otherwise holds the
+    player at the profile stage for ever.
+  </Param>
+  <Param name="Signals">
+    `profile_resolved`, `profile_saved`, `name_changed`, `resolve_degraded`.
+  </Param>
+</Params>
+
+## Two storage rules, learned the hard way
+
+**Loads may be slow; lookups on the join path may not.** A resolved profile
+stays cached after the player leaves, so a map change does not re-read for
+everyone at once.
+
+**A failed read never destroys a profile.** If the store cannot answer, the
+player gets a *session-only* profile — marked by `created_at == 0` — that
+`save()` refuses to persist. Writing a fresh one would overwrite the real
+profile on disconnect, turning a network blip into data loss on the way *out*
+rather than on the way in.
+
+<Related>
+- [`dot-platform`](/learn/godot/addons/dot-platform) — where the scoped key is derived
+- [`dot-user-avatar`](/learn/godot/addons/dot-user-avatar)
+- [Account settings on the site](/learn/account/profile)
+</Related>

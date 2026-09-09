@@ -1,0 +1,161 @@
+---
+title: Installation
+description: Copiez un dossier de module, cochez un greffon, puis lancez la vérification en deux temps — avec la version du moteur, les liens de développement local, et pourquoi il y a un dépôt par ressource.
+order: 10
+keywords:
+  - "installer"
+  - "installation"
+  - "configuration"
+  - "greffon"
+  - "lien symbolique"
+  - "cloner"
+  - "4.7.2"
+  - "sans interface"
+  - "--import"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Tous les modules s'installent de la même façon, et la réponse est délibérément
+ennuyeuse : **copiez un dossier**.
+
+## Installer un module
+
+```bash
+# dot-core est requis par tout le reste. Copiez-le en premier.
+cp -r dot-core/addons/dot_core       mon-jeu/addons/
+cp -r dot-timer/addons/dot_timer     mon-jeu/addons/
+```
+
+Puis activez chacun dans *Projet → Paramètres du projet → Extensions*.
+
+<Callout type="info" title="L'interrupteur du greffon n'enregistre que les types de l'inspecteur">
+Toutes les classes sont disponibles via leur `class_name`, que le greffon soit
+activé ou non. L'activer met les ressources dans la boîte de dialogue *Créer une
+ressource* et les nœuds dans *Ajouter un nœud*.
+
+</Callout>
+
+**Ce qu'un module distribue, c'est son dossier `addons/<nom>/`, et rien
+d'autre.** Tout ce qui est en dehors dans le dépôt — `project.godot`,
+`examples/`, `fixtures/`, `icon.svg` — existe pour que le module puisse être
+ouvert et validé isolément, et n'est pas copié dans le projet consommateur.
+
+## Nécessite Godot 4.7 ou plus récent
+
+La collection a été construite sur 4.4 et vise désormais **4.7.2**. Chaque
+`project.godot` déclare `config/features=PackedStringArray("4.7")`,
+[`dotserve`](/learn/godot/tooling) et le `setup.sh` de l'outil serveur refusent
+tous deux une version plus ancienne, et le conteneur épingle `4.7.2-stable` avec
+sa somme de contrôle.
+
+La migration n'a rien coûté en GDScript : chaque rupture documentée en 4.5, 4.6
+et 4.7 — `JSONRPC.set_scope`, `Node.get_rpc_config`, les deux méthodes
+d'interpolation retirées de `RenderingServer`,
+`AudioEffectSpectrumAnalyzer.tap_back_pos`, les signatures OpenXR et
+TextServerExtension — n'apparaît nulle part dans ces dépôts.
+
+## Un dépôt par ressource
+
+**Chaque ressource est son propre dépôt Git et se clone individuellement.** Il
+n'y a pas de dépôt parent, donc aucun moyen de cloner toute la collection d'un
+coup.
+
+```bash
+git clone https://github.com/modcommunity/dot-core
+git clone https://github.com/modcommunity/dot-timer
+```
+
+C'est une conséquence de la façon dont on les consomme : quelqu'un qui veut un
+chrono de speedrun doit pouvoir prendre `dot-timer` et `dot-core`, et rien
+d'autre.
+
+## Travailler sur un module en local
+
+Tous les projets sauf `dot-core` ont besoin que `dot-core` soit présent rien que
+pour *s'ouvrir*, et les jeux ont besoin de tous les modules qu'ils utilisent. Ces
+liens sont ignorés par Git, parce qu'un consommateur copie les dossiers à la
+place :
+
+```bash
+cd dot-cloud   # ou n'importe quel projet de module
+ln -s ../../dot-core/addons/dot_core addons/dot_core
+```
+
+```bash
+cd game-arena
+for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
+            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
+            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
+  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
+done
+```
+
+[`dot-serve`](/learn/godot/tooling) n'a besoin de rien de tout cela : c'est un
+script shell qui trouve un binaire Godot à l'exécution.
+
+## La vérification en deux temps
+
+Il n'y a pas d'intégration continue. Chaque projet a la même vérification en
+deux temps, et **les deux comptent**.
+
+```bash
+cd <projet>
+
+# 1. Chaque script s'analyse.
+godot --headless --path . --import
+find . -name '*.gd' -not -path './.godot/*' | while read f; do
+    godot --headless --path . --check-only --script "res://${f#./}"
+done
+
+# 2. Ça marche vraiment.
+godot --headless --path . res://examples/<l-exemple>.tscn
+```
+
+<Callout type="warning" title="La passe --import n'est pas optionnelle">
+C'est elle qui enregistre les globales `class_name`. Sans elle, chaque référence
+de type inter-fichiers échoue et cela ressemble à des dizaines d'erreurs sans
+rapport — et **relancez-la après avoir ajouté le moindre script avec un nouveau
+`class_name`**, sinon l'identifiant ne se résout pas, la scène ne charge pas, et
+le processus *se bloque* au lieu d'échouer, parce que rien n'atteint
+`get_tree().quit()`.
+</Callout>
+
+L'étape 2 est celle qu'on saute, et c'est celle qui trouve les choses. Du
+GDScript qui s'analyse proprement peut être faux d'une manière que seule
+l'exécution révèle : un cache d'intérêt qui laissait tomber ce que l'observateur
+possédait, une ligne de temps de rendu qui n'avançait pas entre deux paquets, un
+`Dictionary` distribué par référence de sorte que chaque « copie » partageait un
+seul objet. Chaque exemple d'autotest sort avec un code non nul en cas d'échec,
+donc ils font office de tests de fumée tels quels.
+
+<Callout type="info" title="Encadrez toute exécution sans interface avec `timeout`">
+Une scène dont le script ne s'analyse pas se bloque au lieu d'échouer, et une
+scène sans script aussi. Quatre scènes d'exemple ne sont délibérément pas des
+autotests et ne se terminent jamais d'elles-mêmes.
+</Callout>
+
+## Trois cibles, un seul code
+
+Bureau (Windows, macOS, Linux), mobile (Android, iOS) et le navigateur. C'est
+dans le navigateur que sont les contraintes, et elles sont encodées dans le code
+plutôt que laissées au lecteur — voir
+[Conventions](/learn/godot/conventions#the-browser-decides-half-of-this).
+
+Le moyen le plus rapide de savoir ce qu'une build peut réellement faire :
+
+```bash
+godot --headless --path . res://examples/capability_report.tscn
+```
+
+Lancez-le sur chaque cible que vous livrez. C'est comme ça qu'on découvre que
+son export web n'a pas de threads, ou qu'un appareil n'annonce aucun quota de
+stockage — et les deux changent le comportement de
+[`dot-cloud`](/learn/godot/addons/dot-cloud).
+
+<Related>
+- [Conventions](/learn/godot/conventions)
+- [Les modules](/learn/godot/addons)
+- [Outillage](/learn/godot/tooling) — démarrer un serveur en une commande
+</Related>

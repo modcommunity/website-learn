@@ -1,0 +1,360 @@
+---
+title: 扩展点
+description: 游戏接入 Dot 合集的所有位置——可继承的抽象类、可赋值的 Callable、可创建的资源、可注册的名字，以及可分层覆盖的设置。
+navTitle: 扩展点
+order: 30
+keywords:
+  - "扩展"
+  - "继承"
+  - "重写"
+  - "钩子"
+  - "hook"
+  - "插件"
+  - "callable"
+  - "接口"
+  - "抽象类"
+  - "定制"
+source:
+  - ../game-dev/CLAUDE.md
+---
+
+**这套合集里没有任何东西应该需要你 fork。** 任何让下面这些接入点变得更难触及的
+改动，即便所有测试仍然通过，也算作回归。
+
+扩展点共有五类，而知道自己面对的是哪一类，就知道该去哪里找它。
+
+<Params>
+  <Param name="继承一个基类">
+    一个抽象类，带有一组有文档说明的、以 `_` 开头的可重写方法。存储、来源、
+    编解码器、规则、屏幕、模块。总共约三十个。
+  </Param>
+  <Param name="赋一个 Callable">
+    节点上的一个字段，通常叫 `*_fn` 或 `*_source`，用来回答插件刻意不去自行回答的
+    那一个问题：玩家在哪、属于哪队、字节该发到哪里。大约五十个。
+  </Param>
+  <Param name="创建一个 Resource">
+    一个 `.tres`，设计师在检查器里编辑：移动参数、模式、目录、规则、风格、地面
+    材质。完全不用写代码。
+  </Param>
+  <Param name="以某个注册名发布">
+    基于鸭子类型的接缝。把一个带有某个方法的对象注册到约定好的名字下，两个插件
+    就能协作，而彼此都不需要 import 对方。
+  </Param>
+  <Param name="分层覆盖一个设置">
+    所有 `DotConfig`：导出的默认值，然后是 JSON 或 YAML 文件，然后是环境变量，
+    然后是命令行。
+  </Param>
+</Params>
+
+## 完整索引
+
+| 要改什么 | 在哪里改 |
+| --- | --- |
+| 组件挂到哪个节点 | 每个组件上的 `DotNodeRef` |
+| 内容来源（CDN、磁盘、带内传输） | `DotCloudSource` 的子类 |
+| 玩家如何登录（Steam、Epic、你自己的） | `DotAuthProvider` 子类，`DotAuthServer.add_provider` |
+| 封禁记录存在哪（共享数据库、HTTP 服务） | `DotBanManager` 上的 `DotBanStore` 子类 |
+| 站点分组 → 服务器权限 | `DotAuthAdminSource`，或任何带 `lookup()` / `source_name()` 的对象 |
+| 服务器命令与行为 | `DotModule` 子类，或 `DotConsole.command` |
+| 服务器查询里关于游戏的内容 | `DotQueryProvider`，或 `DotModule.add_query_provider` |
+| 对某件事作出反应或加以否决 | `DotEventBus.hook_pre` / `hook_post` |
+| 复制什么、精度多高 | `DotNetVar` 声明；任意类型用 `Type.CUSTOM` |
+| 模拟、操作、消息 | `DotNetBehaviour`、`DotNetInput`、`DotNetMessage` 子类 |
+| 谁能看到什么 | `DotNetInterest` 子类 |
+| 实体如何被构造 | `DotNetSpawner.register_factory` |
+| 字节发往何处 | `DotNetManager.send_fn`，`DotTransport` 子类 |
+| 语音从哪来、到哪去 | `DotVoiceSource` / `DotVoiceSink` 子类 |
+| 语音编解码器 | `DotVoiceCodec` 子类，`DotVoiceCodec.register` |
+| 语音里谁能听见谁 | `DotVoiceRouter.team_fn` / `position_fn` / `listener_filter` |
+| 谁有资格开口 | 注册在 `dot_mute_source` 下、带 `is_voice_muted(peer)` 的任何对象 |
+| 处罚记录存在哪 | `DotPunishmentStore` 子类 |
+| 用哪个数据库存 | `DotSqlDriver` 子类，或 `DotPunishmentStoreRest` |
+| 一个 peer 如何对应到一个人 | `DotModerationManager.key_for_peer` |
+| 服务器执行谁的封禁名单 | 任何注册为 `dot_ban_source` 的对象 |
+| 同一地址最多能占几个客户端 | `sv_max_connections_per_ip`，`DotAddressGuard` |
+| 管理员如何指名一位玩家 | `DotServer.find_sessions` —— 名字、用户名、id、`ip:`、`@me` |
+| 玩家在哪、怎么把他移过去 | `DotModTools.position_fn` / `teleport_fn` |
+| 玩家加入时发生什么 | `DotPlatformModule`，或直接用 `DotPlatformHub.admit` |
+| 拥有权（entitlement）从哪来 | `DotPlatformHub.entitlement_source` |
+| 档案存在哪 | `DotUserManager` 上的 `DotUserStore` 子类 |
+| 名字可以长什么样 | `DotUserManager.name_filter` |
+| 玩家能穿戴什么 | `DotAvatarSchema` + `DotAvatarEntitlements` |
+| 形象存在哪 | `DotAvatarStore` 子类 |
+| 部件 id 如何变成资源 | `DotAvatarCatalogue.resolver` |
+| 移动手感 | `DotFpsTunables`，按实例或按 JSON 文件 |
+| 一种具名变体——侧身、低重力、prebhop | `DotFpsStyle` + `DotTimerStyle`，按 id 配对 |
+| 某种地面如何表现 | `DotFpsSurfaceSet` 中的 `DotFpsSurface` |
+| 一次临时改变——加速板、眩晕、弹射器 | `DotFpsModifier` |
+| 一整套全新的移动方式——梯子、水中、抓钩 | `DotFpsMoveMode` 子类 |
+| 玩家跟什么发生碰撞 | 通过 `DotFpsController._make_body` 的 `DotFpsBody` 子类 |
+| 输入设备、机器人、demo 回放 | `DotFpsSampler` / `Dot2DSampler`，或者自己构造指令 |
+| 计时器对世界里的什么作出反应 | `DotTimerZone.Kind`，在编辑器里画或用 `DotTimerZonePainter` |
+| 记录和排行榜存在哪 | `DotTimerStore` / `DotLeaderboardStore` 子类 |
+| 地图是什么、下一局玩什么 | 目录里的 `DotMapDef`；`DotMapRotation`、`DotMapVote` |
+| 换图如何传达给客户端 | `DotMapSyncHost.send_fn` / `DotMapSyncClient.send_fn` |
+| 客户端会因主机的一句话加载什么 | `DotMapSyncClient.accept_unknown_maps` |
+| 投票中的每一条策略 | `DotVoteRules`，55 个设置，像所有 `DotConfig` 一样分层 |
+| 能投票选什么，以及“玩这个”是什么意思 | `DotVoteSource` 子类，或 `DotVoteGameSource` / `DotVoteMapSource` / `DotVoteListSource` |
+| 投票中谁算玩家、管理员或观战者 | `DotVoteDirector.player_count_fn` / `is_admin_fn` / `is_spectator_fn` |
+| 一位玩家的票值多少 | `DotVoteDirector.weight_fn` |
+| 投票命令叫什么名字 | `DotVoteCommands.prefix` / `names` |
+| 能生成什么、能生成多少 | `DotPropCatalogue`、`DotPropLimits` |
+| 一个新的沙盒工具或武器 | `DotPropTool` 子类 |
+| 带代码的道具 | `DotPropDef.meta.script`，一个路径 |
+| 武器是什么 | `DotWeapon`，伤害方式看 `DotDamageType` |
+| 子弹往哪飞 | `DotTrace` 子类 —— `DotTracePhysics` 或 `DotTraceFlat` |
+| 具名身体部位及其倍率 | `DotHitGroup`，一张表而不是枚举 |
+| 友伤、自伤、上限 | `DotDamageRules`，外加 `DotDamageResolver.adjust` |
+| 打开延迟补偿 | `DotCombatManager.rewind_fn` / `restore_fn`，两个 callable |
+| 物品是什么、什么装得进哪 | `DotItem`、`DotLoadoutSlot`、`DotLoadoutSchema` |
+| 配装存在哪 | `DotLoadoutStore` 子类 |
+| 赢是什么意思 | `DotMatchRules` 子类 —— `_round_outcome`、`_round_winner` |
+| 玩家在哪出生 | `DotSpawnPoint`、`DotSpawnSelector.danger_fn` / `filter_fn` |
+| 一个屏幕是什么 | 注册到 `DotScreenStack` 的 `DotScreen` 子类 |
+| 界面长什么样 | `Theme`，或 `DotUiTheme` 的调色板。`dot-ui` 不带美术资源 |
+| 设置界面怎么搭 | 不用搭：`DotSettingsPanel` 会读你的 `DotConfig` |
+| 2D 里的东西怎么动 | `Dot2DTunables`，质量玩法再加 `Dot2DMassRules` |
+| 2D 里的东西跟什么碰撞 | `Dot2DBody` 子类 |
+| 长任务而不卡帧 | 挂在 `DotScheduler` 上的 `DotJob` 子类 |
+| 日志记录去哪 | `DotLogSink`，或用 `Callable` 调 `DotLog.add_sink` |
+
+## 按插件划分的继承点
+
+每一个都是抽象基类，带一小组有文档的方法。标了**必须**的没有可用的默认实现。
+
+<Params>
+  <Param name="DotTransport" type="dot-core">
+    **`_create_server`**、**`_create_client`**、`_transport_name`、
+    `_is_available`、`supports_web_clients`、`scheme`。`_is_available` 会在使用前
+    先检查，于是失败表现为启动时的“该构建无法以 ENet 开服”，而不是三次调用之后
+    冒出来的空 peer。
+  </Param>
+  <Param name="DotJob" type="dot-core">
+    **`_step`**（做有界的一小段；还有剩就返回 true）、`_progress`（0..1，或者在
+    确实未知时返回 **-1** —— 诚实的不确定进度条胜过一条会倒退的进度条）、
+    `_setup`、`_teardown`、`is_thread_safe`。
+  </Param>
+  <Param name="DotConfig" type="dot-core">
+    `env_prefix`、`cli_prefix`、`sensitive_keys`、`validate`。
+  </Param>
+  <Param name="DotLogSink" type="dot-core">
+    日志记录的处理器。`DotLog.add_sink(callable)` 是一行版本。
+  </Param>
+  <Param name="DotCloudSource" type="dot-cloud">
+    `source_name`、`is_supported`、`can_serve(manifest)`、**`fetch`**。`fetch`
+    必须写入 `DotCloudStore.partial_path`，能续传时从 `partial_size` 续，并通过
+    `commit_partial` 收尾——那是唯一校验哈希的地方。直接往对象目录里写，正是未校验
+    内容被挂载的途径。
+  </Param>
+  <Param name="DotAuthProvider" type="dot-auth">
+    `_provider_name`、**`_handles(credential)`**（要廉价、纯结构性判断）、
+    **`_authenticate(credential)`**、`_validate`。一个认领了凭据又拒绝它的
+    provider 已经做出了裁决：服务器*不会*再往下一个 provider 试。
+  </Param>
+  <Param name="DotNetBehaviour" type="dot-net">
+    `_register_net_vars`、`_net_ready`、`_net_removed`、`_net_simulate`、
+    `_net_state_applied`、`_net_interpolated`、`_net_read_property`、
+    `_net_write_property`。游戏继承得最多的一个类。
+  </Param>
+  <Param name="DotNetInput" type="dot-net">
+    **`_write`**、**`_read`**、`_sanitise`（约束任何客户端可能夸大的东西——量化
+    已经逐字段设了界，这里管的是字段*之间*的关系）、用于抑制冗余的 `_equals`。
+  </Param>
+  <Param name="DotNetMessage" type="dot-net">
+    **`_type_name`**（带命名空间；你自己的不应以 `net.` 开头）、**`_write`**、
+    **`_read`**、`_validate`。在 `_validate` 里校验，而不是在处理函数里：一个
+    会校验的处理函数，是别人复制时会漏掉校验的处理函数。
+  </Param>
+  <Param name="DotNetInterest" type="dot-net">
+    `_is_relevant`（多数策略只需重写这一个）、用于批量过滤的 `_candidates`、
+    每个快照重建一次索引的 `_prepare`、预算吃紧时用来排优先级的 `_score`。
+  </Param>
+  <Param name="DotModule" type="dot-server">
+    **`_module_name`**、`_module_version`、`_module_description`、
+    `_module_author`、**`_module_load`**、`_module_unload`、
+    `_module_game_changed`。通过辅助方法注册的命令、cvar 和钩子会被自动撤销；
+    定时器、文件和套接字才需要重写 `_module_unload`。
+  </Param>
+  <Param name="DotBanStore" type="dot-server">
+    `_store_name`、**`_load`**、`_put`、`_remove`、`_refresh`、`_writable`。
+  </Param>
+  <Param name="DotQueryProvider" type="dot-server">
+    `_provider_name`、**`_contribute(snapshot)`** —— 游戏就是这样把自己的状态
+    放进服务器查询里的。
+  </Param>
+  <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
+    三者形状相同：**`_fetch`**、`_store`、`_remove`、`_open`、`_close`、
+    `_writable`、`_store_name`。成功返回的 **null** 表示“这位玩家没有”，那不是
+    错误。
+  </Param>
+  <Param name="DotPunishmentStore" type="dot-moderation">
+    `store_name`、`is_writable`、**`load_all`**、`put`、`update`、`remove`。
+    后端是数据库时与 `DotSqlDriver`（`dialect`、`open`、`execute`、`query`、
+    `batch`）搭配使用。
+  </Param>
+  <Param name="DotTimerStore / DotLeaderboardStore" type="dot-timer, dot-leaderboard">
+    `put`、`top` / `page`、`best_for` / `entry_for`、`rank_of`、`count_on`、
+    `remove`。排序由管理器负责，存储不必自己做。
+  </Param>
+  <Param name="DotMatchRules" type="dot-match">
+    `_points_for_kill`、**`_round_outcome`**、`_round_winner`、`_respawn_delay`。
+    `DotRulesElimination` 是一个说明它用途的完整范例。
+  </Param>
+  <Param name="DotTrace" type="dot-combat">
+    只需 **`_world_ray`**。遍历碰撞盒、平局判给墙面、以及复原，都归基类管。
+  </Param>
+  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+    `sweep` / `move`、`overlaps`、`describe`。马达所需的碰撞查询，带一个用于保证
+    确定性的平面解析实现，以及一个用于真实几何的物理实现。
+  </Param>
+  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+    `_name`、`_enter`、`_exit`、**`_simulate`**、`_uses_crouch`。梯子、水中、
+    抓钩——都建立在马达自身的碰撞与加速之上。
+  </Param>
+  <Param name="DotVoiceCodec" type="dot-voice">
+    `id`、**`encode`**、**`decode`**、`bytes_for`、`is_stateful`、`reset`、
+    `duplicate_codec`。然后调用 `DotVoiceCodec.register(...)`，其余什么都不用改。
+    这就是 Opus GDExtension 接入的那道缝。
+  </Param>
+  <Param name="DotVoiceSource / DotVoiceSink" type="dot-voice">
+    `start`、`stop`、`has_frame` / `can_accept`、`read_frame` / `write_frame`、
+    `is_running`。把设备放到接口背后，是整条链路能有无界面测试套件的唯一原因。
+  </Param>
+  <Param name="DotVoteSource" type="dot-vote">
+    `source_name`、**`choices`**、`current_id`、`supports_apply`、`apply`。一个
+    什么都改不了的 source 也是合法的：director 发出 `change_due`，由宿主动手。
+  </Param>
+  <Param name="DotPropTool" type="dot-props">
+    `effective_reach`、`target`、`may_act_on`。随包提供的子类是 `DotPhysGun` 和
+    `DotGravGun`。
+  </Param>
+  <Param name="DotScreen / DotHudWidget" type="dot-ui">
+    `_screen_id`、`_on_push`、`_on_pop`、`_on_cover`、`_on_reveal`、`_can_pop`；
+    小部件则是 `_on_value`。`_can_pop` 要少用——一个拒绝关闭的屏幕，就是一个能把
+    玩家困住的屏幕。
+  </Param>
+</Params>
+
+## Callable 钩子
+
+插件知道该怎么干活，但它不认识你的世界。下面这些就是它拒绝去猜的问题，按它们
+回答什么来归类。
+
+**字节发往何处。** `DotNetManager.send_fn`、`DotVoiceManager.send_fn`、
+`DotVoiceRouter.send_fn`、`DotMapSyncHost.send_fn`、`DotMapSyncClient.send_fn`。
+这些插件都不持有套接字，正因如此 `dot-net` 既能跑在回环上，也能跑在真实传输层
+上，还能跑在你自己的实现上。
+
+**东西在哪。** `DotMatch.position_fn`、`DotVoiceRouter.position_fn`、
+`DotModTools.position_fn` / `teleport_fn`。`DotModTools` 刻意接受 `Variant`
+位置，好让 2D 成为一等使用者，而不是需要绕开的场景。
+
+**谁算作什么。** `DotDamageResolver.team_of`、
+`DotVoiceRouter.team_fn` / `listener_filter`、
+`DotVoteDirector.player_count_fn` / `is_admin_fn` / `is_spectator_fn` /
+`voters_fn` / `weight_fn`、`DotRulesElimination.alive_fn`、
+`DotModerationManager.key_for_peer`、`DotModTools.immunity_fn`。
+
+**玩家拥有什么、可以叫什么名字。**
+`DotLoadoutManager.entitlement_source`、`DotPlatformHub.entitlement_source`、
+`DotUserManager.name_filter`、`DotItemCatalogue.resolver`、
+`DotAvatarCatalogue.resolver`。
+
+**一枪要回溯到多久以前。** `DotCombatManager.rewind_fn` / `restore_fn`。两行
+代码就能打开延迟补偿；不设置时，射击按当前时刻结算——这对监听服务器是对的，对
+任何有延迟的人都是错的。
+
+**其余一切。** `DotSpawnSelector.danger_fn` / `filter_fn`、
+`DotDamageResolver.adjust`、`DotFpsMotor.surface_resolver`、
+`DotPickupField.wants_fn` / `tags_fn`、`DotHudWidget.source`、
+`DotStatBar.max_source`、`DotConVar.validator`、`DotConCommand.completer`、
+`DotBackboneClient.roster_provider` / `stats_provider`、
+`DotVoteDirector.announce_fn`、`DotVoteListSource.apply_fn`、
+`DotVoiceManager.sink_factory`、`DotNetVar.read_fn` / `write_fn` /
+`change_handler`、`DotNetSpawner.register_factory`。
+
+<Callout type="warning" title="没赋值的钩子并不是错误">
+它们几乎每一个在未赋值时都有一套站得住脚的行为，而这正是漏掉一个特别难查的原因：
+没接上的 `entitlement_source` 意味着玩家什么都不拥有；没赋值的 `rewind_fn`
+意味着没有延迟补偿；没赋值的 `key_for_peer` 意味着处罚被挂在了错误的键上。每个
+插件的 `describe_lines()` 都会报告自己缺了哪些——在断定功能坏掉之前先读它。
+</Callout>
+
+## 你自己创建的资源
+
+不写代码，也不用继承——一个 `.tres` 或一个 JSON 文件。
+
+| 资源 | 它决定什么 |
+| --- | --- |
+| `DotFpsTunables` | 移动的每一个数值。分层：默认值 < JSON < `DOT_FPS_*` < `--fps-*` |
+| `DotFpsSurface` / `DotFpsSurfaceSet` | 冰面、泥地、传送带。**是倍率，绝不是绝对值**，这样重新调校基础手感就能传导下去 |
+| `DotFpsModifier` | 一次临时改变：加速板、减速区、眩晕、弹射器 |
+| `DotFpsStyle` | 一种具名变体——侧身、倒着走、低重力、prebhop |
+| `Dot2DTunables` / `Dot2DMassRules` | 俯视、推进或 blob；以及质量如何变成体积、速度和吃掉别人的资格 |
+| `DotWeapon` / `DotDamageType` / `DotHitGroup` | 武器是什么、怎么造成伤害、爆头值多少 |
+| `DotDamageRules` | 友伤、自伤、距离衰减、封顶——按一个顺序，只算一次 |
+| `DotItem` / `DotLoadoutSlot` / `DotLoadoutSchema` | 一个游戏模式的装备规则 |
+| `DotAvatarSchema` / `DotAvatarSlot` / `DotAvatarPart` | 存在哪些部件、哪些取值合法 |
+| `DotMatchRules` | 赢是什么意思、一次击杀值多少 |
+| `DotSpawnPoint` / `DotTeam` | 玩家在哪出现、站在哪一边 |
+| `DotTimerZone` / `DotTimerZoneSet` / `DotTimerStyle` | 计时器对什么作出反应，以及什么算可计分的风格 |
+| 目录 JSON 里的 `DotMapDef` | 一张地图：id、版本、场景，以及可选的内容包 |
+| `DotPropDef` / `DotPropCatalogue` / `DotPropLimits` | 能生成什么、能生成多少 |
+| `DotVoteRules` | 五十五个设置，从计票方式到平局处理 |
+| `DotLeaderboardDef` / `DotStatsSchema` | 榜单按什么排序，以及新读数如何与旧值合并 |
+| `DotUiTheme` | 由一套调色板和一个缩放比例生成的整个 `Theme`。不需要任何美术资源 |
+
+## 注册表接缝
+
+把一个对象以下面某个名字发布出去，另一端就能找到它，而双方都不需要 import 对方。
+
+| 名字 | 由谁发布 | 由谁查询 |
+| --- | --- | --- |
+| `dot_ban_source` | `DotModerationManager` | `dot-server` 的准入检查 |
+| `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
+| `dot_cloud_client` | `DotCloudClient` | `dot-map` 的加载器、`dot-server` 的切换游戏、`dot-user-avatar` 的目录 |
+| `dot_user_manager` | `DotUserManager` | `dot-server`、`dot-platform` |
+| `dot_avatar_manager` | `DotAvatarManager` | `dot-platform` |
+| `dot_auth_server` | `DotAuthServer` | `dot-server`、`dot-platform` |
+| `dot_platform` | `DotPlatformHub` | `DotPlatformModule` |
+| `dot_server`、`dot_console`、`dot_event_bus`、`dot_game_manager`、`dot_module_host`、`dot_admin_manager`、`dot_ban_manager`、`dot_chat_manager`、`dot_audit_log`、`dot_rcon_server`、`dot_query_server`、`dot_query_source`、`dot_a2s_server`、`dot_vote_manager` | `dot-server` | 各种模块，以及你自己的代码 |
+| `dot_client_link` | `DotClientLink` | 游戏的客户端代码 |
+| `dot_net_manager` | `DotNetManager` | 桥接层 |
+| `dot_match`、`dot_combat`、`dot_loadout`、`dot_fps_controller`、`dot_screen_stack`、`dot_2d_arena`、`dot_2d_controller`、`dot_voice_manager`、`dot_voice_router`、`dot_moderation`、`dot_mod_tools`、`dot_vote_director` | 各自的管理器 | 任何需要它们的东西 |
+
+那些在一棵树里合理地可以存在多份的管理器，都接受一个 `service_scope`，好让两份
+以不同的名字注册。
+
+## 可以挂钩或否决的服务器事件
+
+`DotEventBus.hook_pre(name, callable)` 在事件之前运行，并且**可以取消它**；
+`hook_post` 在之后运行。钩子按注册顺序执行，取消事件的钩子会终止其余的前置钩子
+——一个被取消的事件不该只跑掉一半处理函数。
+
+| 事件 | 可取消 |
+| --- | --- |
+| `server_start`、`server_shutdown` | 否 |
+| `client_connect`、`client_disconnect` | 否 |
+| `client_spawn` | 否 |
+| `client_kicked` | 否 |
+| `player_chat` | **是** |
+| `player_command` | **是** |
+| `game_changing` | **是** |
+| `game_changed` | 否 |
+| `vote_started`、`vote_ended` | 否 |
+| `admin_action` | 否 |
+
+`declare(name, description)` 用来注册你自己的事件，注册后它们才会出现在控制台
+命令 `event_list` 里——模块作者正是靠这个在不读源码的前提下知道自己能挂什么钩子。
+
+<Callout type="warning" title="`client_spawn` 带的是 `userid`，不是 `peer_id`">
+按 `peer_id` 去查会话的模块，每次都会拿到 null，于是谁也没加进去，而且是**悄无
+声息地**，因为拿到一个空会话本身就是完全合理的结果。这是这套合集历史上重复次数
+最多的一个 bug：两个不同的游戏都发布过它，而且都没有报错。
+</Callout>
+
+<Related>
+- [约定](/learn/godot/conventions)
+- [全部插件](/learn/godot/addons) —— 每页都在自己的语境里列出各自的挂载点
+- [参考游戏](/learn/godot/games) —— 桥接代码真正被写下的地方
+</Related>

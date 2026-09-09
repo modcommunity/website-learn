@@ -1,0 +1,75 @@
+---
+title: 全部插件
+description: Godot 4 的二十二个 Dot 插件——每个的用途、依赖关系，以及游戏从哪里接入。
+order: 40
+keywords:
+  - "插件"
+  - "扩展"
+  - "目录"
+  - "列表"
+  - "dot-core"
+  - "dot-net"
+  - "dot-server"
+source:
+  - ../game-dev/godot/NOTES.md
+---
+
+二十二个插件，既能协同工作，除 `dot-core` 之外也都能单独使用。每个都是
+[`modcommunity`](https://github.com/modcommunity) 下的独立仓库，每个只分发一个
+`addons/<名称>/` 目录，每个都有自己的无界面测试套件。
+
+## 基础
+
+| | 依赖 | |
+| --- | --- | --- |
+| [dot-core](/learn/godot/addons/dot-core) | — | 日志、平台能力检测、路径、可配置的节点引用、分层配置、带帧预算的作业、多人传输层、HTTP。 |
+
+## 平台
+
+| | 依赖 | |
+| --- | --- | --- |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | 运行时内容分发：签名清单、按内容寻址的缓存、可续传的并行下载、带命名空间的资源包挂载。 |
+| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | 对接后端的设备码登录、签名连接票据、服务端身份。 |
+| [dot-net](/learn/godot/addons/dot-net) | dot-core | 网络代码：tick 同步、位压缩线格式、状态复制、快照插值、客户端预测、延迟补偿、兴趣管理。 |
+| [dot-server](/learn/godot/addons/dot-server) | dot-core，*可选* dot-auth + dot-cloud | 专用服务器：控制台、RCON、查询、权限、管理、投票、模块、在线切换游戏。 |
+| [dot-user](/learn/godot/addons/dot-user) | dot-core | 随人跨服务器的档案，使用按作用域生成的化名标识。 |
+| [dot-user-avatar](/learn/godot/addons/dot-user-avatar) | dot-core | 把形象当作数据：一份有界文档，服务器无需加载任何网格即可按模式和权利校验。 |
+| [dot-platform](/learn/godot/addons/dot-platform) | dot-core、dot-server | 把身份、档案和形象合并为一条准入流程，并绑定到服务器。 |
+
+## 玩法
+
+| | 依赖 | |
+| --- | --- | --- |
+| [dot-fps-controller](/learn/godot/addons/dot-fps-controller) | dot-core | 第一人称移动：Quake/Source 式加速、空中转向、上台阶、带净空检测的下蹲。确定性且由指令驱动。 |
+| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | 二维对应实现：确定性的俯视、推进与质量驱动移动，可容纳数千实体的空间哈希，以及确定性散布场。 |
+| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | 生命、伤害与武器：解析式碰撞盒、确定性弹道散布、带延迟补偿的命中判定。 |
+| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | 玩家带进对局的东西，作为服务器无需加载任何内容即可校验的文档。另含确定性的场上拾取物。 |
+| [dot-match](/learn/godot/addons/dot-match) | dot-core | 对局循环：热身、回合、计分、队伍、出生、重生。全部以 tick 计数，由一次调用推进。 |
+| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | 屏幕、HUD 与菜单，且不含任何美术资源。一个屏幕栈、一个由任意 `DotConfig` 生成的设置面板，以及带冲突检测的按键重绑定。 |
+
+## 类型套件
+
+| | 依赖 | |
+| --- | --- | --- |
+| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | 速通计时器：区域、赛道、分段、风格、回放、记录。精度细于一个 tick，因此 64 Hz 与 128 Hz 的成绩可比。2D 与 3D 通用。 |
+| [dot-map](/learn/godot/addons/dot-map) | dot-core，*可选* dot-cloud | 把地图当作内容而不是构建：目录、轮换、提名与投票，以及通过 dot-cloud 获取的加载器。 |
+| [dot-props](/learn/godot/addons/dot-props) | dot-core | 沙盒层：可生成的道具、按玩家的额度、撤销栈、物理枪与重力枪。以服务器为准。 |
+| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core，*可选* dot-auth | 排行榜、玩家统计、排名积分、存储接口，以及向后端批量上报的上报器。 |
+| [dot-stats](/learn/godot/addons/dot-stats) | dot-core，*可选* dot-auth | 游戏一次性声明的统计项——计数器、量表、最高值、最低值——以合并后的增量上报。 |
+| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | 语音聊天：采集、可替换编解码器、每位说话者一个抖动缓冲，以及服务端到全体、队伍或半径内的路由。 |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | 封禁、踢出、禁言、禁麦和警告，统一为一种可持久保存的记录，存储可替换。发布禁麦源与封禁源。 |
+| [dot-vote](/learn/godot/addons/dot-vote) | dot-core，*可选* dot-server + dot-map | 用一个可配置的引擎投票决定下一局：rtv、提名、四种计票方式、五种平局处理。 |
+
+<Callout type="info" title="“可选”意味着运行时才去找">
+*可选*一栏里的所有东西，要么靠鸭子类型，要么靠
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
+解析。这些插件互不 import，也不写出彼此的标识符——因为在 GDScript 里，一个脚本
+只要*提到*了项目中不存在的 `class_name` 就会解析失败，并把所有引用它的脚本一起
+拖垮。
+</Callout>
+
+<Related>
+- [扩展点](/learn/godot/extending) —— 全部索引汇于一表
+- [约定](/learn/godot/conventions)
+- [参考游戏](/learn/godot/games)
+</Related>

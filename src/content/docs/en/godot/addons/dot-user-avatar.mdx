@@ -1,0 +1,143 @@
+---
+title: dot-user-avatar
+description: Avatars as data — a bounded document of part ids and colours a dedicated server validates against a schema and a player's entitlements without ever loading a mesh.
+navTitle: dot-user-avatar
+order: 80
+keywords:
+  - "avatar"
+  - "cosmetics"
+  - "skins"
+  - "customisation"
+  - "entitlements"
+  - "schema"
+  - "conform"
+  - "digest"
+source:
+  - ../game-dev/godot/dot-user-avatar/README.md
+  - ../game-dev/godot/dot-user-avatar/CLAUDE.md
+---
+
+An avatar is a schema id, a set of part ids and a set of colours — a few dozen
+bytes. A server validates it against the schema and the player's entitlements. A
+client resolves the part ids to real assets through
+[`dot-cloud`](/learn/godot/addons/dot-cloud).
+
+```gdscript
+var a := DotAvatar.make(&"humanoid")
+a.set_part(&"hair", &"hair_long")
+a.set_colour(&"hair", 0, Color("6b4423"))
+```
+
+```gdscript
+var avatars := DotAvatarManager.new()
+avatars.schema = preload("res://avatars/humanoid.tres")
+add_child(avatars)
+
+var resolved := await avatars.resolve(user_key, entitlements)
+var published := await avatars.publish(user_key, incoming, entitlements)
+```
+
+## The part that decides whether this works
+
+**The server must never trust an avatar the client describes, and must never
+need the assets to validate one.**
+
+Validation is four questions answered from ids: does the slot exist, does the
+part exist and fit that slot, is the player entitled to it, are the colours
+within the part's channel count. None of them loads anything. A server that
+loaded avatar *assets* to serve a match is a server that has to ship every
+cosmetic anyone owns.
+
+## Two failure modes it is built around
+
+**A player whose cosmetics have not downloaded must still be visible.** An
+invisible player is a competitive advantage. Parts declare a `fallback_id`, the
+catalogue walks the chain — bounded, so a circular fallback cannot hang the
+renderer — and the plan reports what was substituted or missing so the game can
+draw a placeholder rather than nothing.
+
+**A schema change must not make every saved avatar unloadable.** Retiring a
+part, adding a required slot or revoking an entitlement all invalidate existing
+documents. `conform()` **repairs** instead of refusing — dropping what no longer
+exists, filling required slots from defaults — and reports what changed so the
+player is told rather than silently redressed. It refuses exactly one thing: a
+document for a different schema.
+
+<Callout type="info" title="`conform()` on the way out, `validate()` on the way in">
+The same split [`dot-loadout`](/learn/godot/addons/dot-loadout) makes. A client
+that can make the server repair its way to a legal document can put anything
+anywhere.
+</Callout>
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotAvatarSchema, DotAvatarSlot, DotAvatarPart">
+    A `Resource`, not a hardcoded enum — which is what lets a low-poly shooter
+    and a blocky sandbox ship entirely different part sets without either
+    forking this. Layers, defaults, fallbacks and entitlement live on the part.
+    `choices_for` is what an editor UI would be built on.
+  </Param>
+  <Param name="DotAvatarEntitlements">
+    A set of part ids and nothing else. Where they came from is the game's
+    business. **The default is that a player owns nothing** — a part is wearable
+    only if it is marked free or is in the set. Defaulting the other way means a
+    bug in whatever supplies the set silently unlocks everything, and nobody
+    reports that as a bug.
+  </Param>
+  <Param name="DotAvatarStore subclass">
+    `_fetch`, `_store`, `_remove`, `_open`, `_close`, `_writable`,
+    `_store_name`. `Memory`, `Local` and `Backbone` ship.
+  </Param>
+  <Param name="DotAvatarCatalogue.resolver" type="Callable">
+    How a part id becomes an asset. Reaches `dot-cloud` through the registry
+    when it is installed.
+  </Param>
+  <Param name="DotAvatarBuilder">
+    `plan()` is pure and `apply()` touches nodes — so a server can plan without
+    a scene tree, and a client can inspect the plan before drawing.
+  </Param>
+  <Param name="DotAvatarSync">
+    The bit-packed wire format and the backbone endpoints.
+  </Param>
+  <Param name="DotAvatarConfig.enforce_entitlements">
+    Off for a creator sandbox. Warns loudly at startup, because a server running
+    with it off has no entitlement system at all.
+  </Param>
+  <Param name="Signals">
+    `avatar_resolved`, `avatar_published`, `avatar_refused`, `avatar_conformed`.
+  </Param>
+</Params>
+
+## Avatars that follow a player between servers
+
+```gdscript
+manager.config.backend = "backbone"
+manager.config.backbone_url = "https://moddingcommunity.com/api/integration/v1"
+manager.config.backbone_token = OS.get_environment("AVATAR_TOKEN")
+manager.config.read_only = true    # most servers should read and never publish
+```
+
+The protocol is three addresses — `GET` / `PUT` / `DELETE
+/user/{key}/avatar` — plus a public schema endpoint. It is open and specified,
+and TMC runs one instance of it rather than being it.
+
+Two properties that are the whole point and are easy to undo:
+
+- **The server holds its own credential, never the player's.** A server that
+  could present a player's account token is a server whose operator can act as
+  every one of their players on the whole site.
+- **`{key}` is a scoped derivation, not an account id.** See
+  [`dot-user`](/learn/godot/addons/dot-user#the-identity-problem-and-the-answer).
+
+<Callout type="warning" title="Colours quantise when set, not at the wire">
+Otherwise the document a client validated and the one a server stored differ in
+their low bits, so their digests differ — and the digest is the whole mechanism
+by which a client knows its cached copy of another player is stale.
+</Callout>
+
+<Related>
+- [`dot-user`](/learn/godot/addons/dot-user)
+- [`dot-platform`](/learn/godot/addons/dot-platform)
+- [`dot-loadout`](/learn/godot/addons/dot-loadout) — the same trade, for equipment
+</Related>

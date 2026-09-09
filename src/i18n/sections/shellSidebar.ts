@@ -57,6 +57,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Groups',
             community: 'Community',
             sources: 'External Sources',
+            resources: 'Resources',
         },
         items: {
             overview: 'Overview',
@@ -86,6 +87,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'My Collections',
             myGroups: 'My Groups',
             myFriends: 'My Friends',
+            docs: 'Docs',
         },
         pillars: {
             apps: {
@@ -148,6 +150,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Grupos',
             community: 'Comunidad',
             sources: 'Fuentes externas',
+            resources: 'Recursos',
         },
         items: {
             overview: 'Resumen',
@@ -177,6 +180,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'Mis colecciones',
             myGroups: 'Mis grupos',
             myFriends: 'Mis amigos',
+            docs: 'Documentación',
         },
         pillars: {
             apps: {
@@ -240,6 +244,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Groupes',
             community: 'Communauté',
             sources: 'Sources externes',
+            resources: 'Ressources',
         },
         items: {
             overview: 'Aperçu',
@@ -269,6 +274,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'Mes collections',
             myGroups: 'Mes groupes',
             myFriends: 'Mes amis',
+            docs: 'Documentation',
         },
         pillars: {
             apps: {
@@ -332,6 +338,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Gruppen',
             community: 'Community',
             sources: 'Externe Quellen',
+            resources: 'Ressourcen',
         },
         items: {
             overview: 'Übersicht',
@@ -361,6 +368,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'Meine Sammlungen',
             myGroups: 'Meine Gruppen',
             myFriends: 'Meine Freunde',
+            docs: 'Dokumentation',
         },
         pillars: {
             apps: {
@@ -425,6 +433,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Группы',
             community: 'Сообщество',
             sources: 'Внешние источники',
+            resources: 'Ресурсы',
         },
         items: {
             overview: 'Обзор',
@@ -454,6 +463,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'Мои коллекции',
             myGroups: 'Мои группы',
             myFriends: 'Мои друзья',
+            docs: 'Документация',
         },
         pillars: {
             apps: {
@@ -516,6 +526,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Groepen',
             community: 'Community',
             sources: 'Externe bronnen',
+            resources: 'Bronnen',
         },
         items: {
             overview: 'Overzicht',
@@ -545,6 +556,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'Mijn collecties',
             myGroups: 'Mijn groepen',
             myFriends: 'Mijn vrienden',
+            docs: 'Documentatie',
         },
         pillars: {
             apps: {
@@ -608,6 +620,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'グループ',
             community: 'コミュニティ',
             sources: '外部ソース',
+            resources: 'リソース',
         },
         items: {
             overview: '概要',
@@ -637,6 +650,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'マイコレクション',
             myGroups: '自分のグループ',
             myFriends: 'フレンド',
+            docs: 'ドキュメント',
         },
         pillars: {
             apps: {
@@ -698,6 +712,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: '群组',
             community: '社区',
             sources: '外部来源',
+            resources: '资源',
         },
         items: {
             overview: '概览',
@@ -727,6 +742,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: '我的合集',
             myGroups: '我的群组',
             myFriends: '我的好友',
+            docs: '文档',
         },
         pillars: {
             apps: {
@@ -788,6 +804,7 @@ export const shellSidebar: SidebarCatalog = {
             groups: 'Grupos',
             community: 'Comunidade',
             sources: 'Fontes externas',
+            resources: 'Recursos',
         },
         items: {
             overview: 'Visão geral',
@@ -817,6 +834,7 @@ export const shellSidebar: SidebarCatalog = {
             myCollections: 'As minhas coleções',
             myGroups: 'Os meus grupos',
             myFriends: 'Os meus amigos',
+            docs: 'Documentação',
         },
         pillars: {
             apps: {

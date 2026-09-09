@@ -1,0 +1,188 @@
+---
+title: Jogos de referência
+description: Os cinco jogos construídos com a coleção Dot — o que cada um serve para provar, e porque é que as costuras entre complementos só são exercitadas dentro de um jogo.
+navTitle: Jogos de referência
+order: 50
+keywords:
+  - "exemplo"
+  - "demonstração"
+  - "game-arena"
+  - "game-hungario"
+  - "game-playground"
+  - "game-g2gfast"
+  - "lobby"
+  - "deathmatch"
+  - "sandbox"
+source:
+  - ../game-dev/godot/NOTES.md
+  - ../game-dev/CLAUDE.md
+---
+
+Cinco jogos, e não são demonstrações. O conjunto de testes de cada complemento
+corre-o **com os outros ausentes**, por isso as junções entre eles só existem
+dentro de um jogo — e, pela lição que esta coleção repete: *um caminho de código
+que só uma forma de instalação alcança é um caminho de código que nada correu.*
+
+<Callout type="info" title="É aqui que estão os erros">
+Pôr os complementos de jogabilidade num só processo encontrou sete erros, seis
+deles em *outros* repositórios e nenhum alcançável a partir do conjunto de testes
+desse repositório. Correr tudo de ponta a ponta encontrou mais doze. Abrir um
+cliente de navegador real contra um servidor real encontrou mais sete. O padrão
+repete-se sempre.
+</Callout>
+
+## game-arena
+
+**Um deathmatch de arena 3D com texturas de teste. O jogo de referência.** Existe
+para provar que os complementos se compõem, para mostrar o aspeto das pontes, e
+para ser aquilo de onde se copia um jogo novo.
+
+Usa `dot-core`, `dot-fps-controller`, `dot-combat`, `dot-loadout`, `dot-match`,
+`dot-ui`, `dot-server` e `dot-net`.
+
+Há quatro ficheiros que importam, e a razão para cada um estar no *jogo* e não
+num complemento é sempre a mesma:
+
+- **`maps/arena_map.gd`** — um nível é uma lista de caixas, e essa lista dá
+  origem a três coisas: malhas, corpos físicos e geometria analítica para um
+  servidor sem interface. Construí-las em separado dá três descrições que se
+  desencontram, e o desencontro é invisível até os tiros começarem a atravessar
+  algo que os clientes veem.
+- **`game/arena_player.gd`** — movimento, armas, vida e caixas de impacto num só
+  corpo. Todos os complementos dizem que esta ligação pertence ao jogo, porque um
+  complemento que a fizesse ditaria uma forma de cena.
+- **`game/arena_game.gd`** — a costura. Seis complementos, cada um correto
+  isoladamente; estas são as cinquenta linhas onde um abate de combate se torna
+  pontuação de partida e um reaparecimento de partida se torna um equipamento.
+- **`game/arena_module.gd`** — o único ficheiro que nomeia o `dot-server`. Umas
+  quarenta linhas, e é toda a integração com o servidor dedicado.
+
+Quatro armas, porque são quatro respostas genuinamente diferentes a «como encurto
+a distância», e um deathmatch com menos tem uma só resposta certa. Os
+equipamentos são duas armas num orçamento de seis pontos — quatro números em vez
+de uma enumeração.
+
+```bash
+godot --headless --path . res://examples/headless_match.tscn   # um deathmatch inteiro
+godot --headless --path . res://examples/headless_net.tscn     # servidor + cliente, 20% de perdas
+godot --headless --path . res://examples/dedicated.tscn        # um DotServer a sério
+```
+
+## game-hungario
+
+**Um jogo de arena de crescer a comer, com um avatar montado no monstro.** O
+primeiro cliente jogável da coleção, o primeiro jogo com código de rede a
+funcionar sobre um socket real, e o único sítio onde a metade de jogabilidade e a
+metade de identidade correm juntas.
+
+Usa `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`, `dot-user-avatar`,
+`dot-loadout`, `dot-platform` e `dot-cloud` — tudo exceto o
+`dot-fps-controller` e o `dot-combat`.
+
+É também **o caminho mais curto para a coluna do navegador**: pequeno, não precisa
+de threads, e exercita todas as restrições do navegador sem nada pelo meio. O seu
+`web/README.md` é o contrato de instalação: WebSocket porque um navegador não tem
+UDP, só cliente porque um separador não pode ficar à escuta, `wss://` porque uma
+página HTTPS não pode abrir um socket inseguro, e suporte a threads desligado
+porque ligá-lo exige isolamento entre origens em todas as respostas e parte todos
+os conteúdos incorporados de terceiros na página.
+
+## game-playground
+
+**Uma sandbox no formato clássico das sandboxes de física.** Mantenha Q para um
+menu com catorze objetos, quatro NPC com guião e três armas; clique num e é seu.
+Uma pistola de física que segura e congela, uma pistola gravítica que atira. Três
+mapas, um servidor dedicado, vinte comandos de consola, e um percurso de saltos
+com nove plataformas na pista extra do `pg_lobby` — porque um percurso de saltos
+não é um género de movimento, e é isso que diz que o
+[`dot-timer`](/learn/godot/addons/dot-timer) não é só uma coisa de surf e
+bunny-hop.
+
+Usa `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+`dot-leaderboard`, `dot-ui` e `dot-server`.
+
+<Callout type="warning" title="As entidades e as armas são scripts nomeados por CAMINHO">
+Não por `class_name`. Um pacote `dot-cloud` montado não consegue registar globais
+`class_name` — está medido — por isso, dentro de um pacote, todas as referências
+de tipo entre ficheiros falham a compilar enquanto o pacote monta e as suas cenas
+carregam. **Um caminho é a única forma que uma entidade entregue pode ter**, e
+este jogo está escrito assim de propósito.
+</Callout>
+
+É o único sítio onde o `dot-fps-controller`, o `dot-timer`, o `dot-map`, o
+`dot-props`, o `dot-leaderboard`, o `dot-ui` e o `dot-server` correm num só
+processo. O seu conjunto de testes encontrou nove erros, três deles noutros
+repositórios; as capturas de ecrã encontraram mais quatro.
+
+## game-g2gfast
+
+**O servidor de cronómetro de bunny-hop e surf, no formato do Counter-Strike.**
+Unidades e cvars do Source, o campo de visão do Source, primeira e terceira
+pessoa, e cada jogador desenhado como um avatar — o dele vindo da plataforma, ou
+um genérico.
+
+Usa `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
+`dot-server`, `dot-user-avatar` e `dot-ui`.
+
+```
+sv_tickrate 100
+sv_autobunnyhopping 1
+sv_airaccelerate 1000        // 150 para surf
+sv_gravity 800
+sv_allow_thirdperson 1
+sv_replay_bot 1              // o recorde do servidor como fantasma visível
+```
+
+Depois, a partir da consola, marque as zonas de um mapa cujo autor nunca usou
+este motor:
+
+```
+g2g_zone start
+g2g_zone_mark          // ponha-se num canto
+g2g_zone_mark          // e no outro
+g2g_zone stage main 1
+g2g_zone_save
+```
+
+## game-simple-lobby
+
+**Um lobby.** Uma pequena sala 2D com conversa, uma lista de presentes e avisos de
+entrada e saída — o que um servidor corre quando não está a correr mais nada, e a
+coisa mais pequena que ainda exercita admissão, pertença, replicação, previsão e
+conversa.
+
+Um servidor sem jogo carregado é uma coisa legítima de se correr e o `dot-server`
+sempre o permitiu; o que não havia era algo para olhar, e um jogador que se liga e
+não vê nada não consegue distinguir isso de um servidor avariado. É também o jogo
+que um cliente de navegador genérico descarrega primeiro.
+
+## O que correr estes jogos ensinou
+
+Quatro lições repetem-se, e vale a pena tê-las antes de escrever a sua própria
+ponte.
+
+**Um valor produzido corretamente e consumido por nada parece exatamente um valor
+produzido mal.** A posição interpolada, o conjunto de interesse e o cliente de
+conteúdo eram todos calculados corretamente e lidos por ninguém, e em todos os
+casos o sintoma visível apontava para quem os produzia.
+
+**Um valor consumido por dois jogos e produzido por ninguém é o mesmo erro com as
+pontas trocadas.** O `DotTimer.effect_requested` estava declarado, reencaminhado
+e ligado — e nenhuma linha o emitia, pelo que o volume do precipício de cada mapa
+era decoração, em dois jogos.
+
+**Os erros de uma interface são invisíveis às asserções**, porque todas as
+propriedades estão corretas e nada falha. Duas árvores de `Control` a 0 × 0 e um
+ecrã preto foram encontrados a desenhar um fotograma e a olhar para ele, não com
+um teste.
+
+**E o movimento também.** Todas as verificações de todos os conjuntos afirmam
+algo sobre um valor *simulado*, e na trepidação que tornava um cliente de
+navegador injogável todos os números simulados estavam certos. O erro estava na
+passagem da simulação para o ecrã, e nenhuma asserção sobre a simulação lá chega.
+
+<Related>
+- [Os complementos](/learn/godot/addons)
+- [Pontos de extensão](/learn/godot/extending)
+- [Ferramentas](/learn/godot/tooling)
+</Related>

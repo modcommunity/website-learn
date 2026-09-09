@@ -1,0 +1,129 @@
+---
+title: dot-cloud
+description: Godot 的运行时内容分发——签名清单、按内容寻址的缓存、可续传的并行下载，以及按版本划分命名空间的挂载；浏览器上同样可用。
+navTitle: dot-cloud
+order: 20
+keywords:
+  - "CDN"
+  - "下载"
+  - "清单"
+  - "pck"
+  - "资源包"
+  - "挂载"
+  - "缓存"
+  - "签名"
+  - "DLC"
+  - "打补丁"
+source:
+  - ../game-dev/godot/dot-cloud/README.md
+  - ../game-dev/godot/dot-cloud/CLAUDE.md
+---
+
+服务器给客户端一份清单；客户端下载自己缺的部分、校验它、然后挂载——在 Windows、
+macOS、Linux、Android、iOS 以及浏览器上都是如此。
+
+```gdscript
+var cloud := DotCloudClient.new()
+add_child(cloud)
+
+cloud.config = DotCloudConfig.new()
+cloud.config.trusted_keys = {"default": PUBLIC_KEY_PEM}
+await cloud.start()
+
+cloud.phase_changed.connect(func(_p, text): status_label.text = text)
+cloud.progress_changed.connect(func(p): bar.value = p.fraction * 100.0)
+
+var res := await cloud.acquire("https://cdn.example.com/dm_arena/manifest.json")
+if res.ok:
+    get_tree().change_scene_to_file(res.value)
+```
+
+发布走的是一个无界面 CLI，产出一个**静态目录**——一份 `manifest.json` 加一棵
+`objects/` 树——任何 web 服务器或 CDN 都能零配置地把它托管起来：
+
+```bash
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    keygen --private keys/content.key --public keys/content.pub
+
+godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+    publish --source content/dm_arena --out dist/dm_arena \
+    --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
+```
+
+## 塑造了一切的两条约束
+
+**Godot 无法卸载已挂载的资源包。** 不是慢，也不是有变通办法——这个 API 根本不存在。
+于是每一份内容都拿到自己的带版本路径 `res://<root>/<content_id>/<version>/`，从而
+永远不需要替换任何东西。“卸载”意味着放开引用，而不是收回文件表。正是这一个事实，才
+让运行时切换游戏成为可能。
+
+**未签名的内容等于远程代码执行。** Godot 的资源包里可以放脚本，所以是清单决定了什么
+会被执行。`require_signed_manifests` 默认开启，而且在没有可信密钥时配置会直接拒绝
+通过校验。你可以为局域网或自有服务器关掉它；它每次都会警告。
+
+## 它做的事
+
+- **按内容寻址的缓存。** 文件以自身的 SHA-256 存放，因此两个共用某个资源的游戏只
+  下载一次，重新发布也只会重新下载变更过的部分。
+- **可续传的并行下载。** 镜像切换、HTTP range 续传、按来源的熔断、带宽限速，以及
+  诚实的进度和预计时间。
+- **三种来源。** HTTP/CDN、本地目录（开发、局域网、随包内容），以及对于没有 web
+  主机的服务器，走游戏连接的带内传输。
+- **配额意识。** 浏览器的存储估算、移动端上限，以及绝不淘汰正在使用中的内容的
+  最近最少使用淘汰策略。
+
+## 游戏从哪里接入
+
+<Params>
+  <Param name="DotCloudSource 的子类">
+    `source_name()`、`is_supported()`、`can_serve(manifest)`、`fetch(...)`。
+    随包提供三种——`DotCloudSourceHttp`、`DotCloudSourceLocal`、
+    `DotCloudSourceNetchan`——第四种是你的：一个 torrent、一个平台专属 CDN、一个
+    签名 S3 链接的签发器。
+
+    `fetch` **必须**写入该文件哈希对应的 `DotCloudStore.partial_path`，能续传时
+    从 `partial_size` 续，并且通过 `commit_partial` 收尾。那是唯一校验哈希的地方，
+    而直接往对象目录里写，正是未校验内容被挂载的途径。
+  </Param>
+  <Param name="can_serve() 与 is_supported() 的区别">
+    这个区分是值回票价的。一个来源可以完全健康，却依然没有办法拿到*这一份*清单——
+    比如一个没有配 `base_urls` 的 HTTP 来源，碰上一份不带镜像的清单。从
+    `can_serve` 返回失败的意思是“这份清单请跳过我，原因如下”，而且**不会**记到
+    熔断器头上。
+  </Param>
+  <Param name="priority" type="int">
+    每个来源上都有。数值越小越先尝试；带内的兜底来源被刻意排在最后。
+  </Param>
+  <Param name="DotCloudConfig">
+    `trusted_keys`、`require_signed_manifests`、`cache_bytes`、
+    `mobile_cache_bytes`、`web_quota_fraction`、`parallel_downloads`、
+    `max_attempts_per_file`、`throttle_bytes_per_sec`、`mount_root`、
+    `verify_before_mount`、`resume_downloads`。像所有 `DotConfig` 一样分层。
+  </Param>
+  <Param name="信号">
+    `phase_changed`、`progress_changed`、`file_finished`、`sync_finished`、
+    `content_ready`、`content_released`、`failed`。
+  </Param>
+</Params>
+
+## 其他插件期待的那套内容接口
+
+注册一个 `DotCloudClient`，它就会以 `dot_cloud_client` 这个名字发布自己。
+`dot-map` 的加载器和 `dot-server` 的切换游戏都通过这个名字找到它，并调用：
+
+```gdscript
+ensure(content_id: String, version: String) -> DotResult
+is_mounted(content_id: String, version: String) -> bool
+```
+
+<Callout type="warning" title="没有云端客户端本身也是一种合法配置">
+每一处调用点都把“没有 `dot_cloud_client`”理解为“这套部署把内容打进了构建里”——对
+其中大多数来说这确实是真的，因此它和一个没能注册上的客户端是无法区分的。当一张
+可分发的地图或一个可分发的游戏悄无声息地什么都不做时，先去看注册表。
+</Callout>
+
+<Related>
+- [`dot-map`](/learn/godot/addons/dot-map) —— 把地图当作内容
+- [`dot-server`](/learn/godot/addons/dot-server) —— 在玩家在线时切换游戏
+- [约定](/learn/godot/conventions#the-browser-decides-half-of-this)
+</Related>

@@ -1,0 +1,114 @@
+---
+title: dot-leaderboard
+description: Boards — an ordering over one number per player, scoped by string keys — plus per-player statistics, ranking points, a store interface and a batched reporter for the TMC backbone.
+navTitle: dot-leaderboard
+order: 180
+keywords:
+  - "leaderboard"
+  - "board"
+  - "ranking"
+  - "rank"
+  - "top"
+  - "scores"
+  - "points"
+  - "statistics"
+source:
+  - ../game-dev/godot/dot-leaderboard/README.md
+  - ../game-dev/godot/dot-leaderboard/CLAUDE.md
+---
+
+A board is **an ordering over one number per player, scoped by string keys** —
+so "fastest time on surf_beginner, main track, normal style", "most kills this
+week" and "highest arena score" are one thing with three configurations.
+
+```gdscript
+var boards := DotLeaderboardManager.new()
+boards.store = DotLeaderboardStoreMemory.new()
+add_child(boards)
+
+var fastest := DotLeaderboardDef.make(&"fastest", DotLeaderboardDef.Kind.TIME)
+fastest.display_name = "Fastest time"
+fastest.publish = true                # opt in to the site leaderboard
+boards.define(fastest)
+
+# one definition, one board per (map, track, style)
+await boards.submit(&"fastest",
+    {"map": "surf_beginner", "track": "0", "style": "normal"},
+    player_id, player_name, run.time())
+
+var page := await boards.page(&"fastest", {"map": "surf_beginner", ...})
+```
+
+Four orderings — `TIME`, `SCORE`, `POINTS`, `PENALTY` — and rendering that knows
+a time from a score. **Ranks are materialised on write**, because "am I first"
+is asked far more often than a board is written to.
+
+## Statistics
+
+```gdscript
+var session := DotStatSet.new()
+session.add(&"jumps", stats.jumps)
+session.add(&"distance", metres)
+session.set_best(&"top_speed", stats.max_speed)
+
+await boards.add_stats(player_id, session)
+await boards.publish_stat(&"most_jumps", {}, player_id, player_name, &"jumps")
+```
+
+Any counter can become a board. Boards and statistics are different problems —
+one number ordered, versus many numbers accumulated — which is why
+[`dot-stats`](/learn/godot/addons/dot-stats) exists beside this for the second
+one.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotLeaderboardStore subclass">
+    `put`, `page`, `entry_for`, `count_on`, `remove`, `add_stats`,
+    `stats_for`. An in-memory implementation ships; point it at a database when
+    you outgrow it and nothing above changes. **The manager sorts, the store does
+    not have to.**
+  </Param>
+  <Param name="DotLeaderboardDef">
+    Kind, display name, scope keys, value formatting, and `publish` — the opt-in
+    to the site leaderboard.
+  </Param>
+  <Param name="DotLeaderboardReporter">
+    Batches submissions to the backbone, keeps its queue through an outage, and
+    is bounded so a backbone down for a day cannot exhaust the server.
+    `boards.reporter.client` takes `dot-auth`'s `DotBackboneClient`.
+  </Param>
+  <Param name="Signals">
+    `entry_accepted`, `entry_refused`, `stats_changed`.
+  </Param>
+</Params>
+
+## Reporting to the site
+
+```gdscript
+boards.report_to_backbone = true
+boards.reporter.client = backbone_client
+```
+
+Needs the `LEADERBOARD_WRITE` scope on a server- or app-scoped integration.
+Nothing is sent per event: entries are queued and flushed in batches.
+
+<Callout type="info" title="Pseudonymous, deliberately">
+A server asserting "this player is that member" is a server that can put
+anybody's name on anybody's score, so the link has to be proved by the *player*
+— which is what the device-code and ticket flows in
+[`dot-auth`](/learn/godot/addons/dot-auth) are for.
+</Callout>
+
+<Callout type="warning" title="`to_dictionary()` must not hand out its own dictionary">
+A `Dictionary` is a reference in GDScript, and `DotLeaderboardDef.scoped()`
+round-trips through one — so every scoped board and the template it came from
+were **one object**, and every board on the server ended up with the last scope
+anybody asked for. The same aliasing was then found in three other places.
+</Callout>
+
+<Related>
+- [`dot-stats`](/learn/godot/addons/dot-stats)
+- [`dot-timer`](/learn/godot/addons/dot-timer)
+- [Integration API](/learn/api/integration/leaderboards)
+</Related>

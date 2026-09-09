@@ -1,0 +1,189 @@
+---
+title: dot-auth
+description: Sign a player in against the backbone, then prove who they are to a community game server without ever handing that server a credential for their account.
+navTitle: dot-auth
+order: 30
+keywords:
+  - "authentication"
+  - "sign in"
+  - "login"
+  - "device code"
+  - "PKCE"
+  - "ticket"
+  - "JWT"
+  - "RS256"
+  - "refresh token"
+  - "guest"
+  - "2FA"
+source:
+  - ../game-dev/godot/dot-auth/README.md
+  - ../game-dev/godot/dot-auth/CLAUDE.md
+---
+
+A community-run server needs to know who a player is. It must **not** be handed
+a credential for that player's whole account — an operator holding one can act
+as every player who has ever joined. `dot-auth` is the answer to that, and it is
+the same shape as Steam's auth session tickets.
+
+```
+client ──(device-code + PKCE)──> backbone         who am I
+client ──(access token)────────> DotAuthIssuer    first-party, publisher-run
+client <──(signed ticket)─────── DotAuthIssuer    one server, a few minutes
+client ──(ticket)──────────────> game server      verified OFFLINE
+```
+
+The ticket is audience-scoped, short-lived, single-use and RS256-signed. A
+server can verify it but cannot mint one, and a ticket captured on one server is
+refused by every other. Server operators get a public key and nothing else.
+
+## Client
+
+```gdscript
+var auth := DotAuthClient.new()
+add_child(auth)
+auth.config = DotAuthConfig.new()
+auth.config.backbone_url = "https://moddingcommunity.com"
+auth.config.client_name = "My Game"
+
+auth.device_code_ready.connect(func(user_code, url, _expires):
+    code_label.text = user_code
+    OS.shell_open(url))
+
+var res := await auth.sign_in()
+```
+
+A device-code flow rather than a password field, so the password is only ever
+typed on the website and the same code works on desktop, mobile, console and in
+a browser. Returning players never see a code — `sign_in()` restores from a
+stored rotating refresh token.
+
+## Server
+
+```gdscript
+var auth := DotAuthServer.new()
+auth.config.strategy = DotAuthConfig.Strategy.TICKET
+auth.config.server_id = "eu-west-1"
+auth.config.ticket_public_key = ISSUER_PUBLIC_KEY
+add_child(auth)
+
+var res := await auth.authenticate({"ticket": from_client}, peer_address)
+```
+
+Verification is offline — no backbone round trip per join.
+
+## Four strategies
+
+| | |
+| --- | --- |
+| `TICKET` | Public servers. The flow above. |
+| `INTROSPECT` | First-party servers only — the operator holds a live account credential. Warns at startup. |
+| `LOCAL` | LAN and development. Accounts in a JSON file. |
+| `ANONYMOUS` | Everyone is a guest. Bans cannot mean anything. Warns. |
+
+## Accounts with no cloud
+
+`allow_local_profiles` lets a visitor make an account that lives on **that
+server and nowhere else**, with a profile and an avatar, persisting between
+visits. It is a *provider* rather than a strategy, so it composes: a server can
+accept backbone tickets and local profiles at once.
+
+**The server issues the credential — the client does not claim an identity.**
+That is the difference between this and offline-mode accounts elsewhere, where
+the name *is* the identity and anyone who types yours is you.
+
+<Callout type="info" title="A machine id is deliberately not used">
+`OS.get_unique_id()` is empty on web and iOS, it is client-supplied and so
+exactly as forgeable as a name, and it is shared by everyone using that
+computer. It is recorded as a hint and only ever logged. (It is also not a
+question that fails quietly — the engine pushes an error *and then* returns
+`""`, which is why `DotPlatform.has_unique_id()` exists to ask first.)
+</Callout>
+
+The id it issues is a 22-character player key of the same shape everything else
+uses, so [`dot-user`](/learn/godot/addons/dot-user) and
+[`dot-user-avatar`](/learn/godot/addons/dot-user-avatar) file a local player's
+profile and avatar through their ordinary local backends. A complete platform,
+with no backbone at all.
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotAuthProvider subclass">
+    `_provider_name()`, `_handles(credential)`, `_authenticate(credential)`,
+    `_validate()`. Register with `DotAuthServer.add_provider`. This is where
+    Steam, Epic, a Discord bot or your own service goes.
+
+    Keep `_handles` cheap and purely structural — "does this dictionary contain
+    my field". A provider doing network work there runs it for every login
+    attempt, including ones meant for somebody else. And a provider that claims
+    a credential and then refuses it has **made a decision**: the server does
+    not fall through to another one.
+  </Param>
+  <Param name="DotAuthAdminSource">
+    Maps site groups, roles and claims to
+    [`dot-server`](/learn/godot/addons/dot-server) permission flags and immunity
+    levels — `group_flags`, `role_flags`, `claim_flags`, `user_flags`,
+    `group_immunity`, `base_immunity`. So "everyone in the site group
+    `moderators` can kick here" is one rule instead of a hand-edited user list.
+    Anything with `lookup()` and `source_name()` works in its place.
+
+    Guests never receive permissions, and site roles grant nothing unless you
+    map them.
+  </Param>
+  <Param name="DotBackboneClient">
+    A dedicated server reporting its own player count, map and roster to its
+    site listing, with the replay protection the [integration
+    API](/learn/api/integration) requires. `roster_provider` and
+    `stats_provider` are the two `Callable`s that say what to report.
+  </Param>
+  <Param name="DotAuthIssuer">
+    The only component that needs the private key. It runs standalone using only
+    existing backbone endpoints, so no backbone change is needed to deploy the
+    ticket flow.
+  </Param>
+  <Param name="DotAuthConfig">
+    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
+    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
+    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
+    `encrypt_token_store`, `web_handoff`.
+  </Param>
+  <Param name="Signals">
+    `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
+    `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
+    `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
+    `profile_recognised`.
+  </Param>
+</Params>
+
+## Two things weaker than they look
+
+**`DotAuthServer.hash_password` is salted SHA-256 × 4096, not argon2.** Godot
+ships no password KDF. It exists so a LAN server does not store plaintext; real
+accounts belong on the backbone.
+
+**On web, the token store's encryption is obfuscation**, because the key and the
+ciphertext share one origin.
+
+Both are documented where they matter rather than implied to be more than they
+are.
+
+<Callout type="warning" title="A default endpoint is a security property">
+`backbone_url` once shipped pointing at a domain nobody owned. Every deployment
+that did not override it aimed the opening request of an authentication flow at
+a name any stranger could buy. It failed loudly only because the name did not
+resolve — the day somebody registered it, it would have started failing
+*quietly*. The correct host is `moddingcommunity.com`.
+</Callout>
+
+<Callout type="info" title="A browser has no environment and no argv">
+So `DOT_AUTH_BACKBONE_URL` cannot reach a web client. It is a JSON file shipped
+inside the export instead — deliberately **not** a query parameter, because this
+URL decides where a single-use sign-in code is redeemed and a link that could
+aim it elsewhere would be a credential-forwarding link.
+</Callout>
+
+<Related>
+- [`dot-user`](/learn/godot/addons/dot-user) — the profile behind the identity
+- [`dot-platform`](/learn/godot/addons/dot-platform) — all of it joined up
+- [App API](/learn/api/app/auth) — the backbone half of the device-code grant
+</Related>

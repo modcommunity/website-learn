@@ -1,0 +1,147 @@
+---
+title: Tooling
+description: dotserve, the shell launcher that starts a dot-server without knowing how dot-server works, and TMC's server tool — YAML configuration, games out of a directory, and a browser client.
+navTitle: Tooling
+order: 60
+keywords:
+  - "dotserve"
+  - "launcher"
+  - "server.cfg"
+  - "systemd"
+  - "docker"
+  - "YAML"
+  - "hosting"
+  - "browser client"
+  - "export web"
+source:
+  - ../game-dev/godot/dot-serve/README.md
+  - ../game-dev/godot/dot-server-setup-test/README.md
+---
+
+[`dot-server`](/learn/godot/addons/dot-server) is deeply configurable — cvars,
+flags, `server.cfg`, `autoexec.cfg`, `+command` arguments, RCON, layered
+configuration from file, environment and argv. What it did not have was a front
+door. These are the doorbell.
+
+## `dotserve`
+
+The one piece of the collection that is not a Godot addon: a shell script that
+needs `bash` and a Godot 4.7+ binary.
+
+```bash
+./install.sh                 # symlinks into ~/.local/bin
+PREFIX=/usr/local/bin sudo ./install.sh
+```
+
+```bash
+dotserve                            # sensible defaults, prints a join address
+dotserve --game res://games/arena   # a specific game
+dotserve --port 27015 --web         # also listen for browser clients
+dotserve --restart                  # come back up after a crash
+dotserve -- +sv_cheats 1 +map dm_arena
+```
+
+The first run writes a commented `server.cfg` under `~/.config/dotserve`,
+generates an RCON password, and prints it once. Every run after that reads the
+file and never touches it.
+
+### What it does that is easy to leave out
+
+**It prints the address a friend can paste**, including a LAN address — because
+"it says it started and my friend cannot connect" is almost always a bind
+address or a firewall, and the first thing that helps is knowing which address
+the server is actually on.
+
+**It refuses to start with a guessable RCON password.** An empty one is fine and
+means the RCON listener does not open at all. What is refused is a placeholder
+that got shipped, copied out of a forum post, or left in a template.
+
+**The RCON password is never on a command line.** `server.cfg` is written mode
+600 before anything goes into it. argv and the environment are readable by every
+other process on the machine and both end up in pasted bug reports — the same
+reason `DotConfig.sensitive_keys` refuses secrets from them.
+
+**It never overwrites your `server.cfg`.** Your edits *are* the server's
+configuration.
+
+### Options worth knowing
+
+| | |
+| --- | --- |
+| `--dry-run` | Print the command it would run, and exit. |
+| `--print-config` | Print the resolved configuration, and exit. |
+| `--install-service [NAME]` | Print a systemd unit for this invocation. |
+| `--restart` | Restart on a crash, with exponential backoff to a 60-second cap. |
+| `--web` / `--ws-port N` | Also listen for browser clients. Defaults to `--port` + 1. |
+
+Exit codes are meaningful, so a supervisor can tell a misconfiguration from a
+crash: `2` usage, `3` no Godot, `4` no project, `5` bad config, `6` port in use.
+The generated systemd unit lists all of them under `RestartPreventExitStatus`.
+
+## TMC's server tool
+
+`dot-server-setup-test` is where the collection comes together into something a
+server owner starts with one command. It is a Godot project that boots a
+`dot-server`, reads its configuration from `cfg/*.yml`, loads games out of
+`content/`, and serves a browser client — and it ships **no game of its own**.
+
+```bash
+./setup.sh              # find a runtime, wire the addons, write ./server
+./server                # start it
+
+docker compose up -d    # or the same thing in a container
+```
+
+Windows: `setup.bat` (a shim for `setup.ps1`), then `server.cmd`.
+
+### What it gives an operator
+
+- **One command to start.** `setup.sh` finds a Godot runtime, wires in the
+  addons, writes a commented `cfg/`, and writes `./server`. It never overwrites
+  a config file that already exists. RCON ships off.
+- **Configuration in YAML**, split by subject — `server.yml`, `net.yml`,
+  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`. Anything
+  `dot-server` exposes as a console variable can go in them under its own name.
+- **Roles, not flags.** dot-server's permission model is flags, deliberately;
+  `groups.yml` is the translation, so an operator writes
+  `admin: [kick, ban, mute]` and a player gets the flags.
+- **Games loaded at run time.** A directory under `content/` with a `game.yml`
+  in it is a game, and `changelevel` switches between them with players still
+  connected.
+- **The players choose the next game.** `!nominate`, `!rtv`, `!votefor`,
+  `!timeleft`, `!nextmap` over the games in `content/`, through
+  [`dot-vote`](/learn/godot/addons/dot-vote). Each game gets its own time limit
+  in its own `game.yml`.
+- **A browser client.** `./server export-web` builds it; one export serves every
+  server, because the address comes from `?server=`.
+
+### The layout, and why it splits three ways
+
+```
+cfg/       what an operator edits
+content/   what the server serves
+data/      what the server writes — from_yaml.cfg, admins.json, bans.json, audit.jsonl
+host/      the boot: YAML -> DotServer
+client/    the client shell. Knows nothing about any game
+web/       the browser build, and the page that takes ?server= from the URL
+```
+
+A container mounts the first two read-only and the third read-write, and a
+systemd unit points `ReadWritePaths` at exactly one directory.
+
+<Callout type="info" title="`data/from_yaml.cfg` is what your YAML became">
+Read it when a setting seems to be ignored. The YAML is a **surface over
+dot-server's own vocabulary**, not a second one, and that file is the
+translation.
+</Callout>
+
+It is also the only place three games are compiled into one build and switched
+between under live players, and the first place anything in this collection was
+loaded in a browser.
+
+<Related>
+- [`dot-server`](/learn/godot/addons/dot-server)
+- [`dot-vote`](/learn/godot/addons/dot-vote)
+- [Reference games](/learn/godot/games)
+- [Listing your server on the site](/learn/servers/listing)
+</Related>
