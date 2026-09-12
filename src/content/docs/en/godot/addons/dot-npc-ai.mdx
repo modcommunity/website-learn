@@ -1,0 +1,115 @@
+---
+title: dot-npc-ai
+description: How an NPC decides — a behaviour tree whose base enforces the rule hand-written trees get wrong, a state machine, a blackboard that forgets, crowd steering, and a characteristics table instead of a difficulty setting.
+navTitle: dot-npc-ai
+order: 330
+badge: new
+keywords:
+  - "npc"
+  - "ai"
+  - "behaviour tree"
+  - "behavior tree"
+  - "state machine"
+  - "blackboard"
+  - "steering"
+  - "difficulty"
+  - "aim"
+source:
+  - ../game-dev/godot/dot-npc-ai/README.md
+---
+
+`dot-npc-ai` is the decision half of [dot-npc](/learn/godot/addons/dot-npc): a
+behaviour tree with real running-state memory, a state machine for the many
+cases a tree is overkill for, a per-NPC blackboard that forgets, and the
+steering a crowd needs at a doorway.
+
+Requires `dot-core` and `dot-npc`. One file in it names dot-npc.
+
+## Usage
+
+A brain builds a machine, a tree, or both:
+
+```gdscript
+extends "res://addons/dot_npc_ai/runtime/dot_npc_ai_brain.gd"
+
+func _build() -> void:
+    initial_state = &"idle"
+
+    tree = DotNpcAiSelector.new(&"root", [
+        DotNpcAiSequence.reactive_with(&"chase", [
+            DotNpcAiLeaf.Condition.new(&"has a target", func(_c): return npc.has_target()),
+            DotNpcAiLeaf.Action.new(&"walk at it", _chase),
+        ]),
+        DotNpcAiLeaf.Action.new(&"wander", _wander),
+    ])
+```
+
+<Details title="Example: a state machine and an action">
+
+```gdscript
+    machine = DotNpcAiMachine.new()
+    machine.add(DotNpcAiState.make(&"idle")
+        .when(func(_c): return npc.has_target(), &"chasing"))
+    machine.add(DotNpcAiState.make(&"chasing")
+        .when(func(_c): return not npc.has_target(), &"searching"))
+    machine.add(DotNpcAiState.make(&"searching")
+        .when(func(_c): return npc.has_target(), &"chasing")
+        .after(3.0, &"idle"))
+```
+
+```gdscript
+func _chase(ctx: DotNpcAiContext) -> int:
+    ctx.put(&"last_seen", target_position(), 6.0)      # remembered for six seconds
+    steer_with_spacing(target_position(), 4.0, ctx.delta)
+    return DotNpcAiNode.Status.RUNNING
+```
+
+</Details>
+
+## Two rules about trees
+
+<Callout type="warning" title="A node that returned RUNNING is resumed, not restarted">
+Get it wrong and nothing errors: an NPC re-opens the same door sixty times a
+second, or an attack never finishes because its wind-up keeps restarting.
+Everything looks alive and nothing completes.
+
+`tick()` is not overridable here, and the composites own the resume index, so no
+node can forget.
+</Callout>
+
+<Callout type="warning" title="A guard over a never-finishing action needs a reactive sequence">
+Otherwise the guard is asked exactly once. `DotNpcAiSequence.reactive_with()` is
+that; a plain sequence is for steps in order.
+</Callout>
+
+## Character, not difficulty
+
+A tree decides what an NPC does. It does not make two of them feel like
+different people — same tree, same NPC: they notice at the same instant and
+shoot with the same accuracy.
+
+```gdscript
+brain.character = DotNpcAiCharacter.hard().with_seed(npc.instance_id)
+
+# In the "shoot at it" branch:
+if not ctx.has_reacted(npc.engaged_at):
+    return DotNpcAiNode.Status.RUNNING       # seen it, not acted on it yet
+
+var at := ctx.character.aim_point(muzzle, target.position, target.velocity, 900.0, shot)
+```
+
+`DotNpcAiCharacter` sets reaction time, aim accuracy, aim skill, view turn rate,
+aggression, self-preservation, vengefulness and a tendency to camp, with four
+presets from `easy()` to `nightmare()`. There is no difficulty setting: the
+character is the difficulty, per NPC, so a game can mix them.
+
+Everything random in it is a hash of the character's seed and a number you pass,
+so the same shot always misses the same way and a replay agrees with the server
+that recorded it. **Give each NPC its own seed**, or twenty of them fire one
+volley.
+
+<Related>
+- [dot-npc](/learn/godot/addons/dot-npc) — what it is deciding for
+- [dot-npc-ai-director](/learn/godot/addons/dot-npc-ai-director) — how many, and where
+- [dot-randomness](/learn/godot/addons/dot-randomness) — the same seeded-stream rule, generally
+</Related>

@@ -1,0 +1,109 @@
+---
+title: dot-spawn
+description: Where anything enters the world and why that place — points and areas in 2D and 3D, team and class filters, conditions that veto, six selection modes, per-request randomness, respawn waves and spawn protection.
+navTitle: dot-spawn
+order: 70
+badge: new
+keywords:
+  - "spawn"
+  - "respawn"
+  - "spawn points"
+  - "spawn protection"
+  - "waves"
+  - "selection"
+  - "deathmatch"
+source:
+  - ../game-dev/godot/dot-spawn/README.md
+---
+
+`dot-spawn` decides where a player, an NPC or a prop enters the world. It
+answers a question and emits a signal; the game does the spawning.
+
+Requires `dot-core`. It does not raycast — `can_see_fn` is supplied, because
+this addon has no opinion about which collision layers count and
+[dot-physics](/learn/godot/addons/dot-physics) already does.
+
+## Usage
+
+```gdscript
+var spawns := DotSpawnDirector.new()
+spawns.rules = DotSpawnRules.team_deathmatch()
+spawns.tick_rate = 64
+spawns.enemies_fn = func(team): return positions_of_enemies_of(team)
+spawns.can_see_fn = func(a, b): return physics.query().line_of_sight_3d(world, a, b)
+add_child(spawns)
+spawns.refresh()                       # collect the markers in the level
+
+var res := spawns.choose(DotSpawnRequest.make("ada", &"blue", &"rifleman", tick))
+if res.ok:
+    player.global_transform = (res.value as DotSpawnChoice).transform
+
+# Once a tick: expires protection and drains respawn timers.
+for key in spawns.advance(tick):
+    respawn(key)
+```
+
+Points **and** areas, in 2D and 3D — a point spawn fails in the exact case a
+round begins, with sixteen capsules at one coordinate.
+
+## Selection modes
+
+| | |
+| --- | --- |
+| `random` | Uniform. What deathmatch wants: a safest-first selector in a free-for-all sends everyone to the same quiet corner, deterministically, and everyone learns it. |
+| `safest` | Highest score: far from enemies, out of sight, not recently used, not occupied. |
+| `furthest` | Furthest from the nearest enemy, and nothing else. |
+| `round_robin` | Each in turn. Predictable on purpose, for a tutorial or a test. |
+| `nearest_friend` | Beside a living team-mate. |
+| `first` | The first that passes. For a course with one start. |
+
+## Conditions veto; weights argue
+
+`DotSpawnCondition.allows()` is a veto and `bonus()` is an opinion. A condition
+that expresses a veto as a large penalty still picks the forbidden site when it
+is the only one left — which is how a game spawns the attacking team inside the
+defenders' base in the one round where it matters.
+
+Four ship — `MinimumEnemyDistance`, `OutOfSight`, `NotOccupied`, `MetaEquals` —
+and `DotSpawnCondition` is the subclass point for a fifth.
+
+<Callout type="warning" title="When everything fails, something still spawns — loudly">
+`fall_back_when_nothing_passes` defaults to on. A round where every site fails
+its conditions is a round where nobody spawns, and a player looking at a black
+screen cannot tell that from a crash.
+
+The choice comes back with `fell_back` set, a reason attached, a warning logged
+and a signal fired, because a map whose conditions can never be satisfied is a
+content bug and is otherwise invisible.
+</Callout>
+
+## Randomness is per request, not per director
+
+One generator seeded from `(seed, tick, key)` per call, never a shared member. A
+single stream makes a spawn depend on how many *other* spawns happened first, so
+a server that processed two deaths this tick and a client that saw one pick
+different points, and the player materialises in two places.
+
+## Respawn timers and waves
+
+`queue_respawn`, `take_due`, `advance`. Queuing somebody twice keeps the earlier
+time — a kill credited twice must not push a respawn further away — and due keys
+come out **sorted**, because a dictionary's key order is not a promise and two
+machines disagreeing about it is a desync with no obvious cause.
+
+`wave_respawn` holds everybody until the next boundary, which is the round-based
+modes' answer to a trickle of players arriving one at a time into a fight that
+is already lost.
+
+<Callout type="info" title="dot-match keeps its own spawn points, and that is fine">
+Those are the match's view: one point per player, picked by danger, enough for a
+deathmatch and dependency-free. dot-spawn is the larger one — areas, conditions,
+waves, protection, 2D. Using both means picking which one the match asks.
+</Callout>
+
+<Related>
+- [dot-match](/learn/godot/addons/dot-match) — the smaller spawn selector
+- [dot-team](/learn/godot/addons/dot-team) · [dot-player-class](/learn/godot/addons/dot-player-class) — what a filter filters on
+- [dot-physics](/learn/godot/addons/dot-physics) — the line-of-sight test it is handed
+- [dot-randomness](/learn/godot/addons/dot-randomness) — the same per-request rule, generally
+</Related>

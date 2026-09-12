@@ -2,7 +2,7 @@
 title: dot-user
 description: Player profiles that follow a person between servers without letting those servers work out that it is the same person — a per-scope pseudonymous id, display-name validation and pluggable storage.
 navTitle: dot-user
-order: 70
+order: 100
 keywords:
   - "profile"
   - "display name"
@@ -19,6 +19,8 @@ source:
 
 Display name, avatar reference, preferences. Resolved once on join, cached, and
 never re-read on the hot path.
+
+Requires `dot-core`.
 
 ```gdscript
 var manager := DotUserManager.new()

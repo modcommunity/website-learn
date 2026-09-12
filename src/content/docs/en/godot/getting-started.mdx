@@ -1,0 +1,220 @@
+---
+title: Getting started with Dot
+description: From nothing to a Dot game running on your own machine, and then to a server other people can join — the engine version, the one command that clones and links the collection, and how to add the addons to a project of your own.
+navTitle: Getting started
+order: 5
+badge: new
+keywords:
+  - "getting started"
+  - "quickstart"
+  - "quick start"
+  - "setup"
+  - "local development"
+  - "bootstrap"
+  - "clone"
+  - "godot"
+  - "4.7.2"
+  - "server"
+  - "host"
+  - "contribute"
+  - "open source"
+source:
+  - ../game-dev/CLAUDE.md
+  - ../game-dev/docs/development-setup.md
+  - ../game-dev/godot/dot-bootstrap/README.md
+  - ../game-dev/godot/dot-server-deploy/README.md
+---
+
+**Dot** is The Modding Community's open-source game platform for Godot 4:
+forty-eight addons, a launcher, a server tool and five games that exist to run
+the addons together. Everything on
+[the play center](https://moddingcommunity.com/play) is built out of it, and all
+of it is MIT licensed under
+[`modcommunity`](https://github.com/modcommunity).
+
+This page takes you from an empty directory to a game running locally, and then
+to a server other people can join.
+
+## Requirements
+
+| | |
+| --- | --- |
+| **Godot 4.7.2 or newer** | On `PATH` as `godot`, or pointed at by a `GODOT` environment variable. The launcher and the server tool both refuse anything older. |
+| **Git** | Each asset is its own repository; there is no way to clone the collection as one unit. |
+| **A terminal** | `bash` on Linux and macOS, PowerShell on Windows. |
+| **Nothing else** | No account, no credentials, no API key. The repositories are public and the games play offline. |
+
+<Callout type="warning" title="Treat this as partially tested">
+Every asset has its own headless test suite and those suites pass, but very
+little of this has been in front of real players. Expect rough edges, and please
+report what you hit. The collection was built with Claude Code and is maintained
+the same way, which is stated in every repository's README rather than buried.
+</Callout>
+
+## 1. Get the collection
+
+`dot-bootstrap` is the one place that knows what the collection consists of. It
+clones or pulls every repository and wires up the addon links each project needs
+in order to open.
+
+```bash
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh
+```
+
+<Details title="On Windows">
+
+```powershell
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser   # once, if PowerShell refuses
+.\bootstrap.ps1
+```
+
+`bootstrap.ps1` **copies** the addon folders rather than linking them, and it
+has to. Measured on Windows 11 with Godot 4.7.2: directory junctions into
+`addons\` exist and Explorer walks them, and Godot registers not one
+`class_name` from any of them — seventy-odd scripts failing to parse with the
+folders sitting right there.
+
+The cost of copying is that it does not track its source, so re-run
+`.\bootstrap.ps1 -Links` after a `git pull`.
+
+</Details>
+
+Everything lands in `./projects` beside the script. The first line it prints is
+where it decided to put things. Run it again whenever you want to pull; a
+repository with uncommitted work in it is reported and left alone.
+
+| | |
+| --- | --- |
+| `./bootstrap.sh` | Clone what is missing, pull what is not, link everything. |
+| `./bootstrap.sh --links` | Only redo the addon links. |
+| `./bootstrap.sh --status` | Branch, dirty and unpushed, per repository. |
+| `./bootstrap.sh --list` | What there is to play. |
+
+<Callout type="info" title="Do not make the addon links by hand">
+Every project except `dot-core` needs `dot-core` present just to *open*, and a
+game needs every addon it uses. Those links are gitignored, because a consumer
+copies the folders instead — so a fresh clone of `game-arena` does not open
+until something has linked eight addons into it.
+</Callout>
+
+## 2. Play one
+
+```bash
+./bootstrap.sh --play arena      # or g2gfast, hungario, playground, simple-lobby
+```
+
+No server, no CDN, nothing to download: every game falls back to playing offline
+when no dedicated server is attached. `arena` gives you three bots on
+`dm_atrium`, `hungario` six, and `g2gfast` and `playground` a map and a timer.
+
+`arena` starts in warmup and runs WARMUP → COUNTDOWN → LIVE, and nobody spawns
+until LIVE, about thirteen seconds in. That is the match loop, not a hang.
+
+What each game is for is on [Reference games](/learn/godot/games).
+
+## 3. Add Dot to a project of your own
+
+An addon's distributable is its `addons/<name>/` folder and nothing else. Copy
+it in, then enable it in *Project → Project Settings → Plugins*.
+
+```bash
+# dot-core is required by everything. Copy it first.
+cp -r dot-core/addons/dot_core       my-game/addons/
+cp -r dot-timer/addons/dot_timer     my-game/addons/
+```
+
+<Callout type="info" title="Take only what you need — and always dot-core">
+`dot-core` is the only hard dependency in the collection. Everything else is
+discovered at run time, duck-typed or bridged by your game, so a project that
+wants a speedrun timer takes `dot-timer` and `dot-core` and nothing else.
+
+That is not a preference: in GDScript a script that mentions a `class_name` the
+project does not have fails to parse, and takes every script referencing it down
+with it. [Conventions](/learn/godot/conventions) covers the patterns that follow
+from it.
+</Callout>
+
+Then run the check, every time — the second step is the one that finds things:
+
+```bash
+godot --headless --path . --import        # registers the class_name globals
+godot --headless --path . res://examples/<the example>.tscn
+```
+
+[Installing](/learn/godot/installing) has the full version, including the
+per-file `--check-only` pass and why every headless run wants a `timeout` around
+it.
+
+## 4. Run a server
+
+[`dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy) boots a
+`dot-server`, reads YAML out of `cfg/`, loads games out of `content/` and serves
+a browser client.
+
+```bash
+./setup.sh              # find a runtime, wire the addons, write ./server
+./server                # start it
+```
+
+To look at it in a browser on your own machine, one command exports, serves and
+prints a link:
+
+```bash
+./play.sh
+```
+
+[Hosting a server](/learn/godot/hosting) is the full walk-through: the YAML
+files, roles instead of permission flags, votes, the container, RCON, and
+getting the listing on the site to say you are up.
+
+## Where to go next
+
+<Cards>
+  <Card title="The addons" href="/learn/godot/addons">
+    All forty-eight, grouped by what they are for, with every hook each exposes.
+  </Card>
+  <Card title="Conventions" href="/learn/godot/conventions">
+    The rules every addon obeys — no autoloads, `DotResult`, `DotNodeRef`,
+    layered configuration — and why the browser decides half of them.
+  </Card>
+  <Card title="Extension points" href="/learn/godot/extending">
+    Everything you can subclass, assign or register, in one table.
+  </Card>
+  <Card title="Hosting a server" href="/learn/godot/hosting">
+    From `./setup.sh` to a listed server with moderation, votes and a chat relay.
+  </Card>
+</Cards>
+
+## Contributing
+
+Issues and pull requests are welcome on any repository under
+[`modcommunity`](https://github.com/modcommunity), and so is a bug report that
+is only a description of what you saw. The two contributions that help most are
+the two the platform cannot manufacture for itself:
+
+- **Run a server and list it.** A platform with no servers on it is a
+  catalogue. [Hosting a server](/learn/godot/hosting) is the path, and
+  [listing it](/learn/servers/listing) takes a few minutes once it is up.
+- **Play something and say what broke.** Every hard bug in this family was found
+  by running it rather than by reading it, and almost every one was invisible to
+  the suite of the repository it was in.
+
+<Callout type="info" title="One thing is not open source">
+The addons, the games and the tooling are MIT. The **web back-end** — this
+site's own deployment — is not. Every addon that talks to it does so over a
+documented HTTP protocol and points at a `backbone_url` you can change, so a
+project that wants its own backend builds one and changes a setting. That
+protocol is the [integration API](/learn/api/integration).
+</Callout>
+
+<Related>
+- [Dot for Godot](/learn/godot) — what the collection is and how it stacks
+- [Installing](/learn/godot/installing) — the detail behind step 3
+- [Hosting a server](/learn/godot/hosting) — the detail behind step 4
+- [Reference games](/learn/godot/games) — what you just played
+- [Tooling](/learn/godot/tooling) — `dotserve` and the server tool, as reference
+</Related>

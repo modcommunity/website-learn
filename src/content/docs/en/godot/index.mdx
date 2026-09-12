@@ -1,8 +1,9 @@
 ---
 title: Dot for Godot
-description: The Dot collection — twenty-two open-source Godot 4 addons, a launcher, a server tool and five reference games that add identity, content delivery, netcode, dedicated servers and a genre kit on top of stock Godot.
+description: The Dot collection — forty-eight open-source Godot 4 addons, a launcher, a server tool and five reference games that add identity, content delivery, netcode, dedicated servers, a player layer and a genre kit on top of stock Godot.
 navTitle: Dot for Godot
 order: 0
+badge: updated
 keywords:
   - "godot"
   - "gdscript"
@@ -14,37 +15,37 @@ keywords:
   - "engine"
   - "4.7"
 source:
-  - ../game-dev/godot/NOTES.md
+  - ../game-dev/docs/family.md
   - ../game-dev/CLAUDE.md
   - ../game-dev/PLATFORM.md
 ---
 
-**Dot** is The Modding Community's collection of Godot 4 assets: twenty-two
+**Dot** is The Modding Community's collection of Godot 4 assets: forty-eight
 addons, a shell launcher, a server tool and five games that exist to run the
-addons together. They are on the site as the [Dot assets
-collection](/co/4-dot-assets) and on GitHub under
+addons together. They are on the site as the
+[Dot assets collection](/co/4-dot-assets) and on GitHub under
 [`modcommunity`](https://github.com/modcommunity).
 
 They add the parts of a game platform that are not engine features — accounts,
 avatars, content delivery, netcode, dedicated servers, moderation, timers,
-leaderboards — as **layers above stock Godot**. A game that wants none of it
-stays an ordinary Godot project.
+leaderboards — as layers above stock Godot. A game that wants none of it stays
+an ordinary Godot project.
 
 <Cards>
-  <Card title="The addons" href="/learn/godot/addons">
-    All twenty-two, what each is for, and every hook it exposes.
+  <Card title="Getting started" href="/learn/godot/getting-started">
+    From nothing to a Dot game running on your machine, and then to a server
+    other people can join.
   </Card>
-  <Card title="Extension points" href="/learn/godot/extending">
-    The one index of everything you can subclass, assign or register — and the
-    promise that none of it needs a fork.
+  <Card title="The addons" href="/learn/godot/addons">
+    All forty-eight, what each is for, and every hook it exposes.
+  </Card>
+  <Card title="Hosting a server" href="/learn/godot/hosting">
+    `./setup.sh`, the YAML, roles instead of flags, votes, the container, and
+    the site listing.
   </Card>
   <Card title="Conventions" href="/learn/godot/conventions">
     The rules every addon obeys: no autoloads, `DotResult`, `DotNodeRef`,
     layered configuration, and why the browser decides half of them.
-  </Card>
-  <Card title="Installing" href="/learn/godot/installing">
-    Copy a folder, tick a plugin. Plus the engine version, the local-development
-    links, and the two-step check to run afterwards.
   </Card>
 </Cards>
 
@@ -52,55 +53,57 @@ stays an ordinary Godot project.
 Every asset has its own headless test suite and those suites pass, but very
 little of this has been in front of real players yet. Expect rough edges, and
 report anything you hit. The collection was built with Claude Code and is
-maintained the same way — that is stated up front in every repository's README
-rather than buried.
+maintained the same way — stated up front in every repository's README rather
+than buried.
 </Callout>
 
-## We are not forking Godot
+## How the collection is organised
 
-Worth settling first, because "a fork of Godot" and "addons for Godot" lead to
-different projects and only one of them is finishable.
-
-A fork means owning the engine's release cadence, its export templates for six
-platforms, its web build, and every rebase for ever — and the moment it
-diverges, a game written for it cannot use anything from the Godot asset
-library. The parts of a platform people actually mean are not engine features:
-identity, avatars, content delivery, dedicated servers, moderation, discovery.
-Every one of those is a layer *above* an engine.
-
-So: **stock Godot, plus addons, plus one open backend protocol.**
+| | |
+| --- | --- |
+| **Foundation** | `dot-core`. The only hard dependency. |
+| **The player** | `dot-player`, `dot-player-controller`, `dot-player-char`, `dot-player-class`, `dot-physics`, `dot-spawn`, `dot-team`. Who is in the session, what drives them, how big they are, which side they are on. |
+| **Identity and content** | `dot-auth`, `dot-user`, `dot-user-avatar`, `dot-platform`, `dot-cloud`. Who a player is, what they look like, and how they get content. |
+| **Servers and the wire** | `dot-net`, `dot-server`, `dot-browser`, `dot-peer-to-peer`, `dot-moderation`, `dot-chat`, `dot-voice`, `dot-spectate`, `dot-vote`. |
+| **The fight** | `dot-combat`, `dot-weapon`, `dot-effects`, `dot-loadout`, `dot-inventory`, `dot-economy`, `dot-match`, `dot-objective`, `dot-2d`. |
+| **The world** | `dot-npc`, `dot-npc-ai`, `dot-npc-ai-director`, `dot-vehicle`, `dot-map`, `dot-props`, `dot-procedural-generation`, `dot-randomness`. |
+| **Progression** | `dot-timer`, `dot-leaderboard`, `dot-stats`, `dot-achievements`. |
+| **The person at the keyboard** | `dot-ui`, `dot-settings`, `dot-console`, `dot-audio`, `dot-fx`. |
 
 ## Only `dot-core` is ever a hard dependency
 
-This is the rule the whole collection is built around, and in GDScript it is not
-merely a preference: **a script that so much as *mentions* a `class_name` the
-project does not have fails to parse**, and takes every script that references
-it down with it. An addon that imported another would make that other addon
-mandatory for everyone.
+In GDScript, a script that so much as *mentions* a `class_name` the project does
+not have fails to parse, and takes every script that references it down with it.
+An addon that imported another would therefore make that other addon mandatory
+for everybody.
 
-So everything else is discovered at runtime, duck-typed, or bridged by the game:
+So everything else is discovered at run time, duck-typed, or bridged by the
+game:
 
 - `dot-server` finds `dot-auth` and `dot-cloud` through
   [`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads) and
   imports neither.
 - `dot-net` needs only `dot-core` and moves bytes through a `Callable`.
-- `dot-fps-controller`, `dot-combat`, `dot-loadout`, `dot-match` and `dot-2d`
-  each ship a `*NetSync` class that describes what to replicate **as data** —
-  property names and type names as *strings* — which a bridge resolves with
-  `DotNetVar.Type[spec.type]`. None of them names a `dot-net` identifier.
-- `dot-combat` takes lag compensation as two `Callable`s.
-- `dot-ui` names nothing outside `dot-core`: its feed takes coloured fragments
-  and its table takes rows of dictionaries.
-- `dot-user` and `dot-user-avatar` do not import each other, and `dot-loadout`
-  carries its own copy of a storage-key check for the same reason.
+- `dot-player-controller`, `dot-combat`, `dot-loadout`, `dot-match` and `dot-2d`
+  each ship a `*NetSync` class describing what to replicate **as data** —
+  property and type names as strings, which a bridge resolves. None of them
+  names a `dot-net` identifier.
+- `dot-browser` implements dot-server's wire format a second time rather than
+  importing it, and checks itself against bytes dot-server's encoder produced.
+- `dot-team` reaches `dot-spectate`, and `dot-weapon` reaches `dot-loadout` and
+  `dot-inventory`, entirely by duck typing.
+
+Four addons are the exception and each says so: `dot-npc-ai` and
+`dot-npc-ai-director` need `dot-npc`, and `dot-player-controller`,
+`dot-player-char` and `dot-player-class` need `dot-player`.
 
 <Callout type="info" title="Duplication here is deliberate">
 Where two addons hold the same twenty lines, that is the rule above being paid
-for, not an oversight. Deduplicating it into a shared import is how one addon
-becomes a dependency of another.
+for. Deduplicating it into a shared import is how one addon becomes a dependency
+of another.
 </Callout>
 
-## How the pieces stack
+<Details title="How the pieces stack">
 
 ```
                         ┌──────────────┐
@@ -117,11 +120,33 @@ becomes a dependency of another.
 │ dot-user  │ │dot-user-avatar │    │  dot-platform  │
 └───────────┘ └────────────────┘    └────────────────┘
 
-      ┌──────────────────┬──────────────┬─────────────┐
-      ▼                  ▼              ▼             ▼
-┌────────────┐    ┌────────────┐  ┌───────────┐ ┌──────────────────┐
-│ dot-combat │    │dot-loadout │  │ dot-match │ │dot-fps-controller│
-└────────────┘    └────────────┘  └───────────┘ └──────────────────┘
+      ┌──────────────────┬───────────────┬──────────────┐
+      ▼                  ▼               ▼              ▼
+┌────────────┐    ┌──────────────┐ ┌───────────┐ ┌───────────────┐
+│ dot-combat │    │ dot-loadout  │ │ dot-match │ │ dot-objective │
+│ dot-weapon │    │ dot-inventory│ │           │ │ dot-spectate  │
+│ dot-effects│    │ dot-economy  │ │           │ │               │
+└────────────┘    └──────────────┘ └───────────┘ └───────────────┘
+ what you hold     what you can      the round     what it is about,
+                   afford now        itself        and who watches
+
+the player layer, needing only dot-core under dot-player:
+
+┌────────────┐ ┌──────────────────────┐ ┌─────────────────┐ ┌────────────────┐
+│ dot-player │ │dot-player-controller │ │ dot-player-char │ │dot-player-class│
+└─────┬──────┘ └──────────────────────┘ └─────────────────┘ └────────────────┘
+      └──── every one of the three to its right needs it, and nothing else
+
+┌──────────────┐ ┌──────────────┐ ┌────────────┐   all three need only
+│ dot-physics  │ │  dot-spawn   │ │  dot-team  │   dot-core; dot-team
+└──────────────┘ └──────────────┘ └────────────┘   duck-types dot-spectate
+
+the ones that belong to the PERSON rather than to the server:
+
+┌──────────────┐ ┌─────────────┐ ┌───────────┐ ┌────────┐ ┌────────────────┐
+│ dot-settings │ │ dot-console │ │ dot-audio │ │ dot-fx │ │dot-peer-to-peer│
+└──────────────┘ └─────────────┘ └───────────┘ └────────┘ └────────────────┘
+
       └──────────────────┴──────────────┴─────────────┘
                                │  every one of these needs
                                ▼  ONLY dot-core
@@ -133,56 +158,47 @@ becomes a dependency of another.
 The arrows are *optional* relationships everywhere except the top row. Read them
 as "works better with", not "requires".
 
-## The three groups
+</Details>
 
-**The platform half** — `dot-core`, `dot-cloud`, `dot-auth`, `dot-net`,
-`dot-server`, `dot-user`, `dot-user-avatar`, `dot-platform`. Who a player is,
-what they look like, how they get content, and the dedicated server they connect
-to.
+## We are not forking Godot
 
-**The gameplay half** — `dot-fps-controller`, `dot-2d`, `dot-combat`,
-`dot-loadout`, `dot-match`, `dot-ui`. Movement, weapons, equipment, the match
-loop and the interface. Each needs only `dot-core`.
+A fork means owning the engine's release cadence, its export templates for six
+platforms, its web build, and every rebase for ever — and the moment it diverges,
+a game written for it cannot use anything from the Godot asset library. The
+parts of a platform people actually mean are not engine features: identity,
+avatars, content delivery, dedicated servers, moderation, discovery. Every one
+of those is a layer *above* an engine.
 
-**The genre kit** — `dot-timer`, `dot-map`, `dot-props`, `dot-leaderboard`,
-`dot-stats`, `dot-voice`, `dot-moderation`, `dot-vote`. Everything a person
-needs to *run a server* people come back to: a records table, a map rotation, a
-vote for what plays next, punishments that outlive a session.
+So: stock Godot, plus addons, plus one open backend protocol.
 
-## The genre kit is a strategy, not a feature list
+## Why there is a genre kit
 
-The collection's problem was never that it lacked features. It is that **nobody
-has a reason to be the first person on a new platform**, and a general-purpose
-addon family does not supply one. A genre does.
+A general-purpose addon family gives nobody a reason to be the first person on a
+new platform. A genre does, and the one chosen is surf and bunny-hop: the
+movement is the hardest part to get right, a community in that genre *is* a
+server (a rotation, a records table, an admin who zones maps), its content is
+made and traded by players, and it is small enough to finish.
 
-The one chosen is surf and bunny-hop — Counter-Strike's movement community,
-still running Source servers on a timer plugin written for an SDK last opened in
-2013. It is a good first genre for four reasons and only the fourth is about us:
+That is what `dot-timer`, `dot-map`, `dot-vote` and `game-g2gfast` are for, and
+why [`dot-player-controller`](/learn/godot/addons/dot-player-controller)
+reproduces classic strafe acceleration closely enough that somebody who has
+surfed for ten years does not feel the difference.
 
-1. **Movement is the hardest thing to get right.** Almost nobody reproduces
-   Quake acceleration and Source's `TryPlayerMove` closely enough that a player
-   who has surfed for ten years does not feel the difference.
-2. **It is server-shaped.** A surf community *is* a server: a rotation, a
-   records table, an admin who zones new maps, regulars who care about the
-   leaderboard.
-3. **Its content is portable and community-made.** Maps come from mappers, zones
-   come from admins, and both are traded as files.
-4. **It is small enough to finish.** Four addons and a playable game.
-
-## Everything is MIT, except the backend
+## Licensing
 
 The addons, the games and the tooling are MIT licensed and open source. The one
 thing that is not is the **web back-end infrastructure** — TMC's own deployment.
-Every addon that talks to it does so over a documented HTTP protocol, and points
+Every addon that talks to it does so over a documented HTTP protocol and points
 at a `backbone_url` you can change, so a project that wants its own backend
 builds one and changes a setting.
 
 <Related>
-- [The addons](/learn/godot/addons) — all twenty-two, with their hooks
+- [Getting started](/learn/godot/getting-started) — clone it, run it, host it
+- [The addons](/learn/godot/addons) — all forty-eight, with their hooks
 - [Extension points](/learn/godot/extending) — the whole index in one table
 - [Conventions](/learn/godot/conventions) — the rules they all obey
 - [Reference games](/learn/godot/games) — where the seams are actually run
-- [Tooling](/learn/godot/tooling) — `dotserve` and TMC's server tool
+- [Hosting a server](/learn/godot/hosting) · [Tooling](/learn/godot/tooling)
 - [Integration API](/learn/api/integration) — the backbone half of `dot-stats`,
   `dot-leaderboard` and the server reporter
 </Related>

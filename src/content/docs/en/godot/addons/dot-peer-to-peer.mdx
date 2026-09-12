@@ -1,0 +1,120 @@
+---
+title: dot-peer-to-peer
+description: Sessions players host for each other — join codes, readiness, a host election that is a pure function of the member list, and an honest account of what NAT will not do for you.
+navTitle: dot-peer-to-peer
+order: 170
+badge: new
+keywords:
+  - "peer to peer"
+  - "p2p"
+  - "webrtc"
+  - "lobby"
+  - "join code"
+  - "host migration"
+  - "nat"
+  - "relay"
+  - "signalling"
+source:
+  - ../game-dev/godot/dot-peer-to-peer/README.md
+---
+
+`dot-peer-to-peer` is for games played on a session one of the players hosts,
+rather than on a dedicated server: join codes, membership, readiness and host
+migration.
+
+Requires `dot-core`. WebRTC is optional and is reached without being named.
+
+## It is a lobby problem before it is a transport problem
+
+The transport half is a dozen calls into an engine module. What goes wrong is in
+the lobby: two people joining the same slot, a code that was already used, a
+host leaving and nobody agreeing who takes over, two peers that both think they
+are the host. None of that involves a socket, which is why `DotP2PLobby` holds
+no connection and all of it is covered by a headless suite.
+
+## Usage
+
+```gdscript
+var p2p := DotP2PSession.new()
+p2p.config = my_config
+p2p.signaller = DotP2PSignallerHttp.new(url, my_id, http)
+add_child(p2p)
+p2p.setup()
+
+var code = p2p.host("Ada").value      # show this to a friend
+p2p.join("K7M4PX", "Bob")             # or type theirs
+```
+
+`DotP2PSignaller` is four verbs. A loopback one ships for suites and split
+screen, and an HTTP one for anything with a URL and four routes; a backbone, a
+lobby service or a WebSocket the game already has are all subclasses.
+
+## The host election is a pure function
+
+```gdscript
+lobby.elect_host()     # stable first, then longest here, then lowest id
+```
+
+Every peer computes it from a member list they all have. An election requiring
+*agreement* needs a round of messages, and the moment a host disappears is
+precisely the moment messages are not arriving.
+
+The tie-break is total and deterministic, because two peers picking differently
+is a split session neither can detect. Longest-joined rather than lowest
+latency: latency is measured differently by everybody, and a value two peers
+disagree about can elect two hosts.
+
+## Three things it will not hide
+
+<Params>
+  <Param name="Peer-to-peer needs a server to start">
+    Two machines behind two routers cannot find each other without something
+    both can reach. What P2P removes is the server carrying the *game traffic*,
+    which is the expensive part; the rendezvous is a few kilobytes, once.
+  </Param>
+  <Param name="Without a relay, some pairs cannot connect">
+    Between five and fifteen per cent: symmetric NAT on both sides,
+    carrier-grade NAT, some corporate and mobile networks. `relay_servers` is
+    empty by default because a relay costs bandwidth and nobody can choose that
+    for you — and with none configured those pairs fail quickly and by name,
+    because "we could not find a route to that player" is something a person can
+    act on and a spinner is not.
+  </Param>
+  <Param name="A host is a player, and can cheat">
+    `DotP2PConfig.Trust` makes it a decision: host-authoritative (right for
+    co-op among friends), verified (catches a careless host, not a determined
+    one), or sandboxed, where nothing leaves the session — no records, no
+    statistics, no leaderboard. A host who can cheat and a leaderboard are not
+    two features; they are one exploit.
+  </Param>
+</Params>
+
+<Callout type="warning" title="The transport is never named">
+Godot's WebRTC ships as an optional GDExtension on native and is built into the
+web export. On a desktop build without it every WebRTC class is absent, and a
+script that mentions the identifier fails to compile, taking every script that
+references it down with it.
+
+Everything therefore goes through `ClassDB.instantiate` by string, and a build
+without it still parses, still runs, and says which of the two reasons it is:
+
+```gdscript
+if not DotP2PSession.available():
+    push_warning(DotP2PSession.unavailable_reason())
+```
+</Callout>
+
+## The join-code alphabet
+
+`23456789ABCDEFGHJKLMNPQRSTUVWXYZ` — no 0, O, 1, I or l. A player reading a code
+aloud and the other person typing a different one is the commonest support
+request any game with a join code has. Six characters is about a billion codes.
+
+A code is checked for **shape** before anything is looked up, which is both a
+better answer for a typo and not a way to find out which sessions exist.
+
+<Related>
+- [dot-net](/learn/godot/addons/dot-net) — the dedicated-server half
+- [dot-server](/learn/godot/addons/dot-server) · [dot-browser](/learn/godot/addons/dot-browser)
+- [dot-leaderboard](/learn/godot/addons/dot-leaderboard) — why a sandboxed session reports nothing
+</Related>

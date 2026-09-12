@@ -2,7 +2,7 @@
 title: dot-platform
 description: Joins dot-auth, dot-user and dot-user-avatar into one admission flow and binds it to a dot-server — the one place an account id becomes a scoped key.
 navTitle: dot-platform
-order: 60
+order: 120
 keywords:
   - "admission"
   - "join flow"
@@ -19,6 +19,8 @@ source:
 `dot-user-avatar` says what you look like. None of them knows about the others —
 that is what makes them adoptable one at a time — and so nothing joined them up.
 This does.
+
+Requires `dot-core` and `dot-server`.
 
 It requires `dot-core` and [`dot-server`](/learn/godot/addons/dot-server), and
 finds the other three at run time. **Any subset works, including none.**

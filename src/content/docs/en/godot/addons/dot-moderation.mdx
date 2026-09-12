@@ -2,7 +2,7 @@
 title: dot-moderation
 description: Bans, kicks, chat gags, voice mutes and warnings as one durable record with pluggable storage — so a mute survives a reconnect and a community running several servers shares one list.
 navTitle: dot-moderation
-order: 210
+order: 180
 keywords:
   - "moderation"
   - "ban"
@@ -21,6 +21,15 @@ source:
   - ../game-dev/godot/dot-moderation/CLAUDE.md
 ---
 
+`dot-moderation` holds bans, kicks, chat gags, voice mutes and warnings as one
+durable record — stored, expiring, scoped and revocable, against a person or
+against an address.
+
+Requires `dot-core`. It publishes `dot_mute_source` and `dot_ban_source`, which
+[`dot-voice`](/learn/godot/addons/dot-voice)'s router and
+[`dot-server`](/learn/godot/addons/dot-server)'s admission check consult without
+any of the three importing another.
+
 ## Why this exists next to a server that already bans
 
 [`dot-server`](/learn/godot/addons/dot-server) has bans, kicks, admin flags with
@@ -28,10 +37,8 @@ immunity and an audit log. What it does not have is a **mute that outlives a
 session**: `DotClientSession.silence()` sets two booleans on a session object,
 and a session is destroyed when its player disconnects. So a muted player
 reconnects and can talk again, which is the first thing anybody who has been
-muted tries.
-
-Bans persisting and mutes not is not a design. It is an accident of where the
-state happened to live.
+muted tries. Bans persisting and mutes not is not a design; it is an accident of
+where the state happened to live.
 
 ## The model
 

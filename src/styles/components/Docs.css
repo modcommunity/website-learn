@@ -282,3 +282,35 @@
     @apply my-0 space-y-1 pl-5;
     @apply list-disc marker:text-muted;
 }
+
+/* ------------------------------------------------------- Collapsed examples */
+
+/*
+ * `<Details>` — a long example the reader opens.
+ *
+ * Three rules, and each is load-bearing:
+ *
+ *   1. The default disclosure triangle is removed on BOTH engines. `list-none`
+ *      covers Firefox and Chrome; WebKit needs the pseudo-element, and without
+ *      it the summary carries two markers.
+ *   2. A code block inside the panel is repainted `bg-surface`. Shiki's blocks
+ *      are `bg-surface-secondary`, which is also the panel's own background, so
+ *      an example dropped in here would otherwise have no edges at all.
+ *   3. The body gets the inline rhythm, not the top-level one — the same
+ *      treatment `<Param>` and `<Related>` bodies get above.
+ */
+.docs-prose .docs-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.docs-prose .docs-details-body > * + * {
+    @apply mt-3;
+}
+
+.docs-prose .docs-details-body pre.astro-code {
+    @apply bg-surface;
+}
+
+.docs-prose .docs-details-body > :last-child {
+    @apply mb-3;
+}

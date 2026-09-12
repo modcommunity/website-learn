@@ -1,0 +1,135 @@
+---
+title: dot-vehicle
+description: Vehicles to drive, ride in and shoot from — a catalogue, handling as layered configuration, seats as data, three chassis kinds, an autopilot, and an exit that is a sweep rather than a constant.
+navTitle: dot-vehicle
+order: 350
+badge: new
+keywords:
+  - "vehicle"
+  - "vehicles"
+  - "car"
+  - "driving"
+  - "seats"
+  - "hover"
+  - "autopilot"
+  - "handover"
+source:
+  - ../game-dev/godot/dot-vehicle/README.md
+---
+
+`dot-vehicle` covers vehicles a game can drive, ride in and shoot from: a
+catalogue, handling as layered configuration, seats as data, and the handover
+between a player's own controller and the vehicle.
+
+Requires `dot-core`.
+
+## Usage
+
+```gdscript
+var vehicles := DotVehicleSpawner.new()
+vehicles.authoritative = true                  # on the server only
+vehicles.catalogue = catalogue
+vehicles.world_ref = DotNodeRef.of_path(^"../World")
+
+# Where the game stops the player's own controller and moves their camera.
+vehicles.ride.on_seated = _player_got_in
+vehicles.ride.on_unseated = _player_got_out
+
+add_child(vehicles)
+
+var jeep := vehicles.spawn(&"jeep", at, &"alice")
+vehicles.ride.enter(jeep, &"alice", alice_node)
+
+# Every simulated tick:
+vehicles.set_command(jeep.instance_id, &"alice", command)
+vehicles.tick(delta)
+```
+
+<Details title="Example: a definition with two seats">
+
+```gdscript
+var jeep := DotVehicleDef.make(&"jeep", "res://vehicles/jeep.tscn")
+
+var driver := DotVehicleSeat.make(&"driver", true)
+driver.seat_offset = Vector3(-0.4, 0.9, -0.4)
+
+var gunner := DotVehicleSeat.make(&"gunner")
+gunner.may_fire = true
+gunner.attach_path = ^"Turret"
+
+jeep.seats = [driver, gunner]
+jeep.tunables = handling          # a DotConfig: retunable in a file
+catalogue.add(jeep)
+```
+
+</Details>
+
+## The hard part is the handover
+
+A player in a vehicle is a player whose controller must stop simulating, whose
+camera belongs to the vehicle, whose collision is the vehicle's, and who has to
+be put back somewhere legal on the way out — with the vehicle possibly upside
+down, against a cliff, or moving at 30 m/s.
+
+<Callout type="warning" title="Exit placement is a query, not a constant">
+A seat carries candidate positions in preference order, `DotVehicleRide` sweeps
+a body-sized capsule at each, and it **refuses the exit** when none is free.
+Refusing is the correct answer; a game that teleports the player anyway is one
+players get outside the map in.
+</Callout>
+
+Rigid-body simulation is not reproducible across machines, so vehicles are
+server-authoritative and not predicted — a correction on something a player is
+steering reads far worse than latency. A driver's client interpolates the
+replicated transform, which hides the snapshot rate without inventing physics.
+
+## Three chassis kinds, and your own
+
+| | |
+| --- | --- |
+| `WHEELED` | Godot's `VehicleBody3D`, with the tunables written onto its wheels. |
+| `HOVER` | This addon's own raycast suspension on a plain `RigidBody3D` — a hovercraft, a skiff, a barge. |
+| `CUSTOM` | The game drives it; dot-vehicle keeps the seats and the bookkeeping. |
+
+Anything else is a `DotVehicleChassis` subclass, named by **path** so a mounted
+[dot-cloud](/learn/godot/addons/dot-cloud) pack can deliver one.
+
+<Callout type="warning" title="Two measured facts about Godot's vehicle">
+Confirmed against the engine source and by running it:
+
+- **A positive `engine_force` drives a `VehicleBody3D` along +Z**, the opposite
+  of `Node3D`'s forward, of `look_at`, and of every other convention in this
+  family. A car built the obvious way drives backwards while every number about
+  it reads correctly.
+- **A positive `steering` turns left.**
+
+`DotVehicleCommand` uses the family's conventions and `DotVehicleWheeled` does
+the translation once, so no game has to.
+</Callout>
+
+## Driving without a person
+
+```gdscript
+var driver := DotVehicleDriver.new()
+driver.target_speed = 16.0
+driver.set_route(PackedVector3Array([checkpoint_a, checkpoint_b, depot]))
+
+jeep.autopilot = driver          # the spawner's tick drives it from here
+```
+
+It steers in the vehicle's own frame (a car on a banked corner is rolled, and a
+world yaw is the wrong question), brakes for corners rather than lifting off,
+eases down to the last waypoint, and notices when it has been asking for
+throttle and going nowhere — then reverses out with the wheel turned the other
+way.
+
+It does not path: the route comes from
+[dot-npc](/learn/godot/addons/dot-npc)'s graph, a spline, or four points in a
+config file. A person in the driving seat always wins; an autopilot is only
+consulted for a vehicle nobody is driving.
+
+<Related>
+- [dot-player-controller](/learn/godot/addons/dot-player-controller) — the controller a handover stops
+- [dot-npc](/learn/godot/addons/dot-npc) — where a route can come from
+- [dot-physics](/learn/godot/addons/dot-physics) — the layout a vehicle collides under
+</Related>

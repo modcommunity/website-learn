@@ -2,7 +2,7 @@
 title: dot-loadout
 description: What a player takes into a match, as a bounded document of ids a dedicated server validates against a schema and entitlements without loading any content — plus deterministic world pickups.
 navTitle: dot-loadout
-order: 120
+order: 260
 keywords:
   - "loadout"
   - "inventory"
@@ -22,6 +22,8 @@ A loadout is a mapping from slot ids to item ids. Nothing else — no scenes, no
 meshes, no weapon resources. A server receives one from an untrusted client,
 checks it against a `DotLoadoutSchema` and a `DotLoadoutEntitlements`, and hands
 it to the game, **on a machine that may have none of the content installed**.
+
+Requires `dot-core`.
 
 ```gdscript
 var res := await loadouts.active_for(user_key)

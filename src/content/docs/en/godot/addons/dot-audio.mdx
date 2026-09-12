@@ -1,0 +1,102 @@
+---
+title: dot-audio
+description: A game audio system that ships no audio — a catalogue of ids to paths, pooled players with priority stealing, per-id concurrency caps and cooldowns, a distance cull, buses with a linear slider, music crossfades and ducking.
+navTitle: dot-audio
+order: 450
+badge: new
+keywords:
+  - "audio"
+  - "sound"
+  - "music"
+  - "mixer"
+  - "volume"
+  - "ducking"
+  - "voices"
+  - "headless"
+source:
+  - ../game-dev/godot/dot-audio/README.md
+---
+
+`dot-audio` decides what is heard, how loud, how many at once, and what happens
+on a machine with no sound card.
+
+Requires `dot-core`.
+
+## A sound is an id and a path
+
+Never a loaded `AudioStream`. A dedicated server validates the whole catalogue
+without a sound card and without the files, and a game delivered as a
+[dot-cloud](/learn/godot/addons/dot-cloud) pack is mounted at run time, so a
+catalogue that `preload`s cannot describe delivered content at all.
+
+`validate()` therefore checks everything except whether the file exists;
+`missing_files()` is a separate question, asked by the client about to need
+them.
+
+## Usage
+
+```gdscript
+var audio := DotAudioManager.new()
+audio.catalogue = my_catalogue
+add_child(audio)
+audio.setup()                        # picks a sink by asking the driver's name
+
+audio.listener_position = camera.global_position   # once a frame; culling needs it
+audio.play(&"ui_click")
+audio.play_at(&"rifle", muzzle.global_position)
+audio.play_music(&"combat", 1.5)     # crossfade; asking for what is playing does nothing
+audio.duck(&"radio")                 # reference-counted, so two ducks do not fight
+```
+
+Hand it [dot-randomness](/learn/godot/addons/dot-randomness)' stream and a shot's
+pitch and variant are the same on the server and every client watching, which is
+what makes an audio bug reproducible:
+
+```gdscript
+audio.roll_source = rng.stream(&"audio")
+```
+
+<Callout type="warning" title="The engine reports a working sound card when there is none">
+In a headless run `AudioServer.get_mix_rate()` is 44100, the device list is
+`["Default"]` and the output latency is 0.0. **Only `get_driver_name()` says
+`"Dummy"`.** A capability check built on any of the others passes on a machine
+with no audio, and the symptom is silence for ever with nothing reporting a
+problem.
+</Callout>
+
+That is why there is a `DotAudioSink` interface, and why `DotAudioSinkNull` is
+not a mock: the real catalogue, culling, cooldowns, caps and music state machine
+run above it, and only the lines that would create an `AudioStreamPlayer` are
+replaced. It is also what lets a game that generates its own audio keep doing so.
+
+## A volume slider is not decibels
+
+Mapping a 0..1 slider onto `volume_db`, even scaled to -60..0, gives a control
+where everything below about 0.9 is inaudible. Hearing is roughly logarithmic,
+so the slider carries a **linear amplitude** and `linear_to_db` converts. Zero
+is a muted bus rather than -60 dB, because a slider at the bottom should be
+silence and not a number a later `+3 dB` turns back into sound.
+
+`DotAudioMixer` is a `DotConfig`, so dot-ui generates the screen and dot-settings
+persists it, with nothing here knowing either exists.
+
+## Three limits, which are three different problems
+
+| | |
+| --- | --- |
+| `max_concurrent` | Twelve identical rifles half a millisecond apart is not twelve gunshots. It is one gunshot twelve times as loud, with comb filtering. Three sounds like a crowd. |
+| `cooldown_ms` | A footstep triggered from a physics callback fires twice in a frame, and the second is inaudible and still costs a voice. |
+| `max_distance` | A **cull**, not a curve. A sound at 400 metres attenuated to inaudible still costs a stream load, a voice and a position update every frame. |
+
+The pool is fixed: the sink creates its players once and never frees them.
+Create-play-`queue_free` has no ceiling, and a firefight is a hundred nodes
+created and destroyed per second, which on the web is a visible hitch. When the
+pool is full the **lowest-priority** voice is stolen, and if nothing is lower
+the new sound is refused — a gunshot losing to a footstep because the footstep
+started first is the failure mode of every fixed pool without priority.
+
+<Related>
+- [dot-fx](/learn/godot/addons/dot-fx) — the same shape, for what you see
+- [dot-settings](/learn/godot/addons/dot-settings) · [dot-ui](/learn/godot/addons/dot-ui)
+- [dot-randomness](/learn/godot/addons/dot-randomness)
+</Related>

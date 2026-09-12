@@ -266,6 +266,55 @@ function Scopes({ list }: { list: string }) {
     )
 }
 
+/* ------------------------------------------------------------------ Details */
+
+/**
+ * A block the reader opens: a long example, a full configuration file, a wire
+ * dump.
+ *
+ * Native `<details>`, so it costs no JavaScript, is keyboard-operable and is
+ * searchable by the browser's own find — an accordion built out of React state
+ * is none of those, and a reader who presses ctrl-F for a property name in a
+ * collapsed example gets nothing.
+ *
+ * It exists so that a page can carry a WORKING example without the example
+ * becoming the page. The rule for using it: the two or three lines that show
+ * the shape stay in the prose, and anything past about fifteen lines goes in
+ * here with a summary that says what opening it gets you.
+ *
+ * `open` forces it expanded, for the one example on a page that is the point of
+ * the page.
+ */
+function Details({
+    title,
+    open = false,
+    children,
+}: {
+    title: string
+    open?: boolean
+    children: ReactNode
+}) {
+    return (
+        <details
+            open={open}
+            className="docs-details group my-6 overflow-hidden rounded-xl border border-border bg-surface-secondary"
+        >
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-pjs text-sm font-semibold text-foreground transition hover:bg-surface">
+                <span
+                    aria-hidden
+                    className="text-xs text-muted transition-transform group-open:rotate-90"
+                >
+                    ▶
+                </span>
+                {title}
+            </summary>
+            <div className="docs-details-body border-t border-border px-4 pb-1 pt-2">
+                {children}
+            </div>
+        </details>
+    )
+}
+
 /* ------------------------------------------------------------------ Related */
 
 /** "Where to go next" — a short list of links closing a page. */
@@ -323,6 +372,7 @@ export const MDX_COMPONENTS = {
     Cards,
     Card,
     Scopes,
+    Details,
     Related,
     Badge,
 }

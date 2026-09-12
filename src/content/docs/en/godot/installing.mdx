@@ -70,21 +70,30 @@ timer should be able to take `dot-timer` and `dot-core` and nothing else.
 
 Every project except `dot-core` needs `dot-core` present just to *open*, and the
 games need every addon they use. Those links are gitignored, because a consumer
-copies the folders instead:
+copies the folders instead — and a fresh clone therefore does not open until
+something has made them.
+
+**Do not make them by hand.** `dot-bootstrap` clones every repository and links
+every addon each project needs:
 
 ```bash
-cd dot-cloud   # or any addon project
-ln -s ../../dot-core/addons/dot_core addons/dot_core
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh              # clone what is missing, pull what is not, link everything
+./bootstrap.sh --links      # only redo the links
+./bootstrap.sh --status     # branch, dirty, unpushed, per repository
 ```
 
-```bash
-cd game-arena
-for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
-            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
-            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
-  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
-done
-```
+It contains no list of projects and no list of what each one needs: the projects
+come from `projects.tsv`, and a project's addons are read out of **that
+project's own `.gitignore`**, from its `/addons/<name>` lines — the one place
+that cannot go stale, because the repository that gains a dependency is the
+repository that has to ignore the link. The version before it carried four
+manifests and they had drifted to 19 of the 33 repositories.
+
+[Getting started](/learn/godot/getting-started) is the whole walk-through,
+including what Windows does instead (it copies the folders, because Godot does
+not follow a junction).
 
 [`dot-serve`](/learn/godot/tooling) needs none of this — it is a shell script
 and finds a Godot binary at run time.

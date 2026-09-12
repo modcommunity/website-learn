@@ -2,7 +2,7 @@
 title: dot-combat
 description: Health, damage and weapons for a Godot shooter — analytic hitboxes, deterministic spread, lag-compensated hit registration, and an arsenal that simulates from commands so a client can predict its own fire.
 navTitle: dot-combat
-order: 110
+order: 230
 keywords:
   - "weapons"
   - "damage"
@@ -20,8 +20,11 @@ source:
   - ../game-dev/godot/dot-combat/CLAUDE.md
 ---
 
-**A weapon decides that a shot *happened*. Something else decides what it
-*hit*.**
+`dot-combat` resolves a shot into damage: analytic hitboxes, deterministic
+spread and lag compensation, under one set of rules, once. A weapon decides that
+a shot *happened*; this decides what it hit.
+
+Requires `dot-core`.
 
 ```gdscript
 var combat := DotCombatManager.new()

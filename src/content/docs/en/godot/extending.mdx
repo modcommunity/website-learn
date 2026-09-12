@@ -214,12 +214,12 @@ ones marked **must** have no useful default.
     **`_world_ray`** and nothing else. The hitbox walk, the wall-wins tie-break
     and the restore are the base class's.
   </Param>
-  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+  <Param name="DotFpsBody / Dot2DBody" type="dot-player-controller, dot-2d">
     `sweep` / `move`, `overlaps`, `describe`. The collision queries the motor
     needs, with a flat analytic implementation for determinism and a physics one
     for real geometry.
   </Param>
-  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+  <Param name="DotFpsMoveMode" type="dot-player-controller">
     `_name`, `_enter`, `_exit`, **`_simulate`**, `_uses_crouch`. A ladder, water,
     a grapple — using the motor's own collision and acceleration.
   </Param>

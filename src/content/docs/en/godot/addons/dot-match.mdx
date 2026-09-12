@@ -2,7 +2,7 @@
 title: dot-match
 description: The match loop — warmup, countdown, rounds, scoring, teams, autobalance, spawn selection and respawning, counted in ticks and driven by one call.
 navTitle: dot-match
-order: 130
+order: 290
 keywords:
   - "match"
   - "rounds"
@@ -22,6 +22,8 @@ source:
 A match is a state machine —
 `WARMUP → COUNTDOWN → LIVE → INTERMISSION → MATCH_END` — and **one call moves
 it**. No `Timer`, no `_process`, no wall clock.
+
+Requires `dot-core`.
 
 ```gdscript
 var match_node := DotMatch.new()

@@ -1,0 +1,98 @@
+---
+title: dot-browser
+description: A server-browser client — DQP over UDP, DQP as JSON over a WebSocket for browser builds, and A2S for existing tooling, behind a list model with sources, filters, sorting, favourites and history.
+navTitle: dot-browser
+order: 160
+badge: new
+keywords:
+  - "server browser"
+  - "query"
+  - "A2S"
+  - "DQP"
+  - "list"
+  - "favourites"
+  - "ping"
+source:
+  - ../game-dev/godot/dot-browser/README.md
+---
+
+`dot-browser` is the asking half of [dot-server](/learn/godot/addons/dot-server)'s
+queries: a query client and a list model. dot-server has answered queries since
+it was written, and until this addon nothing in the family had ever asked one
+anything.
+
+Requires `dot-core`. dot-server is what it asks and is **not** a dependency —
+the wire format is implemented here and no class from it is named.
+
+## Usage
+
+```gdscript
+var browser := DotBrowser.new()
+browser.add_source(DotBrowserSourceList.of(PackedStringArray([
+    "eu1.example.com:27015",
+    "127.0.0.1:27016",
+])))
+browser.entry_updated.connect(func(entry: DotBrowserEntry) -> void:
+    table.redraw(entry))
+add_child(browser)
+
+await browser.refresh()
+
+for entry in browser.filtered():
+    print(entry.describe())
+    # 127.0.0.1:27016  A dot server  dm_atrium  8/32  14 ms
+```
+
+Asking one server everything, for the panel behind a clicked row:
+
+```gdscript
+await browser.query(entry.target, PackedStringArray(["info", "players", "rules"]))
+```
+
+## Sources
+
+A browser knows how to ask a server what it is. It does not know which servers
+exist — that is a different problem with a different answer per deployment.
+
+| | |
+| --- | --- |
+| `DotBrowserSourceList` | Addresses typed in, or a JSON file you ship. |
+| `DotBrowserSourceBackbone` | A community's listing on the TMC backbone, read through a duck-typed client. |
+| your own | Subclass `DotBrowserSource` and return targets. |
+
+A source produces **addresses**, never player counts. What a server is, is what
+it says when asked: a listing that has not heard from a server in ten minutes
+still lists it, and the player clicking it wants to know that before connecting.
+
+## Three bugs it exists to not have
+
+Every game that ships a server browser writes this, usually the A2S half, and
+usually with the same three:
+
+- **The player count is humans plus bots.** A2S has always written it that way,
+  so a browser showing it presents a server with eight bots as an eight-player
+  server.
+- **Multi-packet responses get stitched together wrong.** A socket refreshing
+  two hundred servers receives replies interleaved, and a fragment of one
+  response mixed into another produces bytes that parse and are wrong.
+- **Refreshing hangs.** Two hundred concurrent queries is a fan-out, and
+  GDScript has two obvious spellings for that and both are broken.
+
+## In a browser build
+
+A web page cannot open a UDP socket, so it can never speak A2S. dot-server
+serves DQP as plain JSON over a WebSocket for this, and `Protocol.AUTO` picks it
+when the platform has no UDP — asking about the capability, not the platform
+name.
+
+<Callout type="info" title="The wire format is a second implementation on purpose">
+Only `dot-core` may be a hard dependency. The self-test checks this
+implementation against bytes dot-server's own encoder produced, rather than
+against itself.
+</Callout>
+
+<Related>
+- [dot-server](/learn/godot/addons/dot-server) — what answers
+- [dot-ui](/learn/godot/addons/dot-ui) — where a list model is drawn
+- [Getting listed](/learn/servers/listing) — the site's own browser, and how it queries
+</Related>

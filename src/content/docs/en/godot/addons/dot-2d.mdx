@@ -2,7 +2,7 @@
 title: dot-2d
 description: A deterministic, command-driven 2D movement and world layer — three movement feels, a spatial hash for thousands of entities, deterministic scatter fields and Vector2 replication specs.
 navTitle: dot-2d
-order: 100
+order: 310
 keywords:
   - "2D"
   - "top-down"
@@ -20,10 +20,12 @@ source:
 ---
 
 The 2D counterpart of
-[`dot-fps-controller`](/learn/godot/addons/dot-fps-controller), holding the same
+[`dot-player-controller`](/learn/godot/addons/dot-player-controller), holding the same
 contract: **the simulation is a pure function of a `Dot2DCommand`.** No device,
 no clock, no node, no randomness. A client predicting a move, a server re-running
 it and a reconciliation replay all reach the same position.
+
+Requires `dot-core`.
 
 ```gdscript
 var arena := Dot2DArena.new()
@@ -127,7 +129,7 @@ the arena — because the motor only clamps a cell that is *moving*. Measured at
 </Callout>
 
 <Related>
-- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller)
+- [`dot-player-controller`](/learn/godot/addons/dot-player-controller)
 - [`dot-net`](/learn/godot/addons/dot-net)
 - [game-hungario](/learn/godot/games#game-hungario) — what this is built for
 </Related>

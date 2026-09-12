@@ -1,0 +1,295 @@
+---
+title: dot-player-controller
+description: Everything that drives a player — the intent and look contract every controller shares, a first-person movement model built to be predicted and reconciled, a third-person orbit rig, and the switch that hands one to the next.
+navTitle: dot-player-controller
+order: 30
+badge: new
+keywords:
+  - "movement"
+  - "controller"
+  - "first person"
+  - "third person"
+  - "FPS"
+  - "strafe"
+  - "bhop"
+  - "bunny hop"
+  - "surf"
+  - "air control"
+  - "stair step"
+  - "crouch"
+  - "camera"
+  - "orbit"
+  - "spring arm"
+  - "touch controls"
+  - "dot-fps-controller"
+source:
+  - ../game-dev/godot/dot-player-controller/README.md
+  - ../game-dev/godot/dot-player-controller/CLAUDE.md
+---
+
+`dot-player-controller` is the layer between input and a player's body. It ships
+an abstract base, a first-person movement model written to be predicted and
+reconciled, a third-person orbit rig, and a switch that hands control from one
+to the other.
+
+```
+addons/dot_player_controller/
+  core/  nodes/    the contract: intent, look, the abstract base, the switch
+  fp/              first-person movement
+  tp/              third-person movement, and the camera rig
+```
+
+Requires `dot-core` and `dot-player`. `dot-net` is optional and is never
+imported. A game that wants one half can delete the other folder — the plugin
+skips a node type whose script is absent.
+
+<Callout type="info" title="`fp/` was the `dot-fps-controller` addon">
+Every `class_name` is unchanged — `DotFpsController`, `DotFpsMotor`,
+`DotFpsTunables` and the rest. `class_name` is global in Godot, so renaming one
+breaks every project that has it installed, and `DotFps` still says what it is.
+</Callout>
+
+## The contract every controller shares
+
+### Intent
+
+An intent is what the player asked for, not which key they pressed and not what
+happens as a result. A sampler produces them, a controller consumes them, a
+replay hands the same ones back, and a server receives them over a wire without
+ever seeing a keyboard.
+
+```gdscript
+var intent := DotPlayerIntent.make(Vector2(0, 1), DotPlayerIntent.Btn.JUMP, tick)
+intent.view_yaw = look.yaw
+controller.drive(intent, delta)
+```
+
+`diff_from(previous_buttons)` fills in `pressed` and `released`, because a jump
+is an edge and a sprint is a level — and a controller computing edges itself
+would need the previous command, which a stateless replay does not have.
+
+<Callout type="warning" title="The look delta is not on the wire">
+A server that integrated a client's deltas would be reconstructing an angle the
+client already knows, one lost packet away from disagreeing about it for ever.
+The client sends where it is looking; the server clamps and accepts.
+</Callout>
+
+### Look
+
+`DotPlayerLook` holds the view angles and the sensitivity rules.
+
+```gdscript
+look.apply(mouse_delta)          # sensitivity, inversion, zoom
+camera.basis = look.basis()      # yaw then pitch
+body.basis   = look.body_basis() # yaw only
+velocity     = look.move_direction(intent.move) * speed
+```
+
+It exists to stop three mistakes that are easy to make and hard to see:
+
+- **Pitch clamps; yaw wraps.** Clamping yaw stops the player turning round;
+  wrapping pitch lets them look through their own feet.
+- **The wrap is bounded.** A yaw that only accumulates loses float precision
+  over a long session, and the symptom is a mouse that gets less accurate the
+  longer the server has been up.
+- **Sensitivity multiplies the delta, not the angle.** Applied to the angle, the
+  view snaps every time the setting changes.
+
+`forward_flat()` is separate from `forward()` so a player looking at the floor
+still walks forwards, and `move_direction` lives here so two controllers cannot
+disagree about which component is X.
+
+### The switch
+
+```
+DotPlayer
+  DotPlayerControllerSwitch    default_controller = &"fp"
+  DotFpsController             controller_id = &"fp"
+  DotTpsController             controller_id = &"tp"
+```
+
+Without it, two controllers both read input and both write the body's transform,
+and which one wins depends on child order.
+
+The handover carries exactly four things: **position, velocity, yaw and pitch**.
+Not the outgoing controller's state — a first-person motor's state and a
+third-person motor's have nothing in common, and getting out of a vehicle should
+not restore the air-strafe you were in the middle of. It runs *after* the
+incoming controller's `_on_activated`, because that is where a controller resets
+its motor.
+
+`set_input_enabled(false)` freezes every controller, not only the active one,
+and a frozen controller still ticks: `drive()` applies an empty intent rather
+than skipping, so a frozen player keeps falling and keeps sliding to a stop
+instead of hanging in mid-air.
+
+## The first-person half
+
+The simulation is a pure function of `(state, command, delta, world)`, which is
+what lets a client apply input immediately and a server correct it a round trip
+later without the two disagreeing. It does its own collide-and-slide, because
+bunny-hopping and surfing are consequences of exactly how the sliding works.
+
+```
+Player (CharacterBody3D)
+ ├── Collision   (CollisionShape3D)
+ ├── Head        (Node3D)
+ │    └── Camera (Camera3D)
+ ├── View        (DotFpsView)
+ └── Controller  (DotFpsController)
+```
+
+Nothing is wired by hand: the view finds the camera by type and the controller
+finds the collider and the view the same way, each through a `DotNodeRef` you
+can override in the inspector.
+
+### What is in it
+
+| | |
+| --- | --- |
+| `DotFpsCommand` | One tick of player intent. Bit-packed to 49 bits. |
+| `DotFpsState` | Everything the simulation carries between ticks. Capture, restore, compare. |
+| `DotFpsTunables` | Every movement number, layered: defaults < JSON < `DOT_FPS_*` < `--fps-*`. |
+| `DotFpsMotor` | The simulation. Deterministic, no engine globals, no input reads. |
+| `DotFpsBody` | The collision queries the motor needs. `DotFpsPhysicsBody` for real geometry, `DotFpsFlatBody` for tests. |
+| `DotFpsController` | The node. Drives the motor, writes to the scene, resizes the collider. |
+| `DotFpsView` | Camera, pitch, crouch height, speed FOV. Cosmetic only, runs at frame rate. |
+| `DotFpsSampler` | Devices to commands. The only thing that reads the keyboard. |
+| `DotFpsTouchSampler` | Commands from touch, for phones and the browser. No art, no layout. |
+| `DotFpsNetSync` | What to replicate and at what precision, without importing `dot-net`. |
+| `DotFpsStats` | Strafe quality, sync, airtime — what a movement HUD shows. |
+
+### Movement behaviour
+
+Everything below falls out of one acceleration function rather than being
+special-cased, and every value is in `DotFpsTunables`.
+
+| | |
+| --- | --- |
+| Air-strafing, bunny-hopping | Airborne acceleration is capped at `max_air_wish_speed` (1 m/s) measured as a projection onto the wish direction, so turning while strafing adds speed. `0` disables it. |
+| Surfing | Steep slopes are walls. `_slide` keeps every plane touched during a move and picks a direction satisfying all of them, so a ramp junction taken at 20 m/s slides along the crease instead of stopping dead. |
+| Stair stepping | Up to `step_height`, refused when there is nothing to stand on behind the step. |
+| Crouching | Resizes the collider, keeps the feet planted on the ground and the head planted in mid-air, and refuses to stand up under a low ceiling. |
+| Coyote time, jump buffering | Both configurable, both off at zero. |
+| Ground snapping | So walking down slopes and stairs does not give air physics every other tick. |
+
+### Where a game plugs in
+
+Four hooks, none of which needs a fork. The first three are part of the
+simulation, so all three replicate and survive a prediction replay.
+
+<Params>
+  <Param name="DotFpsSurface in a DotFpsSurfaceSet">
+    Per-surface movement: ice, mud, conveyors, unstandable rails. Mark a
+    collider `dot_fps_surface = "ice"` or put it in a `surface_ice` group.
+
+    Surfaces hold **multipliers, never absolute values**, so retuning the base
+    movement carries every surface with it. They resolve from something both
+    machines can see — never a collider's instance id, which differs between
+    processes.
+  </Param>
+  <Param name="DotFpsModifier">
+    A temporary change: speed, acceleration, air acceleration, friction, gravity
+    and jump scales; `deny_jump`, `deny_crouch`, `deny_move`; and an `impulse`.
+    Speed pads, slow fields, stuns, launchers. `duration_sec` and `refreshable`
+    decide how it ends.
+  </Param>
+  <Param name="DotFpsMoveMode subclass">
+    A whole new way to move — a ladder, water, a grapple — using the motor's own
+    collision and acceleration. `_name`, `_enter`, `_exit`, `_simulate`,
+    `_uses_crouch`.
+  </Param>
+  <Param name="DotFpsSampler / DotFpsTouchSampler">
+    Devices to commands, and the only place input is read. Or build a
+    `DotFpsCommand` yourself for a bot or demo playback — the motor cannot tell
+    the difference.
+  </Param>
+  <Param name="DotFpsStyle">
+    A named variation: sideways, half-sideways, backwards, low gravity, prebhop.
+    Jump toggles, gravity and speed scales, air acceleration, a timescale, key
+    blocking, and prespeed and velocity limits. `apply_to(tunables)` produces
+    the transformed set; pair it with a
+    [`DotTimerStyle`](/learn/godot/addons/dot-timer) of the same id for ranked
+    styles.
+  </Param>
+  <Param name="Signals">
+    `simulated`, `jumped`, `landed`, `crouch_changed`, `mode_changed`,
+    `surface_changed`, `stepped_up`, `modifier_added`, `modifier_removed`.
+  </Param>
+</Params>
+
+### Networking
+
+The first-person half does not depend on `dot-net` and does not name it. What it
+provides instead is the hard part: a simulation that reproduces itself exactly
+when replayed, a command that packs to 49 bits, a state object with nothing left
+outside it, and `DotFpsNetSync`, which describes what to replicate **as data** —
+property and type names as strings, which a bridge resolves. Joining the two is
+about thirty lines in your game.
+
+<Callout type="warning" title="Wire up `DotFpsTunables.fingerprint()` on day one">
+A client whose movement config differs from the server's diverges every tick,
+and the symptom is indistinguishable from packet loss.
+</Callout>
+
+<Callout type="warning" title="`render_state` is what stops the stutter">
+It interpolates a player's position between the last two ticks, and it is the
+cure for the jitter people report as "the netcode feels bad". Measured at 60
+frames against a 128-tick server with it disabled: a **47% change in apparent
+speed, eight times a second**.
+
+Both halves of the fix are needed — either alone measures as no better than
+doing nothing. The fraction a renderer interpolates at is a fraction through a
+*physics frame*, which is a fraction through a tick only while the two rates
+agree.
+</Callout>
+
+## The third-person half
+
+An orbit rig on a spring arm, a swappable shoulder offset, camera-relative
+movement, turn-to-face and strafe-lock, coyote time and a jump buffer.
+
+<Callout type="warning" title="`tp/` is deterministic, but not rewind-deterministic">
+`DotTpsMotor.step` is pure, but it does not do its own collide-and-slide —
+`move_and_slide` resolves the collisions. It therefore reproduces itself *given
+the same collision results*: enough for a replay on one machine, not enough for
+bit-exact rewind against a server that resolved them itself.
+
+A third-person shooter that needs the latter drives the first-person motor and
+uses `tp/` for the camera alone.
+</Callout>
+
+## Writing a controller of your own
+
+Five methods, of which a simple controller overrides one: the base already reads
+and writes a `CharacterBody3D` or a `CharacterBody2D` found through the player.
+
+<Details title="Example: a minimal controller">
+
+```gdscript
+class MyController extends DotPlayerController:
+    func _apply_intent(intent: DotPlayerIntent, delta: float) -> void:
+        var body := player_body() as CharacterBody3D
+        body.velocity = look.move_direction(intent.move) * 6.0
+        body.velocity.y = _fall
+        body.move_and_slide()
+
+    # Only needed when the thing being driven is not a character body:
+    func _read_transform() -> Transform3D: ...
+    func _write_transform(to: Transform3D) -> void: ...
+    func _read_velocity() -> Vector3: ...
+    func _write_velocity(v: Vector3) -> void: ...
+```
+
+`examples/controller_selftest.gd` in the repository has a worked one, driven by
+scripted intents with no input device present.
+
+</Details>
+
+<Related>
+- [dot-player](/learn/godot/addons/dot-player) — the row it binds to
+- [dot-timer](/learn/godot/addons/dot-timer) — the run against the clock
+- [dot-net](/learn/godot/addons/dot-net) · [dot-physics](/learn/godot/addons/dot-physics)
+- [dot-2d](/learn/godot/addons/dot-2d) — the same contract in two dimensions
+- [dot-vehicle](/learn/godot/addons/dot-vehicle) — the other end of a handover
+</Related>

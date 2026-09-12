@@ -1,0 +1,368 @@
+---
+title: Hosting a server
+description: Running a Dot server people can join — setup.sh and ./server, what each YAML file owns, the settings that decide whether anybody can connect, roles instead of permission flags, votes, RCON, the container, and the site listing.
+navTitle: Hosting a server
+order: 15
+badge: new
+keywords:
+  - "server"
+  - "host"
+  - "hosting"
+  - "dedicated"
+  - "setup.sh"
+  - "dot-server-deploy"
+  - "dotserve"
+  - "YAML"
+  - "rcon"
+  - "docker"
+  - "listing"
+  - "query port"
+  - "a2s"
+  - "vote"
+  - "permissions"
+source:
+  - ../game-dev/godot/dot-server-deploy/README.md
+  - ../game-dev/godot/dot-server-deploy/cfg
+  - ../game-dev/godot/dot-server-deploy/host/tmc_report.gd
+  - ../game-dev/godot/dot-serve/README.md
+---
+
+There are two ways to run a Dot server, and the difference is what you want to
+operate.
+
+<Cards>
+  <Card title="dot-server-deploy" href="https://github.com/modcommunity/dot-server-deploy">
+    TMC's server tool. YAML configuration, games loaded out of a directory,
+    roles, moderation, votes, a browser client and a site listing. **This page.**
+  </Card>
+  <Card title="dotserve" href="/learn/godot/tooling#dotserve">
+    A shell script that starts *your own* game's `dot-server` with sensible
+    defaults and prints a join address. For a game you are writing.
+  </Card>
+</Cards>
+
+This page assumes Godot 4.7.2 and a terminal — see
+[Getting started](/learn/godot/getting-started) if you do not have them yet.
+
+## Quick start
+
+```bash
+git clone https://github.com/modcommunity/dot-server-deploy.git
+cd dot-server-deploy
+
+./setup.sh              # find a runtime, wire the addons, write ./server
+./server                # start it
+```
+
+Windows: `setup.bat`, then `.\server.ps1`, which takes the same options and
+accepts `-Port` as readily as `--port`.
+
+`setup.sh` never overwrites a config file that already exists, so running it
+again after an update is safe: your edits are the server's configuration.
+
+| | |
+| --- | --- |
+| `./server` | Start it. |
+| `./server check` | Boot, load the game, shut down. Exit 0 if it worked. |
+| `./server config` | The resolved configuration. |
+| `./server games` | What is in `content/`. |
+| `./server export-web` | Build the browser client. |
+| `./server --help` | Every option. |
+
+```bash
+./server --port 27015 --name "My server"
+./server -- +sv_cheats 1 +changelevel lobby
+```
+
+Exit codes are meaningful, so a supervisor can tell a misconfiguration from a
+crash: `2` usage, `3` no runtime, `4` no project, `5` bad config, `6` port in
+use, `7` bad content.
+
+<Callout type="info" title="Run `./server check` before you open a port">
+It boots a real server, loads the game, shuts down and exits non-zero if any of
+that failed — the difference between "the config is wrong" and "the config is
+wrong *and* I have been telling people to connect for ten minutes".
+</Callout>
+
+## Looking at it yourself first
+
+```bash
+./play.sh               # a server and the browser client, on the loopback
+./play.sh playground    # start on a particular game
+./play.sh down
+```
+
+It prints a link. `play.sh` rebuilds the web export when the game is newer, puts
+the page that reads `?server=` in place of Godot's generated one, and warns when
+the vendored `game/` directory is older than the repositories it was copied
+from — the one part of the tree that goes stale, and a stale copy exports
+cleanly, runs, and is last week's game.
+
+<Callout type="warning" title="Loopback HTTP only">
+An HTTPS page may not open a `ws://` socket. `play.sh` works on `127.0.0.1` and
+nowhere else; a public deployment needs TLS in front of it.
+</Callout>
+
+## Directory layout
+
+```
+cfg/                 what an operator edits
+content/             what the server serves
+data/                what the server writes
+host/                the boot: YAML -> DotServer
+client/              the client shell. Knows nothing about any game
+web/                 the browser build, and the page that takes ?server= from the URL
+```
+
+`cfg/` and `content/` are read; `data/` is written. A container mounts the first
+two read-only and the third read-write, and a systemd unit points
+`ReadWritePaths` at exactly one directory.
+
+<Details title="What each file in cfg/ and data/ is">
+
+```
+cfg/
+  server.yml           name, slots, tickrate, queries, the game to boot
+  net.yml              bind address, port, bandwidth
+  rcon.yml             remote console. Generated once, printed once
+  auth.yml             the identity backend, or nothing and everybody is a guest
+  groups.yml           groups, as sets of permissions
+  vote.yml             voting for the next game: rtv, nominations, time limits
+  permissions.yml      who is in which group
+  content/<id>/        per-game configuration
+
+content/
+  global/              loaded by every game
+  lobby/game.yml       the lobby. The default
+
+data/
+  from_yaml.cfg        what your YAML became
+  admins.json  bans.json  audit.jsonl  listing.json
+```
+
+A directory under `content/` with a `game.yml` in it is a game, and
+`changelevel` switches between them with players still connected.
+
+</Details>
+
+<Callout type="info" title="`data/from_yaml.cfg` is what your YAML became">
+Read it first when a setting appears to be ignored. `cfg/*.yml` is a surface
+over dot-server's own vocabulary, not a second vocabulary — an operator writes
+`net_port`, dot-server calls it `port` — and that file is the translation.
+
+An unknown key is reported, never fatal: refusing to boot because a config
+mentions a setting from a newer version is worse than ignoring it.
+</Callout>
+
+## The settings that decide whether anybody can join
+
+<Params>
+  <Param name="net_port" type="net.yml">
+    The game port, `6070` out of the box. This is what players connect to and
+    what your firewall has to allow.
+  </Param>
+  <Param name="net_bind_ip" type="net.yml">
+    `127.0.0.1` out of the box, which is correct behind a reverse proxy and
+    wrong for a server the internet should reach directly. Set it to `0.0.0.0`
+    or to the interface you mean.
+  </Param>
+  <Param name="net_public_ip" type="net.yml">
+    Only needed behind NAT. It goes into the join line and the listing; nothing
+    binds to it.
+  </Param>
+  <Param name="query_bind_ip" type="server.yml">
+    Where the **query** listener sits, separately from the game. A reverse proxy
+    forwards a WebSocket and cannot forward UDP, so a query listener that
+    inherited `net_bind_ip` would be listening where nothing can ask it — and a
+    tracker cannot tell that from a server that is down. `*` puts the query
+    port, and only the query port, on every interface. RCON does not follow it.
+  </Param>
+  <Param name="a2s_enabled" type="server.yml">
+    Answers the twenty-year-old query protocol beside Dot's own, on the same
+    socket. The trackers, uptime monitors and server browsers that already exist
+    speak A2S and nothing else — **including this site's scanner**.
+  </Param>
+  <Param name="sv_name / sv_maxplayers" type="server.yml">
+    What the listing and the server browser show, and how many seats there are.
+  </Param>
+</Params>
+
+## Permissions
+
+dot-server's model is **flags**. `groups.yml` is the translation into roles, so
+an operator writes a role and a player gets the flags:
+
+```yaml
+groups:
+  admin: [kick, ban, mute, changemap, chat, vote]
+```
+
+```yaml
+users:
+  gamemann:                 # by name, for somebody who plays here
+    group: owner
+  backbone:clx8f2k0kd:      # by uid, for somebody who does not
+    group: admin
+```
+
+A key is matched against a player's uid, their username and their display name,
+in that order, lower-cased.
+
+<Callout type="warning" title="An unrecognised flag grants nothing, silently">
+`warn`, `announce` and `change` were all written here in good faith and matched
+nothing, so a group meant to run the server could kick, ban and mute and could
+not change the map, use admin chat, or be recognised as staff. Nothing errored,
+because an unknown flag is exactly what a *game's* own flag looks like.
+
+The flags that exist are listed at the top of `groups.yml`, and unknown ones are
+named at boot. Read that line.
+</Callout>
+
+<Callout type="warning" title="`permissions.yml` does nothing without authentication">
+Permissions are refused to any unauthenticated session, because a guest uid is a
+random per-device string and granting anything to one grants it to anyone. That
+is correct, and it looks exactly like the file being ignored.
+</Callout>
+
+## Letting players choose what runs next
+
+`cfg/vote.yml` puts [dot-vote](/learn/godot/addons/dot-vote) over the games in
+`content/`:
+
+```
+!nominate   !rtv   !votefor   !timeleft   !nextmap
+```
+
+Each game gets its own time limit in its own `game.yml`, because forty minutes
+of surf and ten minutes of a lobby deathmatch are not the same number.
+`enabled: false` turns the whole thing off.
+
+`vote.yml` is the one file that is not a console surface — it is dot-vote's
+`DotVoteRules` applied straight onto the resource, so every setting is
+documented on the property of the same name, and **enums are written by name**
+(`method: instant_runoff`, not `method: 2`).
+
+## RCON
+
+RCON ships **off**; `cfg/rcon.yml` says how to turn it on, and the password is
+generated once and printed once.
+
+`--rcon-password` is refused outright: argv is readable by every other process
+on the machine and ends up in pasted bug reports, which is why configuration
+refuses secrets from argv and the environment too. In the container RCON is
+published on **loopback only** — reach it through an SSH tunnel, or widen the
+mapping deliberately with an address allow-list in `cfg/rcon.yml`.
+
+## In a container
+
+```bash
+docker compose up -d
+docker compose logs -f
+```
+
+The build context is the **parent** directory: every addon is its own repository
+and there is no way to clone the tree at once, so they are siblings rather than
+subdirectories. `cfg/` and `data/` are bind mounts, so the first run writes a
+configuration you can edit and an RCON password that survives a rebuild;
+`content/` is mounted read-only. The container runs as your own uid
+(`UID=$(id -u) GID=$(id -g) docker compose up -d`) and drops every capability.
+
+## Getting it onto the site
+
+Two halves, and they are independent.
+
+**The listing** you create on the site — see
+[Getting listed and claiming](/learn/servers/listing). The scanner queries the
+address you give it, which is why `a2s_enabled` and `query_bind_ip` matter.
+
+**Reporting** is the server telling its listing what it is. It needs
+`data/listing.json` with a server-scoped integration token:
+
+```json
+{
+  "backbone_url": "https://moddingcommunity.com",
+  "integration_token": "…",
+  "report_interval_sec": 60
+}
+```
+
+With no token nothing runs and the server is simply not listed, which is correct
+for a LAN game and for every test. The token is a **path, never a value**:
+`integration_token` is refused from the environment and from argv, and the file
+is per-server, so several servers sharing one `cfg/` each have their own
+listing.
+
+<Callout type="info" title="Why a server reports at all, when it could be queried">
+Three things break a query and only one is fixable from the server: a server
+behind a reverse proxy has its game port on loopback and a proxy cannot forward
+UDP; a scanner will not query a private address, and is right not to, so a LAN
+deployment is unscannable by design; and a query packet is lossy, rate-limited
+and truncates a player list.
+
+A server that reports itself also knows two facts a packet cannot carry: how
+many of its players are bots, and **which games it can run** — which for a
+multi-game server is the interesting half, because the game it happens to be
+running this minute is not what it is.
+</Callout>
+
+## The chat box on the site
+
+`DotChatRelay` joins your server's chat to its room on the website: what players
+type reaches the page, what members type reaches the game, and a line beginning
+with `/` or `!` can run as a console command. It needs three things, in order.
+
+<Details title="Setting up the relay">
+
+**1. A credential.** The same `data/listing.json` as above. With no token there
+is no backbone client, and the relay refuses to start rather than polling a URL
+it cannot authenticate to.
+
+**2. The relay turned on.**
+
+```bash
+DOT_CHAT_RELAY_ENABLED=1          # carry chat both ways
+DOT_CHAT_RELAY_ALLOW_COMMANDS=1   # let `/something` run as a console command
+DOT_CHAT_RELAY_COMMAND_SOURCE=2   # 2 is RCON; 3, the default, is CHAT
+```
+
+The source is the decision. At CHAT a relayed command reaches only what a
+connected player could type — and several games deliberately withhold a map
+change from that, because a map change destroys every run in progress. At RCON
+it reaches what an operator at a remote console reaches, which is what "my site
+admins are administrators of this server" actually means. Either way the uid is
+resolved from the site author and the permission answer is still your own files.
+
+**3. One uid in `cfg/permissions.yml`.** A site member's uid is `backbone:` plus
+a database id that appears on no page, so use it once and read the log: type
+`/map` into the server's chat box on the website and the refusal names the exact
+key to add.
+
+There is deliberately no way to grant it by the display name shown beside the
+message: a display name is a string the person can change on their own profile
+page, and a permission keyed on one is a permission anybody can take by renaming
+themselves.
+
+</Details>
+
+Once the relay is up the server posts its command table to the site, and the
+chat box offers those commands when a member types `/`. The list is built at the
+relay's own source, so what the menu shows is what that person could actually
+run.
+
+## Known limits
+
+- **One transport at a time.** A server listens on WebSocket *or* ENet, so a
+  desktop client on UDP and a browser client on TCP cannot share a match yet.
+- **No TLS of its own.** A page on HTTPS cannot open `ws://`. Certificates and a
+  reverse proxy are deployment, not code.
+- **`cfg/permissions.yml` does nothing without authentication** — see above.
+- **No game has been delivered as a pack yet.** The games ship inside the build.
+
+<Related>
+- [Getting started](/learn/godot/getting-started) — if you have not cloned anything yet
+- [Tooling](/learn/godot/tooling) — `dotserve`, for your own game's server
+- [`dot-server`](/learn/godot/addons/dot-server) — what is underneath all of this
+- [`dot-vote`](/learn/godot/addons/dot-vote) · [`dot-moderation`](/learn/godot/addons/dot-moderation)
+- [Getting listed and claiming](/learn/servers/listing)
+- [Server scanning](/learn/servers/scanning) — how the site decides you are up
+</Related>

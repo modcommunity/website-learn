@@ -1,0 +1,147 @@
+---
+title: dot-player-char
+description: What a player looks like and how it animates — body metrics five systems share, a customisation document validated from ids alone, a 3D rig with named mounts, a 2D sheet, and a locomotion state machine.
+navTitle: dot-player-char
+order: 40
+badge: new
+keywords:
+  - "character"
+  - "model"
+  - "sprite"
+  - "animation"
+  - "customisation"
+  - "cosmetics"
+  - "rig"
+  - "mounts"
+  - "eye height"
+  - "locomotion"
+source:
+  - ../game-dev/godot/dot-player-char/README.md
+---
+
+`dot-player-char` covers four things: the character definition (body metrics and
+the customisation document), a 3D rig with named mounts, a 2D sprite sheet with
+layered overlays, and a locomotion state machine that drives either.
+
+Requires `dot-core` and `dot-player`. Both drawing halves ship in one addon and
+neither loads anything until a catalogue points it at content, so a 3D game pays
+a handful of unused scripts for the 2D half and no assets.
+
+## Usage
+
+One definition carries every body measurement, and the node applies it:
+
+```gdscript
+var ch := DotPlayerChar.new()
+ch.catalogue = DotPlayerCharCatalogue.three_builds()
+player.add_child(ch)
+
+ch.set_char(&"heavy")     # the capsule resizes with the model
+ch.set_crouched(true)     # so does the crouched one
+ch.eye_height()           # asked by the camera, the muzzle and the trace
+```
+
+Height decides the collision capsule, eye height decides where the camera and
+the muzzle are, crouch height decides what it fits under, radius decides what it
+fits through, and hitbox scale decides how hard it is to shoot. Those are five
+numbers in five files in most projects, and one `DotPlayerCharDef` here.
+
+<Callout type="warning" title="`validate()` refuses three configurations with no obvious symptom">
+Crouching taller than standing (the player gets stuck coming out of every gap
+they crouched into), eyes above the head (they see over walls they are standing
+behind), and the crouched pair of the same.
+</Callout>
+
+## What is in it
+
+| | |
+| --- | --- |
+| `DotPlayerCharDef` / `DotPlayerCharCatalogue` | Body metrics, slots and options. Three preset builds ship. |
+| `DotPlayerCharLook` | The customisation document: slot choices and tint colours. |
+| `DotPlayerChar` | The node. Applies a definition to the body and holds the look. |
+| `DotPlayerModelBuilder` / `DotPlayerModelVisual` / `DotPlayerModelCatalogue` | The 3D half: a plan built from ids, applied to a rig. |
+| `DotPlayerSpriteVisual` / `DotPlayerSpriteFacing` | The 2D half: layered overlays on one grid, and the facing lookup. |
+| `DotPlayerAnimDriver` / `DotPlayerAnimState` / `DotPlayerAnimSet` | Locomotion, and the clip table both halves share. |
+| `DotPlayerAnimPlayerSink` / `DotPlayerAnimSpriteSink` | Where the animation decision is applied: an `AnimationPlayer`, or a sheet. |
+
+## Validating a look
+
+```gdscript
+var res := look.validate(def)   # does the slot exist, is the option real,
+                                # are there no more colours than channels
+```
+
+Nothing in validating a look loads art, so a server can check one without
+holding the cosmetics — the same rule as
+[dot-user-avatar](/learn/godot/addons/dot-user-avatar).
+
+`conform()` is the other half, and the split is deliberate:
+
+- **`validate` is for the trust boundary.** A bad document is refused.
+- **`conform` is for loading a saved character** after an option was retired.
+  Refusing there would lock a player out of their own character, so it drops
+  what is illegal and keeps the rest.
+
+`fill_defaults()` completes a partial look, so a player who never opened the
+customisation screen still has a valid one.
+
+## Drawing it in 3D
+
+```gdscript
+var plan := DotPlayerModelBuilder.plan(model_def, look)
+DotPlayerModelBuilder.apply(plan, rig, placeholder)
+```
+
+Planning never touches the filesystem. `missing` means *the definition names no
+path for this part*, not *the file is absent* — a dedicated server plans from
+ids and holds none of the content, so a plan that consulted
+`ResourceLoader.exists` would answer differently on each machine.
+
+`DotPlayerModelVisual` keeps a signature of slot→scene, so a colour or stance
+change writes to the instances that already exist instead of rebuilding the
+figure. Tints are per-instance shader parameters, never a material swap: two
+players wearing the same part must not recolour each other.
+
+`DotPlayerModelCatalogue.humanoid()` ships nine mount names — `head`, `face`,
+`chest`, `back`, `waist`, `left_hand`, `right_hand`, `left_foot`, `right_foot` —
+and no scene paths. Agreeing on the spelling is what lets a weapon written for
+one game attach in another.
+
+## Drawing it in 2D
+
+A sheet is a grid: a row is a state, a direction offsets that row, and a column
+is a frame. `def.frame_index(row, direction, frame)` resolves one, and overlays
+are cut on the base's grid so a single index serves every layer.
+
+`DotPlayerSpriteFacing.resolve(angle, count, mirror)` returns the row offset
+**and the flip**, because a mirrored eight-way sheet is five drawn rows and
+three derived.
+
+## Animating it
+
+```gdscript
+DotPlayerAnimDriver           anim_set = DotPlayerAnimSet.locomotion()
+  DotPlayerAnimPlayerSink     3D: drives an AnimationPlayer
+  DotPlayerAnimSpriteSink     2D: calls set_row / set_frame
+```
+
+`DotPlayerAnimState.advance(motion, delta)` is pure — no node, no clock, no
+input device — so a server can run the same state machine as a client and check
+what the client claims to be doing.
+
+<Callout type="warning" title="Transitions need hysteresis, not a smaller epsilon">
+`speed > run_speed ? "run" : "walk"` flickers for a player holding a stick at
+the threshold. Each transition takes **two** thresholds. `air_grace` is the same
+idea in time: a stair step leaves the floor for a tick, and a character that
+started a jump animation each time twitches its way upstairs.
+</Callout>
+
+Animation events come from the clip's own timeline rather than a `Timer`, as
+fractions, so `0.25` is the same place in a rig's clip and a sheet's.
+
+<Related>
+- [dot-player](/learn/godot/addons/dot-player) — the row this binds to
+- [dot-player-class](/learn/godot/addons/dot-player-class) — what a player is
+- [dot-user-avatar](/learn/godot/addons/dot-user-avatar) — the platform-wide avatar
+- [dot-cloud](/learn/godot/addons/dot-cloud) — where the content an id names comes from
+</Related>

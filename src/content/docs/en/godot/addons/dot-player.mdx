@@ -1,0 +1,117 @@
+---
+title: dot-player
+description: The session roster every other player-facing addon reads — one record per participant, seats that survive a reconnect, and the component base other addons bind through.
+navTitle: dot-player
+order: 20
+badge: new
+keywords:
+  - "player"
+  - "roster"
+  - "record"
+  - "session"
+  - "reconnect"
+  - "rejoin"
+  - "component"
+  - "mirror"
+source:
+  - ../game-dev/godot/dot-player/README.md
+---
+
+`dot-player` holds one record per participant in a session — key, name, peer,
+team, class, character, alive flag, counters — and is the row the other player
+addons read rather than each keeping their own. It also provides the component
+base they bind through.
+
+Requires `dot-core`. Required by `dot-player-controller`, `dot-player-char` and
+`dot-player-class`.
+
+## Usage
+
+On the authoritative machine:
+
+```gdscript
+var roster := DotPlayerRoster.new()
+roster.config = DotPlayerConfig.new()
+add_child(roster)
+
+roster.join("ada", "Ada", peer_id, tick)
+roster.set_team("ada", &"blue")
+roster.set_alive("ada", true)          # counts the spawn for you
+
+# Once a tick or once a second: frees seats whose reconnect window is up.
+roster.advance(tick)
+```
+
+On a client, the same class with `authoritative = false`, fed the whole roster
+on connect and one row at a time after that:
+
+```gdscript
+mirror.apply_wire(payload)
+mirror.apply_row(row)
+```
+
+<Callout type="warning" title="A mirror decides nothing">
+Every mutator on a non-authoritative roster is refused with `CODE_FORBIDDEN`. A
+client that can assign itself to a team is a client that will.
+</Callout>
+
+## What is in it
+
+| | |
+| --- | --- |
+| `DotPlayerRecord` | The row: key, name, peer, team, class, character, alive, counters, metadata, and a wire form that tolerates missing fields. |
+| `DotPlayerRoster` | Authoritative on one machine, mirrored on the rest. Join, rejoin, hold, expire, and a stable key order. |
+| `DotPlayerConfig` | Capacity, the reconnect window and name handling. A `DotConfig`, so it layers. |
+| `DotPlayer` | The node. Finds its roster, its body and its components, and joins a group per key. |
+| `DotPlayerComponent` | The base every other player addon's node extends. |
+
+## Reconnecting
+
+`note_disconnected` holds the seat rather than removing it. A `join` with the
+same key inside `reconnect_window_sec` is a **rejoin**: the same record, team,
+score and original join tick, with a new peer id. Set the window to `0` for
+immediate removal, which is what a lobby wants and a competitive match does not.
+
+Held seats count towards `max_players` by default, so a full server does not let
+a stranger take the place of a player who is reconnecting into it.
+
+## `DotPlayer` is a container, not a character
+
+It extends `Node`, not a physics body. A body fixes the dimension — one game in
+this family is 2D and another is 3D — and a spectator, a dead player and a
+passenger in a vehicle are all participants with no body of their own.
+
+```
+DotPlayer              player_key = "ada"
+  CharacterBody3D      the body, found rather than inherited
+  DotPlayerController  a DotPlayerComponent
+  DotPlayerChar        a DotPlayerComponent
+  DotPlayerAnimDriver  a DotPlayerComponent
+```
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotPlayerComponent">
+    The base for any node that belongs to a player. It finds its player by
+    walking up the tree, not through an exported `NodePath` that breaks when a
+    spawner instances the scene under a different parent.
+  </Param>
+  <Param name="_on_bound / _on_unbound">
+    Override these, not `_ready`. `_ready` runs before the spawner has assigned
+    the key, so a component reading the key there reads an empty one and then
+    does nothing for the rest of the round.
+  </Param>
+  <Param name="is_active()">
+    Call it first in a subclass's `_process`. It checks the bind and the
+    `local_only` rule in one place.
+  </Param>
+</Params>
+
+<Related>
+- [dot-player-controller](/learn/godot/addons/dot-player-controller) — what drives one
+- [dot-player-char](/learn/godot/addons/dot-player-char) — what one looks like
+- [dot-player-class](/learn/godot/addons/dot-player-class) — what one is
+- [dot-team](/learn/godot/addons/dot-team) — sides that outlive the match
+- [dot-match](/learn/godot/addons/dot-match) · [dot-spectate](/learn/godot/addons/dot-spectate)
+</Related>

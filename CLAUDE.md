@@ -162,7 +162,7 @@ Handed to every page by `src/components/docs/mdx.tsx` — **do not import them i
 the MDX file**, they are already in scope:
 
 `<Callout>` `<Endpoint>` `<Params>` / `<Param>` `<Cards>` / `<Card>` `<Scopes>`
-`<Related>` `<Badge>`
+`<Details>` `<Related>` `<Badge>`
 
 The set is deliberately small. Anything expressible as Markdown stays Markdown;
 a component earns its place only when the docs need to be *consistent* about
@@ -176,6 +176,10 @@ Two behaviours that are easy to trip over:
   a labelled-block layout for things that are not parameters at all.
 - **A `<Param name>` with a space in it is set in the body font, not mono.** A
   name with a space is prose ("The party queue"); one without is an identifier.
+- **`<Details>` is a native `<details>`, and that is the point.** It costs no
+  JavaScript, takes the keyboard, and the browser's own find still reaches a
+  collapsed example. Use it past about fifteen lines of example: the two or
+  three lines that show the shape stay in the prose, the rest opens.
 
 ### The three columns
 

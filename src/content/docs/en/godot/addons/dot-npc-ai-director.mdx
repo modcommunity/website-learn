@@ -1,0 +1,67 @@
+---
+title: dot-npc-ai-director
+description: Population and pacing — build up, sustain, fade, relax, driven by an estimate of what the players are experiencing rather than by a timer, spawning ahead of them along the map's critical path.
+navTitle: dot-npc-ai-director
+order: 340
+badge: new
+keywords:
+  - "director"
+  - "pacing"
+  - "spawning"
+  - "population"
+  - "intensity"
+  - "difficulty"
+  - "critical path"
+source:
+  - ../game-dev/godot/dot-npc-ai-director/README.md
+---
+
+`dot-npc-ai-director` decides how many NPCs there are and where they arrive,
+over a build-up / sustain / fade / relax cycle.
+
+Requires `dot-core` and [dot-npc](/learn/godot/addons/dot-npc), and deliberately
+not [dot-npc-ai](/learn/godot/addons/dot-npc-ai): this decides how many and
+where, and what each one does when it gets there is a brain's business.
+
+## Usage
+
+```gdscript
+var director := DotNpcDirector.new()
+director.spawner = npcs                               # a DotNpcSpawner
+director.rules = DotNpcDirectorRules.new()
+director.population = [&"zombie", &"zombie", &"zombie", &"brute"]   # 1 brute in 4
+director.spawn_points = nav.points                    # or the map's own list
+director.flow = DotNpcDirectorFlow.new(map.critical_path)
+add_child(director)
+
+# Every simulated tick:
+for player in players:
+    director.report_player(player.id, player.position, player.health / player.max_health)
+
+director.tick(delta)
+```
+
+Health arrives as a **fraction**, not a damage number: a game that had to report
+damage would have to remember to do it from every damage path it has, and the
+one it forgets is the one that matters.
+
+## Why it is not a spawn timer
+
+A timer gives every player the same game whether they are winning or losing.
+This is driven by what the players are experiencing — damage taken, enemies
+close, time without a break — so a team that is struggling gets a moment to
+recover and a team that is coasting gets something to do. Same rules, no
+difficulty setting.
+
+<Callout type="warning" title="The relax needs both a clock and a distance">
+Time alone lets a team that has stopped to argue about a door be attacked on
+schedule. Distance alone lets a team that is sprinting be attacked every few
+seconds. And the distance is the **least-travelled** player's, because one
+person scouting ahead has not moved the party anywhere.
+</Callout>
+
+<Related>
+- [dot-npc](/learn/godot/addons/dot-npc) — the spawner it drives
+- [dot-npc-ai](/learn/godot/addons/dot-npc-ai) — what each one does once it arrives
+- [dot-map](/learn/godot/addons/dot-map) — where a critical path comes from
+</Related>

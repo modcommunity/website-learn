@@ -1,0 +1,180 @@
+---
+title: dot-weapon
+description: What a player holds and uses — a catalogue of documents naming a behaviour script by path, five fire modes, pooled ammunition, and duck-typed bridges to the player, the loadout and the bag.
+navTitle: dot-weapon
+order: 240
+badge: new
+keywords:
+  - "weapon"
+  - "weapons"
+  - "arsenal"
+  - "fire mode"
+  - "ammo"
+  - "ammunition"
+  - "reload"
+  - "hitscan"
+  - "projectile"
+  - "melee"
+  - "beam"
+source:
+  - ../game-dev/godot/dot-weapon/README.md
+---
+
+`dot-weapon` is the arsenal: what a player is carrying, which one is deployed,
+what a use costs and when one happens. What a use *does* is a behaviour script
+the game writes.
+
+Requires `dot-core`. Bridges to dot-player, dot-loadout and dot-inventory are
+duck-typed and none of those is named in the source.
+
+## Adding a weapon never means editing the addon
+
+A weapon used to be one resource carrying every field any weapon might want:
+pellets, spread bloom, projectile gravity, splash radius. That describes nine
+kinds of gun and cannot describe a bow, because a bow's damage comes from how
+long it was drawn and there is no field for that.
+
+So a definition carries only what the state machine needs, and names a behaviour
+by path:
+
+```gdscript
+extends "res://addons/dot_weapon/behaviour/dot_weapon_behaviour.gd"
+
+func _use(ctx: DotWeaponContext) -> DotWeaponOutcome:
+    var out := DotWeaponOutcome.of(DotWeaponOutcome.KIND_SPAWN)
+    var arrow := DotWeaponSpawn.make(&"arrow", ctx.origin, ctx.direction * lerpf(
+        25.0, 90.0, ctx.charge
+    ), ctx.entity)
+    arrow.damage = lerpf(14.0, 70.0, ctx.charge)
+    out.add_spawn(arrow)
+    return out
+```
+
+The definition says the fire mode is `CHARGE` and the arsenal accumulates the
+draw; the behaviour reads `ctx.charge`. There is no bow class and no branch in
+the arsenal that knows a bow exists.
+
+<Callout type="warning" title="The script is a path, never a `class_name`">
+A game delivered as a [dot-cloud](/learn/godot/addons/dot-cloud) pack is mounted
+at run time, and a mounted pack's `class_name` globals are not registered in the
+host. A weapon named by class could only ever ship inside the build.
+</Callout>
+
+## Fire modes
+
+Five, and they are about *when* a use happens rather than what it does.
+
+| | |
+| --- | --- |
+| `SEMI` | Fires on the press. |
+| `AUTO` | Repeats while held. |
+| `BURST` | Fires a count per press. |
+| `CHARGE` | Builds while held, fires on release. |
+| `HOLD` | Runs every tick the button is down. |
+
+A beam and a physics gun are both `HOLD`; that they do entirely different things
+is the behaviour's half.
+
+## Usage
+
+```gdscript
+var arsenal := DotWeaponArsenal.new()
+arsenal.catalogue = my_catalogue
+arsenal.authority = is_server
+add_child(arsenal)
+arsenal.setup()
+
+arsenal.give(&"rifle")
+```
+
+<Details title="Example: the per-tick loop">
+
+```gdscript
+# once a tick
+var ctx := DotWeaponContext.make(player_id, tick, eye_position, aim_direction)
+ctx.speed = state.horizontal_speed()
+ctx.airborne = not state.is_grounded()
+
+var outcome := arsenal.simulate_tick(command, ctx, previous_command)
+
+for shot in outcome.shots:
+    combat.resolve_shot(shot)
+
+for spawn in outcome.spawns:
+    my_projectiles.launch(spawn)
+```
+
+With `DotWeaponPlayerBridge` the context is one call instead of four:
+
+```gdscript
+var ctx := DotWeaponPlayerBridge.context_for(player, tick, index)
+var outcome := arsenal.use(ctx)
+```
+
+</Details>
+
+## It decides that a use happened, never what it hit
+
+A behaviour returns an outcome and applies nothing.
+[dot-combat](/learn/godot/addons/dot-combat) resolves the shots against a world
+rewound to the tick the trigger was pulled on, and the game spawns the spawns.
+That split is what lets the owning client predict a use and the server resolve
+it authoritatively from the same inputs.
+
+## Everything is a pure function of the context
+
+A behaviour is handed an origin and a direction, not a camera; a tick, not a
+clock; an entity id, not a node. The same weapon then runs on a predicting
+client, on a resolving server, in a reconciliation replay, for a bot with no
+viewport and in a headless suite.
+
+<Callout type="warning" title="Scatter comes from a hash, not a random stream">
+A predicted use is simulated at least twice, and once more per replay after a
+correction, so anything drawing from a random stream produces a different
+pattern each time: the client sees pellets go one way, the server resolves them
+going another, nothing errors, and the report is that hit registration "feels
+bad".
+
+Scatter is a hash of the shooter, the tick, the use index and the pellet index.
+</Callout>
+
+## Where a game plugs in
+
+<Params>
+  <Param name="Behaviour scripts">
+    Hitscan, projectile, melee, beam and thrown ship. A sixth is a script, a
+    path and a row in a table.
+  </Param>
+  <Param name="DotWeaponPlayerBridge">
+    Builds a context from a player. The origin is the **eye**, not the body — a
+    shot from a capsule's origin comes out of the player's knees — and the
+    direction is where the **view** points, not where the body faces. Both are
+    bugs that present as bad hit registration.
+  </Param>
+  <Param name="DotWeaponLoadoutBridge">
+    Fills an arsenal from what [dot-loadout](/learn/godot/addons/dot-loadout)
+    resolved.
+  </Param>
+  <Param name="DotWeaponInventoryBridge">
+    Keeps reserve ammunition agreeing with
+    [dot-inventory](/learn/godot/addons/dot-inventory). The bag is the truth and
+    the arsenal is a view of it; the other direction creates ammunition, because
+    a player who drops a magazine, reloads and picks it up has more rounds than
+    they started with.
+  </Param>
+</Params>
+
+## Ammunition is pooled by name
+
+Two weapons declaring the same ammo type draw from one reserve, so a pistol and
+a carbine share a box of rounds and one quiver serves two bows. A weapon that
+wants a private reserve declares a type nobody else uses. A pickup returns how
+many rounds actually fitted, because a caller that assumed it all went in
+creates ammunition.
+
+<Related>
+- [dot-combat](/learn/godot/addons/dot-combat) — what resolves a shot
+- [dot-loadout](/learn/godot/addons/dot-loadout) · [dot-inventory](/learn/godot/addons/dot-inventory)
+- [dot-player-class](/learn/godot/addons/dot-player-class) — which arsenal a class names
+- [dot-effects](/learn/godot/addons/dot-effects) — what a hit can leave behind
+</Related>

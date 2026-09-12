@@ -1,0 +1,77 @@
+---
+title: dot-spectate
+description: Who is watching whom, what the server lets them see, and where the camera is — observer modes, a force-camera policy, the death-cam chain and a broadcast delay.
+navTitle: dot-spectate
+order: 210
+badge: new
+keywords:
+  - "spectate"
+  - "spectator"
+  - "observer"
+  - "camera"
+  - "death cam"
+  - "freeze cam"
+  - "broadcast delay"
+source:
+  - ../game-dev/godot/dot-spectate/README.md
+---
+
+`dot-spectate` decides who a spectator may watch and computes where their camera
+should be. It is a competitive-integrity system before it is a camera: the
+camera is four lines of vector arithmetic, and the rest exists because spectator
+views get used to cheat.
+
+Requires `dot-core`.
+
+## Usage
+
+```gdscript
+var spectate := DotSpectatorManager.new()
+spectate.participants_fn = roster.keys
+spectate.team_fn = match_node.team_of
+spectate.alive_fn = world.is_alive
+spectate.pose_fn = world.eye_transform_of     # eyes, not the body's origin
+spectate.setup()
+add_child(spectate)
+
+spectate.next_target(me)
+spectate.set_mode(me, DotSpectatorView.Mode.CHASE)
+```
+
+Then, separately, once a tick and once a frame:
+
+```gdscript
+spectate.advance(tick)
+camera.global_transform = spectate.camera_of(me)
+```
+
+It computes a transform and touches no camera, which is what lets one manager
+serve a 3D rig, a 2D one (`camera_2d_of` gives a position and an angle) and a
+headless suite.
+
+A client draws its cycle list from `targets_for(me)` and greys entries out with
+`may_watch(me, them)`, so it never shows a name the server would refuse.
+
+## The two server-side rules
+
+| | |
+| --- | --- |
+| **Force camera** | `all`, own team only, or nobody — with the numbering operators already type from memory. "Own team only" also forces first person, because a chase camera behind a team-mate sees round corners that team-mate cannot. |
+| **Broadcast delay** | The camera samples a tick in the past, so a spectator is not a live intelligence feed. Ninety seconds is the usual broadcast default; a competitive server's is a few. |
+
+## The death-camera chain
+
+```gdscript
+spectate.on_death("ada", where_they_fell, "bob", tick)
+```
+
+Death cam on the body, freeze cam on the killer, then a real target — three
+timers handing over to each other. The last hand-over is the one a game that
+writes this itself usually misses, leaving the player looking at their killer
+until they respawn.
+
+<Related>
+- [dot-team](/learn/godot/addons/dot-team) — the side-aware policy layered over this
+- [dot-player](/learn/godot/addons/dot-player) — a spectator is a participant with no body
+- [dot-match](/learn/godot/addons/dot-match) — where "the round is over" comes from
+</Related>

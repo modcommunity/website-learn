@@ -1,0 +1,94 @@
+---
+title: dot-achievements
+description: What a player has earned, as rules over their numbers — counters, bests, tiers, hidden and secret entries, a catalogue a server validates at boot, a pluggable store and a batched backbone reporter.
+navTitle: dot-achievements
+order: 410
+badge: new
+keywords:
+  - "achievements"
+  - "unlocks"
+  - "progress"
+  - "tiers"
+  - "hidden"
+  - "secret"
+  - "stats"
+source:
+  - ../game-dev/godot/dot-achievements/README.md
+---
+
+`dot-achievements` states an achievement as data — rules over per-player
+numbers — rather than as code inside whatever awards it. A condition that lives
+in the awarding code is one nobody can list, show progress towards, or check a
+save file against.
+
+Requires `dot-core`. [dot-stats](/learn/godot/addons/dot-stats) is the natural
+source of the numbers and [dot-auth](/learn/godot/addons/dot-auth) supplies the
+backbone client; neither is named in the source.
+
+## Usage
+
+```gdscript
+var catalogue := DotAchievementCatalogue.of([
+    DotAchievement.counter(&"k10",  "First Blood", &"kills", 10),
+    DotAchievement.counter(&"k100", "Centurion",   &"kills", 100),
+    DotAchievement.make(&"flawless", "Flawless", [
+        DotAchievementRule.make(&"round_wins", 1),
+        DotAchievementRule.make(&"deaths", 0, DotAchievementRule.Op.AT_MOST),
+    ]),
+])
+
+var tracker := DotAchievementTracker.new()
+tracker.catalogue = catalogue
+tracker.store = DotAchievementStoreFile.new("user://achievements")
+tracker.unlocked.connect(func(player: String, a: DotAchievement) -> void:
+    hud.toast("%s unlocked" % a.display_name))
+add_child(tracker)
+
+await tracker.begin(player_key)         # loads their lifetime numbers
+tracker.record(player_key, &"kills", 1)
+await tracker.end(player_key)           # saves
+```
+
+`record()` merges by the kind the rule declared, so a counter adds and a best
+keeps the better. One call serves every stat, and a game cannot get it the wrong
+way round.
+
+Validating the catalogue loads no mesh, icon or scene, so a dedicated server can
+decide what somebody has earned and report it — the same rule as
+[dot-loadout](/learn/godot/addons/dot-loadout).
+
+## With dot-stats
+
+```gdscript
+var link := DotAchievementStatsLink.new()
+link.tracker = tracker
+link.stats = stats_tracker
+add_child(link)
+```
+
+<Callout type="warning" title="Session totals are not lifetime deltas">
+dot-stats' `recorded` signal carries a player's **session** total, and an
+achievement is about a lifetime. Wiring the signal straight into `record()` adds
+the running session total on every kill: two after the second, five after the
+third, nine after the fourth.
+
+The link holds a baseline and files the difference, and treats a total that goes
+down as a new session rather than a negative delta.
+</Callout>
+
+## Showing them
+
+```gdscript
+for row in tracker.listing(player_key):
+    print(row["name"], row.get("progress", row.get("unlocked")))
+```
+
+Hidden entries are absent until earned and secret ones arrive without their
+description. The filtering happens here rather than in a UI, because a
+description withheld by the interface that drew it was still sent to the client.
+
+<Related>
+- [dot-stats](/learn/godot/addons/dot-stats) — the natural source of the numbers
+- [dot-leaderboard](/learn/godot/addons/dot-leaderboard) — the other thing the backbone stores
+- [Integration API](/learn/api/integration) — the backbone end of the reporter
+</Related>

@@ -2,7 +2,7 @@
 title: dot-leaderboard
 description: Boards — an ordering over one number per player, scoped by string keys — plus per-player statistics, ranking points, a store interface and a batched reporter for the TMC backbone.
 navTitle: dot-leaderboard
-order: 180
+order: 390
 keywords:
   - "leaderboard"
   - "board"
@@ -20,6 +20,8 @@ source:
 A board is **an ordering over one number per player, scoped by string keys** —
 so "fastest time on surf_beginner, main track, normal style", "most kills this
 week" and "highest arena score" are one thing with three configurations.
+
+Requires `dot-core`. `dot-auth` is optional and is never imported.
 
 ```gdscript
 var boards := DotLeaderboardManager.new()

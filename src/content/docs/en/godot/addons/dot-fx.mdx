@@ -1,0 +1,102 @@
+---
+title: dot-fx
+description: Visual effects as documents — pooled, frame-budgeted, quality-tiered and distance-culled, with a decal ring and camera shake computed as a value the game applies. An effect never changes the simulation.
+navTitle: dot-fx
+order: 460
+badge: new
+keywords:
+  - "fx"
+  - "effects"
+  - "particles"
+  - "decals"
+  - "camera shake"
+  - "flash"
+  - "photosensitivity"
+  - "quality"
+  - "budget"
+source:
+  - ../game-dev/godot/dot-fx/README.md
+---
+
+`dot-fx` is visual effects as documents rather than scattered `instantiate()`
+calls: pooled, budgeted, quality-tiered, distance-culled and safe to drop.
+
+Requires `dot-core`.
+
+## One invariant
+
+**An effect never changes the simulation.** It is a picture of something that
+already happened, and that is what makes every refusal here safe: a frame budget
+may drop one, a quality tier may refuse one, a distance cull may skip one, and a
+client whose content pack is still downloading simply does not see it — and in
+none of those cases do two machines disagree about anything that matters.
+
+So [dot-combat](/learn/godot/addons/dot-combat) owns damage,
+[dot-effects](/learn/godot/addons/dot-effects) owns what happens over time, and
+this owns what it looks like.
+
+## Usage
+
+```gdscript
+var fx := DotFxManager.new()
+fx.catalogue = my_catalogue
+fx.world_ref = DotNodeRef.of_path(world.get_path())
+add_child(fx)
+fx.setup()
+
+fx.viewer_position = camera.global_position     # once a frame; culling needs it
+fx.spawn(&"muzzle_flash", muzzle.global_transform)
+fx.spawn_decal(&"bullet_hole", hit)
+fx.shake_at(&"grenade", where)                  # scaled by distance
+fx.flash(&"hurt")                               # capped and rate limited
+fx.advance(delta)
+```
+
+`spawn_2d` sits beside `spawn` rather than widening its signature: a caller
+holding a `Vector2` is a different caller.
+
+## A low quality tier is missing effects
+
+`min_quality` gates whether an effect **exists**, not how detailed it is.
+Halving the particle count on the effect that is killing the frame does not save
+the frame; not spawning it does. `frame_budget` is the same idea per frame — a
+grenade landing in a crowd cannot cost more than one frame has, and what goes is
+the lowest-priority request.
+
+## Camera shake is a value
+
+```gdscript
+fx.advance(delta)
+camera.position = base + fx.shake.offset()
+camera.rotation.z = base_roll + fx.shake.roll()
+```
+
+It computes a displacement and touches no camera, so one implementation serves a
+3D rig, a 2D one, a spectator camera and a headless suite. Two details make it
+read as shake rather than as a fault: **trauma is squared**, because a linear
+falloff stops abruptly, and the motion is **sampled noise** rather than a random
+number per frame, which is jitter at the frame rate and looks different at 60
+and 144 fps.
+
+<Callout type="warning" title="Two accessibility limits are enforced here, not by the caller">
+`shake_scale` must be able to reach zero — camera shake is a common cause of
+simulator sickness, and it is read every frame, so turning it off takes effect
+immediately rather than at the next map.
+
+`allow_flashes` is a player-facing off switch and `flashes_per_second` defaults
+to **three**, the published photosensitivity guidance. Both are enforced in the
+manager, because the caller that does not honour them is the next feature
+somebody adds and the person it harms cannot tell which effect did it.
+</Callout>
+
+## Decals are a ring
+
+An unbounded decal list grows with the **round** rather than with the number of
+players, which makes it invisible in testing and fatal at minute forty.
+`max_decals` recycles the oldest, and lowering it takes effect immediately.
+
+<Related>
+- [dot-audio](/learn/godot/addons/dot-audio) — the same shape, for what you hear
+- [dot-effects](/learn/godot/addons/dot-effects) — what happens over time
+- [dot-combat](/learn/godot/addons/dot-combat) — which owns the damage
+</Related>

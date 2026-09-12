@@ -1,0 +1,114 @@
+---
+title: dot-player-class
+description: Classes as a bounded document a server can check without loading content — health, armour, movement multipliers, per-team limits and entitlements, with refusals that say why. A class change lands on the next spawn.
+navTitle: dot-player-class
+order: 50
+badge: new
+keywords:
+  - "class"
+  - "classes"
+  - "loadout"
+  - "armour"
+  - "armor"
+  - "limits"
+  - "entitlement"
+  - "team shooter"
+  - "respawn"
+source:
+  - ../game-dev/godot/dot-player-class/README.md
+---
+
+`dot-player-class` describes what a player *is* — health, armour, movement
+multipliers, ability and loadout ids, team restrictions and limits — as a
+document a dedicated server can validate without loading a mesh, an animation
+set or a weapon.
+
+Requires `dot-core` and `dot-player`.
+
+## Usage
+
+```gdscript
+var classes := DotPlayerClassManager.new()
+classes.catalogue = DotPlayerClassCatalogue.team_shooter()
+classes.rules     = DotPlayerClassRules.standard()
+classes.team_fn   = func(key): return teams.team_of(key)
+classes.alive_fn  = func(key): return roster.get_record(key).alive
+add_child(classes)
+classes.setup()
+
+var res := classes.request("ada", &"sniper")
+if not res.ok:
+    hud.say(res.error.message)   # "Your side already has 2 Sniper."
+```
+
+## A change lands on the next spawn
+
+Changing class while somebody is shooting at you changes your health, your speed
+and your weapons mid-fight. A request is recorded instead, and the next spawn
+honours it:
+
+```gdscript
+classes.request("ada", &"medic")     # accepted, but not yet
+classes.pending_of("ada")            # &"medic"
+classes.class_of("ada")              # still &"assault"
+
+var spawning_as := classes.apply_pending("ada")   # on spawn: &"medic"
+```
+
+A player who is already dead gets the change immediately — there is nothing to
+exploit, and making them wait for a second death is confusing.
+
+## What is in it
+
+| | |
+| --- | --- |
+| `DotPlayerClassDef` | One class: health, armour and its absorption, movement multipliers, mass, content ids, abilities, team restrictions, limits, entitlement. |
+| `DotPlayerClassCatalogue` | The set. Three presets: `single`, `team_shooter` (six classes tuned as relations) and `asymmetric`. |
+| `DotPlayerClassRules` | When a choice may be made and when it lands. Four presets, and a `DotConfig`. |
+| `DotPlayerClassManager` | Current class, pending class, limits, entitlements, and a mirror for clients. |
+
+`single()` exists so a game with no classes still has one: modelling it as *no
+catalogue* makes every consumer branch on whether classes exist.
+
+## Everything is a number or an id
+
+A class **names** its loadout, model, animation set and abilities; it does not
+contain them. Resolution happens on a client, through a catalogue, through
+[dot-cloud](/learn/godot/addons/dot-cloud). The addon's self-test loads no
+content, which is the check on that promise.
+
+## Refusals say why
+
+Every entry point returns a `DotResult`, because each refusal has a sentence a
+player needs to read.
+
+| | |
+| --- | --- |
+| `limit_per_team` | "Your side already has 2 Sniper." |
+| `teams` | "Breacher is not available to your side." |
+| `requires_entitlement` | "You do not have Heavy." The check itself is the game's — an addon that decided entitlement would be one a client could patch. |
+| `allow_midround_change` | "Classes are locked once the round has started." |
+
+`options_for(key)` returns every class with `available`, `why`, `taken` and
+`limit` — the difference between a greyed-out button and a greyed-out button
+with a tooltip.
+
+## The armour arithmetic
+
+```gdscript
+var hit := def.absorb(50.0, current_armour)
+health -= hit["health_damage"]
+armour  = hit["armour_left"]
+```
+
+It lives here rather than in [dot-combat](/learn/godot/addons/dot-combat)
+because the numbers that decide it are here, and a game doing the arithmetic
+itself is a game where the class screen and the damage model disagree about what
+150 armour means.
+
+<Related>
+- [dot-player](/learn/godot/addons/dot-player) · [dot-player-char](/learn/godot/addons/dot-player-char)
+- [dot-loadout](/learn/godot/addons/dot-loadout) — what you take in
+- [dot-team](/learn/godot/addons/dot-team) — the sides a limit counts against
+- [dot-combat](/learn/godot/addons/dot-combat) — what the armour is spent on
+</Related>

@@ -2,7 +2,7 @@
 title: dot-user-avatar
 description: Avatars as data — a bounded document of part ids and colours a dedicated server validates against a schema and a player's entitlements without ever loading a mesh.
 navTitle: dot-user-avatar
-order: 80
+order: 110
 keywords:
   - "avatar"
   - "cosmetics"
@@ -21,6 +21,8 @@ An avatar is a schema id, a set of part ids and a set of colours — a few dozen
 bytes. A server validates it against the schema and the player's entitlements. A
 client resolves the part ids to real assets through
 [`dot-cloud`](/learn/godot/addons/dot-cloud).
+
+Requires `dot-core`.
 
 ```gdscript
 var a := DotAvatar.make(&"humanoid")

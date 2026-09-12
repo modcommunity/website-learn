@@ -2,7 +2,7 @@
 title: dot-net
 description: Multiplayer netcode for Godot — tick synchronisation, a bit-packed wire format, declarative replication, snapshot interpolation, client-side prediction with reconciliation, lag compensation and interest management.
 navTitle: dot-net
-order: 40
+order: 140
 keywords:
   - "netcode"
   - "multiplayer"
@@ -20,9 +20,12 @@ source:
   - ../game-dev/godot/dot-net/CLAUDE.md
 ---
 
-Netcode that needs only `dot-core`. Use it with
-[`dot-server`](/learn/godot/addons/dot-server), with Godot's raw multiplayer, or
-with your own transport — **it never owns a socket**.
+Netcode: tick synchronisation, a bit-packed wire format, replication, snapshot
+interpolation, client-side prediction, lag compensation and interest management.
+Use it with [`dot-server`](/learn/godot/addons/dot-server), with Godot's raw
+multiplayer, or with your own transport — **it never owns a socket**.
+
+Requires `dot-core`.
 
 ```gdscript
 var net := DotNetManager.new()
@@ -190,6 +193,6 @@ in this collection renders between ticks by default; that mapping is the game's.
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server) — the dedicated server around it
-- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller) — a simulation built to be predicted
+- [`dot-player-controller`](/learn/godot/addons/dot-player-controller) — a simulation built to be predicted
 - [Reference games](/learn/godot/games) — where the bridges are written
 </Related>

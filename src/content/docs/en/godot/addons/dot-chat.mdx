@@ -1,0 +1,125 @@
+---
+title: dot-chat
+description: Server-authoritative text chat — channels with an audience rule, sanitisation that survives markup and invisible characters, rate and repetition limits, command prefixes, scrollback and a backlog for a joining player.
+navTitle: dot-chat
+order: 190
+badge: new
+keywords:
+  - "chat"
+  - "text chat"
+  - "channels"
+  - "team chat"
+  - "whisper"
+  - "proximity"
+  - "sanitisation"
+  - "rate limit"
+  - "scrollback"
+  - "commands"
+source:
+  - ../game-dev/godot/dot-chat/README.md
+---
+
+`dot-chat` decides who hears a line, what it may contain and what name is drawn
+beside it. It ships no window and no transport: a `send_fn` takes a dictionary
+and a list of peers, and your game draws the result.
+
+Requires `dot-core`. [dot-moderation](/learn/godot/addons/dot-moderation) is
+optional — when present its gags apply here with no wiring, because the router
+asks whatever is registered as `dot_mute_source` and neither addon names the
+other.
+
+## Why the server decides all four
+
+Chat is the only subsystem where one player puts arbitrary text in front of
+every other player, and the same four things go wrong:
+
+- **Markup.** A client drawing chat in a `RichTextLabel` with BBCode on lets
+  anybody put a colour, an image or a link in everybody else's window.
+- **Invisible text.** Zero-width characters and direction overrides make a
+  message that is empty, or that reads as something other than what it is.
+- **Attribution.** A client sending a pre-formatted line has decided the name
+  and the prefix on the one machine that must not, and can impersonate the
+  server by typing its prefix.
+- **The audience.** Team chat that reaches the other team is a bug you ship
+  once.
+
+## Usage
+
+```gdscript
+# Server: accept a line and let the router decide who gets it.
+var res := router.submit(peer, &"all", text_they_typed)
+if not res.ok:
+    link.rpc_id(peer, "chat_notice", res.error.message)
+```
+
+<Details title="Example: wiring both ends">
+
+On the server:
+
+```gdscript
+var router := DotChatRouter.new()
+
+router.peers_fn = func() -> PackedInt32Array: return server.peer_ids()
+router.name_fn  = func(peer: int) -> String: return server.session_of(peer).name
+router.key_fn   = func(peer: int) -> String: return server.session_of(peer).uid
+router.team_fn  = func(peer: int) -> StringName: return game.team_of(peer)
+router.send_fn  = func(wire: Dictionary, to: PackedInt32Array) -> void:
+    for peer in to:
+        link.rpc_id(peer, "chat_line", wire)
+
+add_child(router)
+```
+
+On the client:
+
+```gdscript
+var chat := DotChatClient.new()
+chat.channels = [DotChatChannel.everyone(), DotChatChannel.team()]
+chat.send_fn = func(text: String, channel: StringName) -> void:
+    link.rpc_id(1, "chat_say", String(channel), text)
+chat.message_received.connect(func(m: DotChatMessage, _c: StringName) -> void:
+    log_label.append_text(DotChatFormat.line(m, chat.channel(m.channel)) + "\n"))
+add_child(chat)
+```
+
+That is a working chat system: everybody, team, whispers, `/me`, rate limits,
+repetition limits, escaping, scrollback and a backlog for whoever joins next.
+
+</Details>
+
+## Channels are an audience rule
+
+`EVERYONE`, `TEAM`, `RADIUS` (proximity), `DIRECT` (whispers) and `MEMBERS` (a
+party, a clan, the dead, the admins — the host answers `membership_fn`).
+
+```gdscript
+var proximity := DotChatChannel.make(&"near", "Nearby", DotChatChannel.Scope.RADIUS)
+proximity.radius = 20.0
+router.add_channel(proximity)
+```
+
+Membership is asked, never stored: which team a peer is on is a fact your game
+owns and changes every round, and a second copy of it is the copy that goes
+stale.
+
+## Commands
+
+A line starting with `!` or `/` is never broadcast. It arrives as a signal:
+
+```gdscript
+router.command_entered.connect(func(peer, command, args, raw):
+    if command == "rtv":
+        router.claim_command()
+        vote.rock_the_vote(peer))
+```
+
+That is how [dot-server](/learn/godot/addons/dot-server)'s chat commands and
+[dot-vote](/learn/godot/addons/dot-vote)'s `!rtv` reach a player without either
+addon knowing this one exists.
+
+<Related>
+- [dot-moderation](/learn/godot/addons/dot-moderation) — gags, and who they apply to
+- [dot-voice](/learn/godot/addons/dot-voice) — the same audience question, spoken
+- [dot-server](/learn/godot/addons/dot-server) · [dot-vote](/learn/godot/addons/dot-vote)
+- [dot-team](/learn/godot/addons/dot-team) — where a team channel's answer comes from
+</Related>

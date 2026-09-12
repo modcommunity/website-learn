@@ -1,0 +1,82 @@
+---
+title: dot-effects
+description: Status effects, incapacitation and temporary health as one document rather than a class each — burning, crits, invulnerability, slows, stuns and marks, plus down-rather-than-dead with a revive that is a decision.
+navTitle: dot-effects
+order: 250
+badge: new
+keywords:
+  - "status effects"
+  - "buff"
+  - "debuff"
+  - "burning"
+  - "stun"
+  - "slow"
+  - "invulnerability"
+  - "overheal"
+  - "downed"
+  - "revive"
+source:
+  - ../game-dev/godot/dot-effects/README.md
+---
+
+`dot-effects` holds what is currently true of an entity beyond its health:
+burning, bleeding, crit-boosted, slowed, stunned, invulnerable, marked,
+incapacitated.
+
+Requires `dot-core`.
+
+## One document, not twenty classes
+
+Count the status effects a team shooter and a co-operative shooter ship between
+them and you get about twenty-one. Nineteen are the same six fields with
+different numbers: a duration, a periodic amount, a multiplier on damage taken,
+a multiplier on damage dealt, a multiplier on movement, and a flag.
+
+```gdscript
+effects.define(DotEffectDef.burning(&"afterburn", 3.0, 10 * 64))
+effects.define(DotEffectDef.damage_buff(&"crit", 3.0, 5 * 64))
+effects.define(DotEffectDef.invulnerability(&"invuln", 8 * 64))
+effects.define(DotEffectDef.speed(&"adrenaline", 1.4, 15 * 64))
+```
+
+## It never touches a health value
+
+A burning entity does not lose health here. The manager reports an amount and
+the game applies it, through whatever it already uses:
+
+```gdscript
+effects.damaged.connect(func(entity, amount, type, source):
+    health_of(entity).apply(DotDamage.make(amount, type, source, tick)))
+```
+
+That is what lets a slow, a stun or a speed boost work in a game with no damage
+system at all — and it means an afterburn tick goes through the same lag
+compensation, armour and friendly-fire rules as every other hit.
+
+## Down rather than dead
+
+```gdscript
+effects.rules.downed_enabled = true
+
+# One place decides, rather than every damage site:
+var what := effects.report_zero_health(entity)
+if str(what.value) == "down":
+    player.play_downed()
+else:
+    player.die()
+```
+
+A downed player bleeds out over ninety seconds, is picked up in five, comes back
+with 30 health, and the third time is the last.
+
+<Callout type="info" title="A cancelled revive throws its progress away">
+If progress were kept, two players could chip at a revive a second at a time
+from behind cover — and the cost of a revive is meant to be a stretch of time
+where somebody is not shooting.
+</Callout>
+
+<Related>
+- [dot-combat](/learn/godot/addons/dot-combat) — where the damage it reports goes
+- [dot-weapon](/learn/godot/addons/dot-weapon) — what applies one
+- [dot-player-class](/learn/godot/addons/dot-player-class) — the armour half of the same arithmetic
+</Related>

@@ -1,0 +1,105 @@
+---
+title: dot-settings
+description: Settings as a bounded document — declared entries with types and ranges, three scopes including the few a server may clamp and may never read, atomic debounced writes, migrations, and unknown keys kept for a downgrade.
+navTitle: dot-settings
+order: 430
+badge: new
+keywords:
+  - "settings"
+  - "options"
+  - "preferences"
+  - "schema"
+  - "scopes"
+  - "fingerprint"
+  - "migration"
+  - "clamp"
+source:
+  - ../game-dev/godot/dot-settings/README.md
+---
+
+`dot-settings` declares a game's settings once, with types, ranges and scopes,
+and stores them through a pluggable store. The alternative — a dictionary of
+whatever somebody happened to save — cannot be enumerated or validated, and a
+typo'd key is indistinguishable from a setting nobody has chosen yet.
+
+Requires `dot-core`.
+
+## Usage
+
+```gdscript
+schema.add(DotSettingsDef.number(&"master_volume", 0.8, 0.0, 1.0, &"audio"))
+schema.add(DotSettingsDef.integer(&"fov", 90, 70, 120, &"video")
+    .with_scope(DotSettingsDef.Scope.SERVER_CLAMPED))
+
+var settings := DotSettingsManager.new()
+settings.schema = my_schema
+settings.local_store = DotSettingsStoreFile.new()
+settings.app_namespace = &"my_game"
+settings.shared_namespace = &"tmc_account"      # optional
+add_child(settings)
+settings.setup()
+
+settings.get_float(&"master_volume")
+settings.set_value(&"master_volume", 0.4)       # saved, debounced, atomically
+```
+
+A screen enumerates the schema, a console completes against it, a store
+validates against it and a migration rewrites against it, so a new setting
+appears in all four without editing four files.
+
+`to_config()` returns a `DotConfig` whose properties are the schema's keys, and
+[dot-ui](/learn/godot/addons/dot-ui) generates a panel from any `DotConfig` — so
+the settings screen is free, and nothing in this addon names a `Control`.
+`from_config` goes the other way, deriving a schema from a `DotConfig` a project
+already has.
+
+## Three scopes
+
+| | |
+| --- | --- |
+| `DEVICE` | Resolution, audio device, thread count. **Never** synchronised: a synchronised resolution breaks itself every time a player switches machines. |
+| `ACCOUNT` | Sensitivity, crosshair, subtitles, language. Stored under `shared_namespace`, so two games that opt into the same name share one sensitivity. |
+| `SERVER_CLAMPED` | Field of view, view models, third person. A server may cap these. |
+
+## A server may clamp, and may never read
+
+Capping field of view is a legitimate competitive rule. Asking a client to
+report its key bindings, its audio device or its screen resolution is a
+**fingerprint** — a stable identifier assembled from settings, which survives a
+new account and every ban a moderator issues. There is no read direction in this
+addon at all.
+
+A clamp is a bound, not a value:
+
+```gdscript
+settings.apply_server_clamps({"fov": 90})
+settings.get_value(&"fov")      # 90 for a player who wanted 110
+settings.chosen_value(&"fov")   # 110, what the screen shows
+```
+
+What is saved is the choice, never the cap. Games that get this wrong get it
+wrong in the same direction, and the symptom is a setting that appears to reset
+itself on every join.
+
+## Writes
+
+Debounced by a few hundred milliseconds so dragging a slider is one write, and
+written atomically through a temporary file and a rename — a game that saves on
+exit loses them whenever it crashes, and shutting down is when it is most likely
+to. On the web `user://` is an IndexedDB mirror, so every write path flushes it.
+
+<Callout type="info" title="Unknown keys are kept, and that is the downgrade path">
+A player who runs a newer build, changes a setting it added and goes back would
+otherwise lose it silently, and lose it again every time. The unknown half is
+stored beside the known half and written back untouched.
+
+A hand-edited file loses one line, not all of them: a value out of range is
+corrected, a value that cannot be read falls back to the default, and the two
+are reported separately because they are different things to tell a player.
+</Callout>
+
+<Related>
+- [dot-ui](/learn/godot/addons/dot-ui) — which draws the panel
+- [dot-console](/learn/godot/addons/dot-console) — which completes against the schema
+- [Conventions](/learn/godot/conventions#configuration-is-layered-identically-everywhere) — the layering rule
+</Related>

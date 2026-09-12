@@ -2,7 +2,7 @@
 title: dot-cloud
 description: Runtime content delivery for Godot — signed manifests, a content-addressed cache, resumable parallel downloads and version-namespaced mounting, in the browser as well as on desktop.
 navTitle: dot-cloud
-order: 20
+order: 130
 keywords:
   - "CDN"
   - "download"
@@ -22,6 +22,8 @@ source:
 A server hands a client a manifest; the client downloads what it is missing,
 verifies it, and mounts it — on Windows, macOS, Linux, Android, iOS and in the
 browser.
+
+Requires `dot-core`.
 
 ```gdscript
 var cloud := DotCloudClient.new()

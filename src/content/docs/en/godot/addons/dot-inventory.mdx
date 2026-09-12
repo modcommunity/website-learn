@@ -1,0 +1,99 @@
+---
+title: dot-inventory
+description: A full inventory as a document a server validates — grid and slot containers, stacks, weight, equipment and nested containers. Every mutation is an op, so the wire format, the undo stack and a one-move refusal all follow from one thing.
+navTitle: dot-inventory
+order: 270
+badge: new
+keywords:
+  - "inventory"
+  - "bag"
+  - "grid"
+  - "stacks"
+  - "weight"
+  - "equipment"
+  - "containers"
+  - "drag and drop"
+source:
+  - ../game-dev/godot/dot-inventory/README.md
+---
+
+`dot-inventory` is what is in a player's bag right now: grid and slot
+containers, stacks, weight, equipment slots and nested containers, mutated only
+by operations a server can refuse individually.
+
+Requires `dot-core`. [dot-loadout](/learn/godot/addons/dot-loadout) and
+[dot-ui](/learn/godot/addons/dot-ui) are optional and neither is named.
+
+## Every mutation is an op
+
+```gdscript
+inv.apply(DotInvOp.move(&"backpack", uid, &"belt", Vector2i(0, 0)))
+```
+
+Four things follow from that:
+
+- **The network shape.** A client sends an op; a server answers yes or no.
+  Sending *state* makes the server diff two documents to work out what the
+  player claims to have done — and "this rifle moved" and "this rifle was
+  destroyed and an identical one appeared" are the same diff.
+- **Undo.** An op names what it did rather than what the result looked like.
+- **Partial refusal.** One move out of ten can be refused without the other nine
+  snapping back.
+- **Prediction.** A client applies locally, sends, and rolls back on a no.
+
+<Callout type="warning" title="The occupancy map is derived, never stored">
+A grid holding both a cell map and an item list can have them disagree.
+`cells_of()` and `occupied_cells()` are computed from the entries on every call.
+</Callout>
+
+## Two problems that are harder than they look
+
+**Moving something one cell to the left.** An item moved within its own
+container collides with itself, and the obvious workaround — remove, then
+place — loses the item when the place half fails. `fits(..., ignore_uid)` asks
+the question that was meant.
+
+**Nesting.** A bag inside itself is an infinite loop in every traversal —
+weight, save, draw, search — so the symptom is a hang rather than a wrong
+number. `can_nest()` walks **up** from the destination before the move, because
+a cycle that already exists cannot be found by anything that has to traverse the
+structure to look for it.
+
+## Behaviour worth knowing
+
+| The complaint | What the addon does |
+| --- | --- |
+| "It made a second stack of five next to my stack of five" | A pickup tops up existing stacks first. |
+| "I dragged twenty onto a stack with room for five and nothing happened" | A partial merge moves five and leaves fifteen. |
+| "My rifle won't fit and there's clearly space" | Rotation is tried at each cell, not after a whole failed pass. |
+| "The sort order changes every time I open it" | `sort_custom` is not stable in Godot, so every comparison breaks ties on the id. |
+
+## The panel asks the same question the server will
+
+`DotInvPanel` is a grid built in code with no art and no `Theme`, using Godot's
+own drag-and-drop rather than dot-ui's, so it works in a project with either.
+
+`_can_drop_data` calls `manager.validate(op)`. A panel with its own idea of what
+fits will eventually disagree with the server, and the player then sees a move
+accepted on screen and undone a round trip later.
+
+Filtering and sorting are the client's: the server owns what is in the
+inventory, and a filter sent to a server costs a round trip per keystroke.
+
+## It meets dot-loadout in one file
+
+`DotInvLoadoutLink`, by duck typing. The division is real:
+
+- **dot-loadout** — what you own and what you brought in. Permanent, bounded,
+  validated against entitlements before a match.
+- **dot-inventory** — what is in your bag right now. It changes every few
+  seconds, it has a shape, and a server must be able to refuse one move.
+
+Neither direction is automatic: whether a round's inventory is worth keeping is
+a design decision, not something an addon should assume.
+
+<Related>
+- [dot-loadout](/learn/godot/addons/dot-loadout) · [dot-weapon](/learn/godot/addons/dot-weapon)
+- [dot-economy](/learn/godot/addons/dot-economy) — the per-round question
+- [dot-ui](/learn/godot/addons/dot-ui) — optional, and never named
+</Related>

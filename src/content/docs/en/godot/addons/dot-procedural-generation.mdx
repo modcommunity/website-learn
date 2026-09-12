@@ -1,0 +1,122 @@
+---
+title: dot-procedural-generation
+description: Generated levels as an ordered pipeline of deterministic steps over a document — rooms, caves, corridors with loops on purpose, markers, and a validator that refuses a map nobody could finish.
+navTitle: dot-procedural-generation
+order: 470
+badge: new
+keywords:
+  - "procedural"
+  - "generation"
+  - "levels"
+  - "rooms"
+  - "caves"
+  - "corridors"
+  - "seed"
+  - "validator"
+  - "flood fill"
+source:
+  - ../game-dev/godot/dot-procedural-generation/README.md
+---
+
+`dot-procedural-generation` generates a level as a **document** — a grid, a list
+of rooms, a list of links and a list of markers — and leaves building it to the
+game.
+
+Requires `dot-core`.
+
+## Why a document rather than a scene tree
+
+A generator that instantiates nodes as it goes cannot be compared between two
+machines, asserted on by a suite, shared by a 2D and a 3D game, or paused
+half-way. Working on `DotProcGenDoc` instead buys four things, in order of how
+much they matter:
+
+- **Two peers agree by comparing a hash.** A seed and a `fingerprint()`, not a
+  map.
+- **"Is it finishable?" is a question you can ask.** It is a flood fill over a
+  grid.
+- **One generator, two dimensions.** A top-down game reads the grid as tiles; a
+  first-person game extrudes it.
+- **It can be generated over several frames** without anybody walking into a
+  half-built world.
+
+## Usage
+
+```gdscript
+var p := DotProcGenPipeline.new()
+p.width = 64
+p.height = 64
+p.add(rooms).add(corridors).add(spawns).add(validate)
+p.seed_source = rng                       # optional; takes the session's seed
+
+var res := p.generate(seed)
+if res.ok:
+    build(res.value as DotProcGenDoc)
+```
+
+Or sliced across frames, one step at a time on the main thread, because a web
+template without threads is most of them. The sliced and the blocking runs
+produce exactly the same map, which is what makes slicing an implementation
+detail.
+
+<Details title="Example: the sliced runner">
+
+```gdscript
+runner.pipeline = p
+runner.finished.connect(_build)
+runner.begin(seed)
+```
+
+</Details>
+
+## The validator
+
+Generation is easy. Generation that cannot produce an unplayable round is the
+problem. A cellular-automata cave has sealed pockets *by construction*; a room
+placer can wall off a start it carved earlier; a scattered objective lands in a
+chamber with no door about one seed in thirty. Every one of those is invisible
+to every other kind of check — the map is well formed, the counts are right, the
+rooms are the size they should be, and a player walks in and cannot finish.
+
+```gdscript
+var check := DotProcGenValidate.new()
+check.from_kind = &"spawn"
+check.min_connected_fraction = 0.6     # connected AND not mostly wasted
+check.fill_unreachable = true          # usually better than failing
+```
+
+<Callout type="info" title="A failure retries on a mixed seed, not the next one">
+`seed + 1` is somebody else's world, so a failure on seed 41 would quietly hand
+a player the map seed 42 should have produced.
+</Callout>
+
+## Each step draws from its own stream
+
+With one shared generator, inserting a step shifts every later random number, so
+adding a "scatter some rubble" pass changes the room layout. `DotProcGenRandom`
+derives a child stream by hashing a name, and two children never disturb each
+other.
+
+It is a second implementation of what
+[dot-randomness](/learn/godot/addons/dot-randomness) has, deliberately: only
+dot-core may be a hard dependency. What a game's randomness addon supplies is
+the **seed**, through `seed_source`.
+
+## A spanning tree is a bad level
+
+`DotProcGenConnect` builds a minimum spanning tree — the cheapest corridors that
+guarantee one piece — and then adds `extra_loops` more. A tree has exactly one
+route between any two rooms, so every fight is a corridor, every retreat is the
+way you came, and the map reads as a sequence rather than as a place.
+
+<Callout type="info" title="`to_ascii()` is worth more than it looks">
+Every generator bug this kind of code has is visible in ten lines of text and
+invisible in every assertion that does not print one. Print the map when a check
+fails.
+</Callout>
+
+<Related>
+- [dot-randomness](/learn/godot/addons/dot-randomness) — where the seed comes from
+- [dot-map](/learn/godot/addons/dot-map) — maps as content, the authored half
+- [dot-npc](/learn/godot/addons/dot-npc) — navigation over a code-built map
+</Related>

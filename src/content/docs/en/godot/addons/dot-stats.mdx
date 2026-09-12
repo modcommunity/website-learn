@@ -2,7 +2,7 @@
 title: dot-stats
 description: Per-player statistics a game declares once — counters, gauges, bests and lowests — reported to the TMC backbone as coalesced deltas, under an app or a server integration.
 navTitle: dot-stats
-order: 190
+order: 400
 keywords:
   - "statistics"
   - "stats"
@@ -20,6 +20,8 @@ source:
 A leaderboard is one number per player, ordered. Most of what a game counts is
 not that: kills, deaths, jumps, metres, seconds played, a top speed, a level.
 Those are many numbers per player, accumulated.
+
+Requires `dot-core`. `dot-auth` is optional and is never imported.
 
 **The only thing every party has to agree on is how a new reading meets an old
 one.** So a stat declares a *kind* — add, replace, keep the higher, keep the

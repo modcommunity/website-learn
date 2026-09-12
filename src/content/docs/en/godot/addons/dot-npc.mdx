@@ -1,0 +1,126 @@
+---
+title: dot-npc
+description: What an NPC is — a catalogue checkable without loading a scene, a population budget, perception that commits to a target, and navigation generated from the constants a code-built map was drawn from.
+navTitle: dot-npc
+order: 320
+badge: new
+keywords:
+  - "npc"
+  - "ai"
+  - "bots"
+  - "navigation"
+  - "navmesh"
+  - "pathfinding"
+  - "perception"
+  - "cover"
+  - "population"
+source:
+  - ../game-dev/godot/dot-npc/README.md
+---
+
+`dot-npc` is the NPC layer: a catalogue of definitions, a spawner with a
+population budget and a per-kind cap, perception, health handed to dot-combat
+when it is present, and a navigation graph. A 2D world is its XZ plane, which is
+what lets the senses, the steering and the navigation run there unchanged.
+
+Requires `dot-core`.
+
+## Usage
+
+```gdscript
+var npcs := DotNpcSpawner.new()
+npcs.authoritative = true                       # on the server only
+npcs.catalogue = catalogue
+npcs.limits = DotNpcLimits.new()
+npcs.world_ref = DotNodeRef.of_path(^"../World")
+add_child(npcs)
+
+npcs.set_nav_data(load("res://maps/pg_lobby.nav.tres"))   # once per map change
+
+# Every simulated tick:
+npcs.set_candidates(players_as_candidates())
+npcs.tick(delta)
+```
+
+<Details title="Example: a definition and a brain">
+
+```gdscript
+var zombie := DotNpcDef.make(&"zombie", "res://npcs/zombie.tscn")
+zombie.brain_script_path = "res://npcs/zombie_brain.gd"   # a PATH, never a class name
+zombie.faction = &"hostile"
+zombie.max_health = 100.0
+zombie.sight_range = 30.0
+zombie.hearing_range = 12.0
+zombie.meta = {"speed": 3.4}
+catalogue.add(zombie)
+```
+
+```gdscript
+extends "res://addons/dot_npc/runtime/dot_npc_brain.gd"
+
+func _npc_think(delta: float) -> void:
+    if not npc.has_target():
+        return
+    steer_along_path(target_position(), tune(&"speed", 3.0), delta)
+```
+
+</Details>
+
+<Callout type="warning" title="Server-authoritative, and not predicted">
+An NPC's position is the output of a pathfinder, a steering pass and, for a
+rigid-body NPC, a physics solver — none of which is reproducible across
+machines. The server owns every NPC; a client draws what it is told,
+interpolated a few tens of milliseconds behind.
+</Callout>
+
+## Perception commits to a target
+
+Hysteresis and a grace period, rather than re-picking the nearest candidate
+every tick. An NPC that re-evaluates continuously flickers between two players
+standing near each other and never finishes an attack against either.
+
+## Navigation
+
+Every map in this family is built in code from constants, so there is no
+authored geometry to bake a `NavigationMesh` from. `DotNpcNavBuilder` generates
+a point graph from the same constants the geometry was built from, and
+`DotNpcNavData.source_digest` is what a suite compares to catch a map that moved
+and a graph that did not.
+
+A game with authored geometry should use Godot's own `NavigationRegion3D`
+instead, and nothing here stops it: a spawner with no nav data spawns anywhere,
+and a brain owning a `NavigationAgent3D` paths with that.
+
+What the graph does beyond A*, read out of Recast & Detour and twenty years of
+shipped navigation-mesh practice:
+
+| | |
+| --- | --- |
+| Smoothing | A two-metre grid can only turn eight ways, so a path across an open room is a visible staircase. `find_smooth_path` removes corners the world does not have. On by default. |
+| Areas | A point can be water, a hazard, a doorway. `DotNpcNavFilter` gives an area a cost, so an NPC goes round the pond and wades when going round is worse. |
+| Flags | Crouch, jump, avoid, door. `nav_exclude_flags` says what one kind of NPC cannot use: a crouch tunnel is a fact about the map, and whether it is a way through is a fact about the NPC. |
+| Partial paths | An unreachable goal gives the best path toward it, and `DotNpcPath.partial` says so. Following one is correct; believing it arrives is not. |
+| Cover | Wall positions and facings are recorded at generation time, so a brain can ask "where do I hide from that" — a runtime handed a graph cannot raycast the map it came from. |
+
+```gdscript
+var filter := DotNpcNavFilter.new()
+filter.set_area_cost(DotNpcNavData.AREA_WATER, 6.0)
+graph.filter = filter
+
+var path := graph.find_smooth_path(from, to, 2.0, true)   # smoothed, may be partial
+var spot := nav.cover_position_from(npc.position(), enemy_position)
+```
+
+## Three addons, on purpose
+
+**dot-npc** is what an NPC is.
+[**dot-npc-ai**](/learn/godot/addons/dot-npc-ai) is how one decides.
+[**dot-npc-ai-director**](/learn/godot/addons/dot-npc-ai-director) is population
+and pacing. A game that wants a catalogue and a budget does not install a
+decision engine it will not use.
+
+<Related>
+- [dot-npc-ai](/learn/godot/addons/dot-npc-ai) · [dot-npc-ai-director](/learn/godot/addons/dot-npc-ai-director)
+- [dot-combat](/learn/godot/addons/dot-combat) — where an NPC's damage goes when present
+- [dot-spawn](/learn/godot/addons/dot-spawn) — the other thing that decides where something appears
+</Related>

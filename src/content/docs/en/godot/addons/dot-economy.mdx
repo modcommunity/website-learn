@@ -1,0 +1,79 @@
+---
+title: dot-economy
+description: A round-based buy economy — money, a shop, a buy window, refunds and the loss-bonus ladder. It sells ids and grants nothing, so a purchase validates on a server that does not have the content.
+navTitle: dot-economy
+order: 280
+badge: new
+keywords:
+  - "economy"
+  - "money"
+  - "buy"
+  - "shop"
+  - "buy window"
+  - "refund"
+  - "loss bonus"
+  - "round"
+source:
+  - ../game-dev/godot/dot-economy/README.md
+---
+
+`dot-economy` is the per-round money question: what a player can afford this
+round, when they may spend it, and what a kill or a lost round pays.
+[dot-loadout](/learn/godot/addons/dot-loadout) answers the permanent one — what
+you own — and had no answer for this.
+
+Requires `dot-core`.
+
+## Usage
+
+```gdscript
+var economy := DotEconomyManager.new()
+economy.team_fn = match_node.team_of
+economy.alive_fn = world.is_alive
+economy.in_buy_zone_fn = func(key): return world.in_buy_zone(key)
+economy.setup(arsenal)
+add_child(economy)
+
+economy.on_round_start(tick)        # opens the buy window
+economy.advance(tick)               # closes it on time
+economy.on_kill("ada", "bob", &"rifle")
+economy.on_round_end(winning_team)  # pays the winners and the ladder
+```
+
+A buy menu asks before it draws, so a disabled button carries its reason:
+
+```gdscript
+var why := economy.may_buy(key, &"sniper")
+button.disabled = not why.ok
+button.tooltip_text = "" if why.ok else why.error.message
+```
+
+## It sells ids and grants nothing
+
+```gdscript
+economy.bought.connect(func(key, id, price, balance):
+    loadouts.grant(key, id))          # or an arsenal, or a boolean
+```
+
+A shop item holds no scene, no mesh and no item resource, so a purchase
+validates on a server that does not have the content.
+
+## Why the defaults are what they are
+
+A buy economy looks arbitrary and is not. Each default is a number the
+round-based competitive shooters converged on over twenty years:
+
+- **800 to start, 16000 as a ceiling.** The first round is a pistol round, the
+  second is a decision, the fifth is a full buy. Remove the ceiling and a team
+  that saves twice buys everything for ever.
+- **A loss bonus of 1400 rising by 500 to 3400.** Without it the losing team is
+  poorer *because* they are losing, which is a feedback loop with one outcome.
+- **A sniper-rifle kill pays 100 and a knife kill pays 1500.** The cheapest way
+  to make money is the riskiest thing you can do.
+
+<Related>
+- [dot-loadout](/learn/godot/addons/dot-loadout) — what you own
+- [dot-inventory](/learn/godot/addons/dot-inventory) — what is in the bag
+- [dot-match](/learn/godot/addons/dot-match) — where a round starts and ends
+- [dot-weapon](/learn/godot/addons/dot-weapon) — what an id turns into
+</Related>

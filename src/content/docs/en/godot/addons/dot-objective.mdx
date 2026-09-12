@@ -1,0 +1,96 @@
+---
+title: dot-objective
+description: What a round is about — a control point, a bomb to plant and defuse, a payload on a path, capture the flag, an escort and a holdout clock. Six kinds, with no body, no collision shape and no node.
+navTitle: dot-objective
+order: 300
+badge: new
+keywords:
+  - "objective"
+  - "control point"
+  - "capture"
+  - "bomb"
+  - "payload"
+  - "cart"
+  - "flag"
+  - "ctf"
+  - "escort"
+  - "holdout"
+source:
+  - ../game-dev/godot/dot-objective/README.md
+---
+
+`dot-objective` decides when a round's goal has been met.
+[dot-match](/learn/godot/addons/dot-match) has `report_objective` — a number a
+game increments — and nothing that decides *when* to call it.
+
+Requires `dot-core`.
+
+An objective here is a rule about a place: no body, no collision shape, no node,
+which is what lets it run headless, in 2D on the XZ plane, and in a mirroring
+client. Requires `dot-core` and nothing else — everything it knows about the
+world arrives through six callables.
+
+## Six kinds
+
+They are the round formats the team shooters and the co-operative shooters have
+settled on, reduced to the smallest set that still tells them apart. A game with
+none of them is a deathmatch, which dot-match alone already does.
+
+| | |
+| --- | --- |
+| `CAPTURE` | A control point. |
+| `BOMB` | Plant it, defuse it. |
+| `PAYLOAD` | A cart pushed along a path. |
+| `FLAG` | Carry theirs to yours. |
+| `RESCUE` | Escort somebody out. |
+| `HOLDOUT` | Own it, or survive, for N. |
+
+## Usage
+
+```gdscript
+var objectives := DotObjectiveManager.new()
+objectives.presence = DotObjectivePresence.of(
+    roster.keys, world.position_of, match_node.team_of, world.is_alive
+)
+objectives.score_fn = func(id, team, by, points, player_points):
+    match_node.report_objective(by, id, tick, points)
+
+var res := objectives.setup(map.objectives)
+if not res.ok:
+    push_error(res.error.message)
+add_child(objectives)
+
+# Once per physics tick, from the game's own tick loop:
+objectives.advance(tick)
+```
+
+A client mirrors instead of deciding:
+
+```gdscript
+mirror.authoritative = false
+mirror.setup(map.objectives)
+mirror.apply_wire(wire_from_the_server)
+```
+
+## The numbers are the point
+
+Each is twenty years old and load-bearing:
+
+- **More cappers capture faster, with diminishing returns.** The nth player adds
+  `1/n`. Linear makes a point a headcount.
+- **Two teams at once pauses the capture**, and the defender gets credit only if
+  the attackers had got at least half way — rewarding a player for standing on
+  their own point teaches players to stand on their own point.
+- **An abandoned capture decays** over ninety seconds rather than snapping back,
+  six times faster in overtime.
+- **A cart moves at 0.55, 0.77 and 1.0** of full speed for one, two and
+  three-or-more pushers. Hand-picked rather than a curve, so a second pusher is
+  worth having and a fourth is worth sending somewhere else.
+- **A hill does the work.** A downhill segment rolls the cart with nobody on it,
+  so a defender who stops pushing at the top has still lost the hill.
+
+<Related>
+- [dot-match](/learn/godot/addons/dot-match) — what scores what this reports
+- [dot-team](/learn/godot/addons/dot-team) — the sides a capture is contested between
+- [dot-map](/learn/godot/addons/dot-map) — where an objective layout comes from
+</Related>

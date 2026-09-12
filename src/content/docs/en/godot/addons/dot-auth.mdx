@@ -2,7 +2,7 @@
 title: dot-auth
 description: Sign a player in against the backbone, then prove who they are to a community game server without ever handing that server a credential for their account.
 navTitle: dot-auth
-order: 30
+order: 90
 keywords:
   - "authentication"
   - "sign in"
@@ -24,6 +24,8 @@ A community-run server needs to know who a player is. It must **not** be handed
 a credential for that player's whole account — an operator holding one can act
 as every player who has ever joined. `dot-auth` is the answer to that, and it is
 the same shape as Steam's auth session tickets.
+
+Requires `dot-core`.
 
 ```
 client ──(device-code + PKCE)──> backbone         who am I

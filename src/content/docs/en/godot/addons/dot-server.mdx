@@ -2,7 +2,7 @@
 title: dot-server
 description: A console-driven dedicated server for Godot — console variables and commands, RCON, A2S and its own query protocol, admin permissions with immunity, bans, votes, hot-loadable modules, and switching games under live players.
 navTitle: dot-server
-order: 50
+order: 150
 keywords:
   - "dedicated server"
   - "srcds"
@@ -23,11 +23,13 @@ source:
   - ../game-dev/godot/dot-server/CLAUDE.md
 ---
 
-The dedicated server, in the shape operators already know. It works with
-`dot-core` alone; [`dot-auth`](/learn/godot/addons/dot-auth),
+The dedicated server, in the shape operators already know: a console, RCON,
+queries, permissions, moderation, votes, modules and dynamic game switching.
+
+Requires `dot-core`. [`dot-auth`](/learn/godot/addons/dot-auth),
 [`dot-cloud`](/learn/godot/addons/dot-cloud) and
-[`dot-moderation`](/learn/godot/addons/dot-moderation) are **discovered at run
-time and imported by nothing**.
+[`dot-moderation`](/learn/godot/addons/dot-moderation) are optional, discovered
+at run time, and imported by nothing.
 
 ```gdscript
 var server := DotServer.new()

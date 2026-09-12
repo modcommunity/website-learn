@@ -1,0 +1,105 @@
+---
+title: dot-console
+description: The player's console — a physical key, a line, history, completion and a bounded scrollback, with command sources rather than a command system, so a server's console becomes a source by duck typing.
+navTitle: dot-console
+order: 440
+badge: new
+keywords:
+  - "console"
+  - "developer console"
+  - "commands"
+  - "rcon"
+  - "scrollback"
+  - "completion"
+  - "keybind"
+source:
+  - ../game-dev/godot/dot-console/README.md
+---
+
+`dot-console` is the console a player opens with a key: line editing, history,
+completion, scrollback and drawing. It is **not** a command system.
+[dot-server](/learn/godot/addons/dot-server) already has one — commands, cvars,
+permissions, aliases, config execution, argument completion — and a second would
+be two copies of one thing, while naming dot-server's would make it a hard
+dependency.
+
+Requires `dot-core`. Not dot-server, which it bridges to by duck typing, and not
+dot-ui.
+
+## Sources run the line
+
+Sources are asked in order and the first that claims a name handles it, so a
+local `quit` quits the client rather than the dedicated server.
+
+| | |
+| --- | --- |
+| `DotConsoleLocal` | What belongs to the machine the player is at: a volume, a bind, a screenshot, `quit`. Works with no server in the process. |
+| `DotConsoleBridge` | Wraps anything with `execute` and `complete`, so a server's console becomes a source without this addon naming a type in it. |
+| `DotConsoleRemote` | A `send_fn` that puts the line on a wire, for RCON or a chat command. |
+
+## Usage
+
+```gdscript
+var console := DotConsoleController.new()
+add_child(console)
+console.setup()
+
+var local := DotConsoleLocal.new()
+local.add_command(&"quit", "Quit", func(_a): get_tree().quit())
+local.bind_setting(&"sensitivity", settings)      # duck-typed; one copy of the value
+console.add_source(local)
+console.add_source(DotConsoleBridge.wrap(server.console))   # when there is a server
+
+var panel := DotConsolePanel.new()
+panel.controller = console
+canvas_layer.add_child(panel)
+```
+
+And the line every game with a console forgets:
+
+```gdscript
+if panel.has_keyboard_focus():
+    return      # otherwise typing `noclip` walks the player forward
+```
+
+## Three details that are not obvious
+
+<Params>
+  <Param name="The key is bound by position, not by character">
+    The console key is the one under Escape, and it produces `` ` `` on a UK
+    keyboard, `^` on a German one and `²` on a French one. Binding the character
+    means the console cannot be opened at all across most of Europe, and the
+    player's only clue is that nothing happens. `open_physical_key` is a
+    physical keycode; `open_action` comes first so a rebinder can move it.
+  </Param>
+  <Param name="The scrollback is a ring">
+    An unbounded console buffer is a memory leak with a plausible name: a
+    dedicated server logging a line per tick fills it in an afternoon, and the
+    console is the thing you would open to find out why the process is growing.
+  </Param>
+  <Param name="A password typed into a console has been published">
+    It goes into the scrollback, into the history where the next Up arrow puts
+    it back on screen, and into the screenshot somebody posts to ask why their
+    server will not start. `DotConsoleLine.redact` keeps the command name and
+    replaces the rest with a **fixed** number of asterisks, because the length
+    of a password is information too.
+  </Param>
+</Params>
+
+## The controller draws nothing
+
+`DotConsoleController` is a `Node` with no `Control` in it; `DotConsolePanel` is
+a `Control` that draws what it says. That is what makes a headless suite
+possible.
+
+<Callout type="warning" title="The panel deliberately does not use dot-ui">
+A console has to work when the interface does not. Half of what one is for is
+finding out why a screen stack is stuck or a mouse mode is wrong, and a console
+built on the thing being debugged is broken at the moment it is needed.
+</Callout>
+
+<Related>
+- [dot-server](/learn/godot/addons/dot-server) — the command system it bridges to
+- [dot-settings](/learn/godot/addons/dot-settings) — what `bind_setting` binds
+- [dot-ui](/learn/godot/addons/dot-ui) — which this deliberately does not use
+</Related>

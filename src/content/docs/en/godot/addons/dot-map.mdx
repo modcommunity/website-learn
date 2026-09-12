@@ -2,7 +2,7 @@
 title: dot-map
 description: Maps as content rather than as builds — a catalogue, a rotation with a cooldown, a map time limit with rock-the-vote, nominations and voting, and a loader that fetches through dot-cloud.
 navTitle: dot-map
-order: 160
+order: 370
 keywords:
   - "maps"
   - "levels"
@@ -20,13 +20,17 @@ source:
 
 **One Godot game, a hundred maps, switched under live players.**
 
-The obvious way to ship a hundred surf maps is a hundred Godot projects. At map
-forty that is a hundred export pipelines, a hundred copies of every addon, a
-player who downloads a whole game to try one map, and records that cannot be
-compared because each project has its own.
+`dot-map` treats maps as content rather than as builds: a map is an id, a
+version, a scene path and optionally a
+[`dot-cloud`](/learn/godot/addons/dot-cloud) pack, and one game switches between
+a hundred of them under live players.
 
-A map here is an id, a version, a scene path and optionally a
-[`dot-cloud`](/learn/godot/addons/dot-cloud) pack.
+Requires `dot-core`. `dot-cloud` is optional and is never imported.
+
+The obvious alternative — a hundred Godot projects — is a hundred export
+pipelines, a hundred copies of every addon, a player who downloads a whole game
+to try one map, and records that cannot be compared because each project has its
+own.
 
 ```gdscript
 var session := DotMapSession.new()

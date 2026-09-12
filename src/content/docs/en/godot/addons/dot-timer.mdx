@@ -2,7 +2,7 @@
 title: dot-timer
 description: Speedrun timers for bunny-hop, surf, KZ and anything against the clock — zones a mapper draws in the world, tracks, stages, styles, practice checkpoints, replays and records, counted in ticks with sub-tick crossings.
 navTitle: dot-timer
-order: 150
+order: 360
 keywords:
   - "timer"
   - "speedrun"
@@ -22,13 +22,17 @@ source:
   - ../game-dev/godot/dot-timer/CLAUDE.md
 ---
 
-**The whole design is one sentence: a time is a tick count plus two sub-tick
-fractions.**
+`dot-timer` times a run against the clock: zones drawn in the world, tracks,
+stages, styles, practice checkpoints, replays and records, for bunny-hop, surf,
+KZ or anything else that is raced.
 
-A float accumulator drifts. A tick counter alone quantises every run to the
-server's tickrate, so the same play is worth up to 15 ms more at 64 Hz than at
-128 Hz — and on a leaderboard sorted to the millisecond, the tickrate then
-decides the ordering. Two servers cannot share a records table until that is
+Requires `dot-core`.
+
+**A time is a tick count plus two sub-tick fractions**, and the whole design
+follows from that. A float accumulator drifts. A tick counter alone quantises
+every run to the server's tickrate, so the same play is worth up to 15 ms more
+at 64 Hz than at 128 Hz — and on a leaderboard sorted to the millisecond, the
+tickrate then decides the ordering. Two servers cannot share a records table until that is
 gone, and a shared records table is the whole social object of this genre.
 Measured: 64 Hz and 128 Hz agree to under a millisecond, where counting whole
 ticks puts them 7.8 ms apart.
@@ -96,7 +100,7 @@ without it. That is what lets the same timer, records and replay format serve a
   </Param>
   <Param name="DotTimerStyle">
     A ranking weight, a minimum time and the rules for a named style. Pair it
-    with a [`DotFpsStyle`](/learn/godot/addons/dot-fps-controller) of the same
+    with a [`DotFpsStyle`](/learn/godot/addons/dot-player-controller) of the same
     id and the movement transform follows.
   </Param>
   <Param name="DotTimerStore subclass">
@@ -153,7 +157,7 @@ is the first thing to check when a zone "does not work".
 </Callout>
 
 <Related>
-- [`dot-fps-controller`](/learn/godot/addons/dot-fps-controller) — the movement half
+- [`dot-player-controller`](/learn/godot/addons/dot-player-controller) — the movement half
 - [`dot-map`](/learn/godot/addons/dot-map) — where the zones come from
 - [`dot-leaderboard`](/learn/godot/addons/dot-leaderboard) — where the times go
 - [game-g2gfast](/learn/godot/games#game-g2gfast)

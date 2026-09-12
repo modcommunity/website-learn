@@ -1,0 +1,123 @@
+---
+title: dot-team
+description: Sides that outlive the match — definitions carrying colour and friendly-fire rules, a join, switch and lock policy, autobalance that is deterministic and explainable, and the spectating half over a duck-typed dot-spectate.
+navTitle: dot-team
+order: 80
+badge: new
+keywords:
+  - "team"
+  - "teams"
+  - "sides"
+  - "autobalance"
+  - "balance"
+  - "friendly fire"
+  - "spectator"
+  - "switch"
+source:
+  - ../game-dev/godot/dot-team/README.md
+---
+
+`dot-team` holds the sides a server has, rather than the sides a match has.
+[dot-match](/learn/godot/addons/dot-match)'s teams are match-scoped and reset
+with it, which is right for a deathmatch and wrong for a server where somebody
+joins blue, plays four maps and expects to still be blue.
+
+Requires `dot-core`. [dot-spectate](/learn/godot/addons/dot-spectate) is
+optional and is never named in the source.
+
+## Usage
+
+```gdscript
+var teams := DotTeamRoster.new()
+teams.teams  = DotTeamSet.standard_pair()        # blue, red, unassigned, spectator
+teams.policy = DotTeamPolicy.competitive()
+teams.alive_fn = func(key): return roster.get_record(key).alive
+add_child(teams)
+teams.setup()
+
+teams.add("ada")                                  # onto the smaller side
+teams.request_switch("ada", &"red", tick)         # enforces the whole policy
+teams.rebalance(tick)                             # between rounds
+
+if teams.are_enemies(shooter, victim):
+    apply_damage()
+```
+
+Every refusal carries a sentence and fires `switch_refused` — "You switched
+recently. 22 seconds to go." — because "nothing happened when I clicked" is the
+worst available answer.
+
+## Four entries, not two
+
+`standard_pair()` is blue, red, **unassigned and spectator**. A player who has
+connected and not chosen is neither on a team nor watching, and a set with no id
+for that state represents it as the empty string, which then matches nothing or
+everything depending on which comparison runs.
+
+Free-for-all is one team with friendly fire on, not "no teams" — modelling it as
+no teams makes every consumer branch on whether teams exist.
+
+<Callout type="warning" title="`are_enemies` is written once, here">
+dot-combat, dot-chat and dot-spectate all ask it, and the natural spelling —
+"is their team not my team" — makes a **spectator everybody's enemy**.
+</Callout>
+
+## Autobalance is deterministic and explainable
+
+Being moved is being punished for the server's arithmetic, so every function in
+`DotTeamBalance` is static and takes counts rather than a roster:
+
+```gdscript
+DotTeamBalance.moves_to_balance({&"blue": 6, &"red": 2}, order, 1)
+# [ {from: blue, to: red}, {from: blue, to: red}, {from: blue, to: red} ]
+
+DotTeamBalance.explain(&"blue", &"red", "ada", 6)
+# "ada moved from blue to red: the sides were 6 apart"
+```
+
+A decision computed from a dictionary can be printed, logged, replayed and
+argued with. Who gets moved is a policy choice — `newest`, `lowest_score`,
+`random`, `oldest` — and `newest` is the default because whoever joined most
+recently has the least invested in the side they are on. Nobody alive is moved
+unless the server says so.
+
+## It drives dot-match rather than competing with it
+
+```gdscript
+teams.bind_match(match_node.teams)
+```
+
+Duck-typed: it calls `assign(key, index)` if the object has one and does nothing
+otherwise. **The direction matters** — this is the authority and the match is
+told. Binding late pushes everybody already assigned, so it is not a silent
+half-configuration.
+
+## The spectating half
+
+`DotTeamSpectate` bridges named sides to
+[dot-spectate](/learn/godot/addons/dot-spectate)'s numbered ones and holds the
+watch policy in rounds and teams.
+
+| | |
+| --- | --- |
+| `spectators_see_everybody` | On. Somebody who deliberately left to watch is not coming back this round. |
+| `dead_see_enemies` | Off. A dead player calling out positions is the oldest problem in competitive multiplayer. |
+| `open_after_round` | On. The round is decided; there is nothing left to give away. |
+| `fall_back_when_team_gone` | On. A camera with nothing to point at reads as the game having frozen. |
+
+The index is zero-based over the *playing* sides, so the spectator side and the
+unassigned holding pen both come out as zero and the force-camera rule works
+without either addon knowing about the other. An off-by-one here does not crash:
+it inverts who may watch whom.
+
+dot-spectate's own `force_camera` is applied first and this cannot relax it — an
+addon layered on top does not overrule the operator. `join_spectators` moves the
+player **and** starts them watching, because a spectator staring at a black
+screen is indistinguishable from a crash.
+
+<Related>
+- [dot-match](/learn/godot/addons/dot-match) — the match-scoped sides this drives
+- [dot-spectate](/learn/godot/addons/dot-spectate) — the cameras
+- [dot-player](/learn/godot/addons/dot-player) · [dot-player-class](/learn/godot/addons/dot-player-class)
+- [dot-chat](/learn/godot/addons/dot-chat) — a team channel's audience rule
+</Related>
