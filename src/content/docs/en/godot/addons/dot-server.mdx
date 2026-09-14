@@ -1,6 +1,6 @@
 ---
 title: dot-server
-description: A console-driven dedicated server for Godot — console variables and commands, RCON, A2S and its own query protocol, admin permissions with immunity, bans, votes, hot-loadable modules, and switching games under live players.
+description: A console-driven dedicated server for Godot — console variables and commands, RCON, admin permissions with immunity, bans, votes, hot-loadable modules, a hook for the query asset to fill, and switching games under live players.
 navTitle: dot-server
 order: 150
 keywords:
@@ -24,12 +24,14 @@ source:
 ---
 
 The dedicated server, in the shape operators already know: a console, RCON,
-queries, permissions, moderation, votes, modules and dynamic game switching.
+permissions, moderation, votes, modules and dynamic game switching.
 
 Requires `dot-core`. [`dot-auth`](/learn/godot/addons/dot-auth),
-[`dot-cloud`](/learn/godot/addons/dot-cloud) and
-[`dot-moderation`](/learn/godot/addons/dot-moderation) are optional, discovered
-at run time, and imported by nothing.
+[`dot-cloud`](/learn/godot/addons/dot-cloud),
+[`dot-moderation`](/learn/godot/addons/dot-moderation),
+[`dot-server-query`](/learn/godot/addons/dot-server-query) and
+[`dot-server-security`](/learn/godot/addons/dot-server-security) are optional,
+discovered at run time, and imported by nothing.
 
 ```gdscript
 var server := DotServer.new()
@@ -62,13 +64,13 @@ keep their clients and panels. Constant-time password comparison, per-address
 lockout, an optional allow-list, and a WebSocket variant so a browser admin
 panel can reach it.
 
-**Server queries, both kinds.** A2S, so the twenty years of trackers, chat bots
-and uptime monitors that speak nothing else can list your server — off by
-default, and on the game port when you turn it on. And the dot query protocol:
-JSON sections you ask for by name, a revision that makes polling nearly free, a
-place for your game to publish its own state, and a WebSocket variant a
-browser-based server list can use. Both are challenged against the source
-address, so neither can be used to attack somebody else.
+**A hook where server queries go.** Answering them is
+[`dot-server-query`](/learn/godot/addons/dot-server-query)'s job now — the whole
+of A2S for the twenty years of trackers, chat bots and uptime monitors that
+speak nothing else, and the dot query protocol beside it. This server holds one
+hook, `attach_query_host`, and **names nothing in that addon**: install it and
+add a `DotQueryHost`, or leave it out and the server simply answers nothing on
+the query port.
 
 **Permissions that fit real communities.** String flags rather than fixed roles,
 because nobody agrees what a "moderator" is. Numeric immunity so admins cannot
@@ -129,8 +131,11 @@ able to tell which without guessing.
   </Param>
   <Param name="DotQueryProvider subclass">
     `_provider_name()` and `_contribute(snapshot)` — how a game publishes its own
-    state into a server query. `DotModule.add_query_provider` is the module
-    form.
+    state into a server query. The class belongs to
+    [`dot-server-query`](/learn/godot/addons/dot-server-query);
+    `DotModule.add_query_provider` is the module form and is duck-typed, so a
+    module registering one on a server with no query host is a no-op rather than
+    an error.
   </Param>
   <Param name="DotBanStore subclass">
     `_store_name`, `_load`, `_put`, `_remove`, `_refresh`, `_writable`. Point it
@@ -163,8 +168,9 @@ able to tell which without guessing.
     `permissions_resolved`, `message_sent`, `message_blocked`, `event_fired`,
     `module_loaded`, `module_unloaded`, `game_changing`, `game_loaded`,
     `game_load_failed`, `cvar_changed`, `command_executed`, `command_refused`,
-    `ban_added`, `ban_removed`, `action_recorded`, `vote_started`, `vote_ended`,
-    `query_answered`, `snapshot_rebuilt`.
+    `ban_added`, `ban_removed`, `action_recorded`, `vote_started`, `vote_ended`.
+    The query signals live on the query host, in
+    [`dot-server-query`](/learn/godot/addons/dot-server-query).
   </Param>
 </Params>
 
@@ -203,11 +209,15 @@ per call.
 | [dot-auth](/learn/godot/addons/dot-auth) | Real player identity, so bans mean something and site groups can grant permissions. Without it, everyone is a `DotGuestIdentity`. |
 | [dot-cloud](/learn/godot/addons/dot-cloud) | Downloadable game content. Without it, games ship inside the build. |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | Bans, mutes and gags as durable records in a store shared between your servers. Registered as `dot_ban_source`, its bans are enforced at connect. |
+| [dot-server-query](/learn/godot/addons/dot-server-query) | Answers A2S and DQP through the `attach_query_host` hook. Without it the server is unlistable — nothing can ask it anything. |
+| [dot-server-security](/learn/godot/addons/dot-server-security) | Rules over chat, connections, authentication and RCON that escalate on their own, anti-cheat detectors, and external ban feeds chained onto `dot_ban_source`. Ships in dry run. |
 
 Pick one ban list. `DotBanManager` and `DotModerationManager` both work
 standalone, and a deployment should run one rather than both.
 
 <Related>
+- [`dot-server-query`](/learn/godot/addons/dot-server-query) — what answers a query
+- [`dot-server-security`](/learn/godot/addons/dot-server-security) — what guards the ports
 - [`dot-serve` and TMC's server tool](/learn/godot/tooling)
 - [`dot-vote`](/learn/godot/addons/dot-vote) — letting players choose what plays next
 - [`dot-moderation`](/learn/godot/addons/dot-moderation)

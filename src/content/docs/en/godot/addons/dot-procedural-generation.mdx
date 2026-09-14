@@ -98,9 +98,10 @@ derives a child stream by hashing a name, and two children never disturb each
 other.
 
 It is a second implementation of what
-[dot-randomness](/learn/godot/addons/dot-randomness) has, deliberately: only
-dot-core may be a hard dependency. What a game's randomness addon supplies is
-the **seed**, through `seed_source`.
+[dot-core](/learn/godot/addons/dot-core#reproducible-randomness) also carries,
+and it predates that module arriving there: `DotProcGenRandom` names nothing
+outside this addon, and what a caller supplies is the **seed**, through a
+duck-typed `seed_source` with one `seed_for(name)` method.
 
 ## A spanning tree is a bad level
 
@@ -116,7 +117,7 @@ fails.
 </Callout>
 
 <Related>
-- [dot-randomness](/learn/godot/addons/dot-randomness) — where the seed comes from
+- [dot-core](/learn/godot/addons/dot-core#reproducible-randomness) — the collection's seeded streams, and one thing `seed_source` can be
 - [dot-map](/learn/godot/addons/dot-map) — maps as content, the authored half
 - [dot-npc](/learn/godot/addons/dot-npc) — navigation over a code-built map
 </Related>

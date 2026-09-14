@@ -1,6 +1,6 @@
 ---
 title: Die Addons
-description: Alle zweiundzwanzig Dot-Addons für Godot 4 — wofür jedes da ist, wovon es abhängt und wo sich ein Spiel einklinkt.
+description: Alle fünfzig Dot-Addons für Godot 4 — wofür jedes da ist, wovon es abhängt und wo sich ein Spiel einklinkt.
 order: 40
 keywords:
   - "Addons"
@@ -10,68 +10,128 @@ keywords:
   - "dot-core"
   - "dot-net"
   - "dot-server"
+  - "dot-player"
 source:
-  - ../game-dev/godot/NOTES.md
+  - ../game-dev/docs/family.md
+  - ../game-dev/CLAUDE.md
 ---
 
-Zweiundzwanzig Addons, die zusammenarbeiten und — abgesehen von `dot-core` —
-auch einzeln funktionieren. Jedes ist ein eigenes Repository unter
+Fünfzig Addons, die zusammenarbeiten und — abgesehen von `dot-core` — auch
+einzeln funktionieren. Jedes ist ein eigenes Repository unter
 [`modcommunity`](https://github.com/modcommunity), jedes liefert einen Ordner
 `addons/<name>/` aus, und jedes hat seine eigene Testsuite ohne Anzeige.
+
+<Callout type="info" title="Nur `dot-core` ist je eine harte Abhängigkeit">
+Alles in einer *optional*-Spalte wird per Duck-Typing oder über
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
+aufgelöst, und keines dieser Addons nennt die Bezeichner eines anderen — denn in
+GDScript scheitert ein Skript, das einen fehlenden `class_name` auch nur
+*erwähnt*, beim Parsen und reißt alles mit, was es referenziert.
+
+Sieben sind die Ausnahme, die die Regel bestätigt, und jedes sagt es selbst:
+`dot-npc-ai` und `dot-npc-ai-director` brauchen `dot-npc`;
+`dot-player-controller`, `dot-player-char` und `dot-player-class` brauchen
+`dot-player`; und `dot-server-query` und `dot-server-security` brauchen
+`dot-server`, weil jedes davon ein *Teil* eines Servers ist und nicht etwas, das
+ein Server bei Gelegenheit befragt.
+</Callout>
 
 ## Das Fundament
 
 | | Hängt ab von | |
 | --- | --- | --- |
-| [dot-core](/learn/godot/addons/dot-core) | — | Protokollierung, Plattformfähigkeiten, Pfade, konfigurierbare Knotenreferenzen, geschichtete Konfiguration, Aufgaben mit Frame-Budget, Multiplayer-Transporte, HTTP. |
+| [dot-core](/learn/godot/addons/dot-core) | — | Protokollierung, Plattformfähigkeiten, Pfade, konfigurierbare Knotenreferenzen, geschichtete Konfiguration, Aufgaben mit Frame-Budget, Multiplayer-Transporte, HTTP und reproduzierbare Zufallsströme. |
 
-## Plattform
+## Der Spieler
+
+Wer in der Sitzung ist, was ihn steuert, wie er aussieht und was er ist. Jedes
+Spiel der Sammlung benutzt diese.
 
 | | Hängt ab von | |
 | --- | --- | --- |
-| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | Inhaltsauslieferung zur Laufzeit: signierte Manifeste, inhaltsadressierter Cache, fortsetzbare parallele Downloads, namensraumbasiertes Einhängen von Paketen. |
-| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | Anmeldung per Gerätecode gegen das Backend, signierte Verbindungstickets, serverseitige Identität. |
-| [dot-net](/learn/godot/addons/dot-net) | dot-core | Netzcode: Tick-Synchronisation, bitgepacktes Wire-Format, Zustandsreplikation, Snapshot-Interpolation, clientseitige Vorhersage, Lag-Kompensation, Interessenverwaltung. |
-| [dot-server](/learn/godot/addons/dot-server) | dot-core, *optional* dot-auth + dot-cloud | Der dedizierte Server: Konsole, RCON, Abfragen, Berechtigungen, Moderation, Abstimmungen, Module, Spielwechsel im laufenden Betrieb. |
-| [dot-user](/learn/godot/addons/dot-user) | dot-core | Profile, die einer Person zwischen Servern folgen, unter einer pseudonymen ID pro Geltungsbereich. |
+| [dot-player](/learn/godot/addons/dot-player) | dot-core | Die eine Zeile, die alles andere liest: wer da ist, welche Seite, lebendig, was ihn darstellt. Plätze überstehen eine Wiederverbindung. |
+| [dot-player-controller](/learn/godot/addons/dot-player-controller) | dot-core, dot-player | Alles, was einen Spieler antreibt. Ego-Bewegung, geschrieben um vorhergesagt und abgeglichen zu werden, dritte Person mit Orbit-Rig, und der Wechsel zwischen beiden. |
+| [dot-player-char](/learn/godot/addons/dot-player-char) | dot-core, dot-player | Wie ein Spieler aussieht und wie groß er ist: die Maße, über die sich fünf Systeme einig sein müssen, ein Anpassungsdokument, ein 3D-Rig, ein 2D-Sheet, eine Fortbewegungs-Zustandsmaschine. |
+| [dot-player-class](/learn/godot/addons/dot-player-class) | dot-core, dot-player | Was ein Spieler *ist*, als begrenztes Dokument mit Limits und Berechtigungen. Eine Änderung greift beim nächsten Spawn. |
+| [dot-physics](/learn/godot/addons/dot-physics) | dot-core | Benannte Kollisions-Layouts, Engine-Profile benannt nach ihrem Spielgefühl, eine Oberflächentabelle und Abfragen gegen Layer-Namen statt Zahlen. |
+| [dot-spawn](/learn/godot/addons/dot-spawn) | dot-core | Wo etwas die Welt betritt und warum dort. Punkte und Flächen, Bedingungen mit Veto, sechs Auswahlmodi, Wellen, Spawnschutz. |
+| [dot-team](/learn/godot/addons/dot-team) | dot-core, *optional* dot-spectate | Seiten, die das Match überdauern, eine Beitritts-, Wechsel- und Sperrpolitik, und ein Autobalance, das deterministisch und erklärbar ist. |
+
+## Identität und Inhalte
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-auth](/learn/godot/addons/dot-auth) | dot-core | Geräte-Code-Authentifizierung gegen das Backbone, signierte Verbindungstickets, serverseitige Identität. |
+| [dot-user](/learn/godot/addons/dot-user) | dot-core | Profile, die einer Person von Server zu Server folgen, unter einer pseudonymen ID je Geltungsbereich. |
 | [dot-user-avatar](/learn/godot/addons/dot-user-avatar) | dot-core | Avatare als Daten: ein begrenztes Dokument, das ein Server gegen ein Schema und Berechtigungen prüft, ohne ein Mesh zu laden. |
-| [dot-platform](/learn/godot/addons/dot-platform) | dot-core, dot-server | Verbindet Identität, Profil und Avatar zu einem Aufnahmeablauf und bindet ihn an einen Server. |
+| [dot-platform](/learn/godot/addons/dot-platform) | dot-core, dot-server | Führt Identität, Profil und Avatar zu einem Aufnahmeablauf zusammen und bindet ihn an einen Server. |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | dot-core | Inhaltsauslieferung zur Laufzeit: signierte Manifeste, inhaltsadressierter Cache, fortsetzbare parallele Downloads, Pakete unter Namensräumen gemountet. |
 
-## Spielmechanik
-
-| | Hängt ab von | |
-| --- | --- | --- |
-| [dot-fps-controller](/learn/godot/addons/dot-player-controller) | dot-core | Ego-Bewegung: Quake-/Source-Beschleunigung, Air-Strafing, Treppensteigen, Ducken mit Kopfraumprüfung. Deterministisch und befehlsgesteuert. |
-| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | Das 2D-Gegenstück: deterministische Draufsicht-, Schub- und massebasierte Bewegung, eine räumliche Hashtabelle für Tausende Entitäten und deterministische Streufelder. |
-| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | Gesundheit, Schaden und Waffen: analytische Trefferzonen, deterministische Streuung, lag-kompensierte Trefferauswertung. |
-| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | Was ein Spieler in eine Partie mitnimmt, als Dokument, das ein Server ohne jeden Inhalt prüfen kann. Dazu deterministische Aufsammelobjekte. |
-| [dot-match](/learn/godot/addons/dot-match) | dot-core | Die Partieschleife: Aufwärmen, Runden, Punkte, Teams, Spawnen, Respawnen. Alles in Ticks, angetrieben von einem Aufruf. |
-| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Bildschirme, HUD und Menüs ganz ohne Grafikmaterial. Ein Bildschirmstapel, ein aus jeder `DotConfig` erzeugtes Einstellungsfenster und eine Tastenbelegung mit Konflikterkennung. |
-
-## Der Genre-Baukasten
+## Server und Leitung
 
 | | Hängt ab von | |
 | --- | --- | --- |
-| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | Speedrun-Timer: Zonen, Strecken, Abschnitte, Stile, Replays, Rekorde. Sub-Tick, also sind Läufe bei 64 Hz und 128 Hz vergleichbar. 2D wie 3D. |
-| [dot-map](/learn/godot/addons/dot-map) | dot-core, *optional* dot-cloud | Karten als Inhalt statt als Builds: ein Katalog, eine Rotation, Nominierungen und Abstimmungen, und ein Lader, der über dot-cloud nachlädt. |
-| [dot-props](/learn/godot/addons/dot-props) | dot-core | Eine Sandbox-Schicht: platzierbare Objekte, Budgets pro Spieler, ein Rückgängig-Stapel, eine Physikkanone und eine Gravitationskanone. Serverautoritativ. |
-| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core, *optional* dot-auth | Bestenlisten, Spielerstatistiken, Ranglistenpunkte, eine Speicherschnittstelle und ein bündelnder Melder für das Backend. |
-| [dot-stats](/learn/godot/addons/dot-stats) | dot-core, *optional* dot-auth | Statistiken, die ein Spiel einmal deklariert — Zähler, Messwerte, Bestwerte, Tiefstwerte — und als zusammengefasste Deltas meldet. |
-| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Sprachchat: Aufnahme, austauschbarer Codec, ein Jitter-Puffer pro Sprecher und serverseitiges Routing an alle, ein Team oder einen Umkreis. |
-| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Sperren, Kicks, Chat-Knebel, Stummschaltungen und Verwarnungen als ein dauerhafter Datensatz mit austauschbarem Speicher. Veröffentlicht die Stumm- und Sperrquellen. |
-| [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optional* dot-server + dot-map | Abstimmen, was als Nächstes läuft, als ein konfigurierbares Verfahren: rtv, Nominierungen, vier Auszählverfahren, fünf Gleichstandsregeln. |
+| [dot-net](/learn/godot/addons/dot-net) | dot-core | Netcode: Tick-Synchronisation, bitgepacktes Wire-Format, Zustandsreplikation, Snapshot-Interpolation, Client-seitige Vorhersage, Lag-Kompensation, Interest Management. |
+| [dot-server](/learn/godot/addons/dot-server) | dot-core, *optional* dot-auth + dot-cloud | Der dedizierte Server: Konsole, RCON, Rechte, Moderation, Abstimmungen, Module, Spielwechsel im laufenden Betrieb. |
+| [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *optional* dot-stats | Die Serverseite einer Abfrage: DQP — mit Challenge, in Abschnitten, bedingt abfragbar und aus dem Browser erreichbar — und das gesamte A2S, beide aus einem Snapshot beantwortet. |
+| [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *optional* dot-moderation + dot-chat + dot-auth | Härtung als Konfiguration: Regeln über gleitende Fenster, die von Verwarnung über Gag und Kick bis zum Bann eskalieren; Anti-Cheat, das Bewiesenes von Verdächtigem trennt; und externe Bannlisten. Wird im Trockenlauf ausgeliefert. |
+| [dot-browser](/learn/godot/addons/dot-browser) | dot-core | Die andere Hälfte dieser Abfragen: ein Client. DQP über UDP, dasselbe als JSON über WebSocket, und A2S — hinter einem Listenmodell mit Quellen, Filtern und Favoriten. |
+| [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | Sitzungen, die Spieler füreinander hosten: Beitrittscodes, Bereitschaft, eine Host-Wahl als reine Funktion der Mitgliederliste, und eine ehrliche Darstellung von NAT. |
+| [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Banns, Kicks, Gags, Voice-Mutes und Verwarnungen als ein dauerhafter Datensatz. Veröffentlicht die Mute- und Bannquellen, die die anderen befragen. |
+| [dot-chat](/learn/godot/addons/dot-chat) | dot-core, *optional* dot-moderation | Serverautoritativer Textchat: Kanäle mit Publikumsregel, Bereinigung, Ratenbegrenzung, Verlauf, Befehle. |
+| [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Sprachchat: Aufnahme, austauschbarer Codec, ein Jitter-Puffer je Sprecher, und serverseitiges Routing an alle, ein Team oder einen Radius. |
+| [dot-spectate](/learn/godot/addons/dot-spectate) | dot-core | Wer wem zusieht und was der Server sehen lässt: sieben Beobachtermodi, eine Force-Camera-Politik, die Todeskamera-Kette, eine Übertragungsverzögerung. |
+| [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optional* dot-server + dot-map | Abstimmen, was als Nächstes läuft, als eine konfigurierbare Maschine: rtv, Nominierungen, vier Auszählverfahren, fünf Stichentscheide. |
 
-<Callout type="info" title="Optional heißt zur Laufzeit gefunden">
-Alles in der Spalte *optional* wird per Duck-Typing oder über
-[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads)
-aufgelöst. Keines dieser Addons importiert ein anderes, und keines nennt die
-Bezeichner eines anderen — denn in GDScript scheitert ein Skript, das einen
-fehlenden `class_name` auch nur *erwähnt*, beim Parsen und reißt alles mit, was
-es referenziert.
-</Callout>
+## Der Kampf
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-combat](/learn/godot/addons/dot-combat) | dot-core | Leben, Schaden und Trefferregistrierung: analytische Hitboxen, deterministische Streuung, lag-kompensierte Auflösung. |
+| [dot-weapon](/learn/godot/addons/dot-weapon) | dot-core | Was ein Spieler hält und benutzt: Dokumente, die ein Verhaltensskript per Pfad benennen, fünf Feuermodi, gepoolte Munition. |
+| [dot-effects](/learn/godot/addons/dot-effects) | dot-core | Statuseffekte, Kampfunfähigkeit und temporäres Leben als ein Dokument. Es fasst nie einen Lebenswert an. |
+| [dot-loadout](/learn/godot/addons/dot-loadout) | dot-core | Was ein Spieler ins Match mitnimmt, als Dokument, das ein Server ohne jeden Inhalt prüft. Dazu deterministische Aufnahmen in der Welt. |
+| [dot-inventory](/learn/godot/addons/dot-inventory) | dot-core, *optional* dot-loadout | Ein vollständiges Inventar als Dokument: Raster, Stapel, Gewicht, Ausrüstung, verschachtelte Behälter. Jede Änderung ist eine Operation. |
+| [dot-economy](/learn/godot/addons/dot-economy) | dot-core | Eine rundenbasierte Kaufwirtschaft: Geld, ein Shop, ein Kauffenster, Erstattungen und die Verlustbonus-Leiter. Sie verkauft IDs und gewährt nichts. |
+| [dot-match](/learn/godot/addons/dot-match) | dot-core | Die Match-Schleife: Aufwärmen, Runden, Punkte, Teams, Spawnen, Respawnen. Alles in Ticks, von einem Aufruf getrieben. |
+| [dot-objective](/learn/godot/addons/dot-objective) | dot-core | Worum es in einer Runde *geht*: ein Kontrollpunkt, eine Bombe, ein Wagen, eine Flagge, eine Eskorte, eine Standhalte-Uhr. |
+| [dot-2d](/learn/godot/addons/dot-2d) | dot-core | Das 2D-Gegenstück: deterministisch von oben, Schub- und massebasierte Bewegung, ein räumlicher Hash für Tausende Entitäten, deterministische Streufelder. |
+
+## Die Welt
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-npc](/learn/godot/addons/dot-npc) | dot-core | Was ein NPC *ist*: ein Katalog, ein Bevölkerungsbudget, Wahrnehmung, die sich auf ein Ziel festlegt, und Navigation, erzeugt aus den Konstanten der Karte selbst. |
+| [dot-npc-ai](/learn/godot/addons/dot-npc-ai) | dot-core, dot-npc | Wie einer *entscheidet*: Verhaltensbäume, die fortsetzen statt neu zu starten, Zustandsmaschinen, ein Blackboard, das vergisst, und ein Charakter statt einer Schwierigkeitsstufe. |
+| [dot-npc-ai-director](/learn/godot/addons/dot-npc-ai-director) | dot-core, dot-npc | Bevölkerung und Tempo: aufbauen, halten, abklingen, entspannen — getrieben davon, was die Spieler gerade erleben, nicht von einem Timer. |
+| [dot-vehicle](/learn/godot/addons/dot-vehicle) | dot-core | Fahrzeuge zum Fahren, Mitfahren und Herausschießen — und die Übergabe, der Teil, den jedes Spiel falsch macht. |
+| [dot-map](/learn/godot/addons/dot-map) | dot-core, *optional* dot-cloud | Karten als Inhalt statt als Builds: ein Katalog, eine Rotation, Nominierungen und Abstimmungen, und ein Loader, der über dot-cloud lädt. |
+| [dot-props](/learn/godot/addons/dot-props) | dot-core | Eine Sandbox-Schicht: spawnbare Props, Budgets je Spieler, ein Undo-Stapel, eine Physikkanone und eine Gravitationskanone. Serverautoritativ. |
+| [dot-procedural-generation](/learn/godot/addons/dot-procedural-generation) | dot-core | Generierung als geordnete Pipeline über ein Dokument, mit einem Validator, der eine Karte ablehnt, die niemand beenden könnte. |
+
+## Fortschritt
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-timer](/learn/godot/addons/dot-timer) | dot-core | Speedrun-Timer: Zonen, Strecken, Abschnitte, Stile, Replays, Rekorde. Sub-Tick, also sind Läufe mit 64 Hz und 128 Hz vergleichbar. 2D und 3D. |
+| [dot-leaderboard](/learn/godot/addons/dot-leaderboard) | dot-core, *optional* dot-auth | Bestenlisten, Spielerstatistiken, Ranglistenpunkte, eine Speicherschnittstelle und ein gebündelter Melder für das Backbone. |
+| [dot-stats](/learn/godot/addons/dot-stats) | dot-core, *optional* dot-auth | Statistiken, die ein Spiel einmal deklariert — Zähler, Messwerte, Bestwerte, Tiefstwerte — gemeldet als zusammengefasste Deltas. |
+| [dot-achievements](/learn/godot/addons/dot-achievements) | dot-core, *optional* dot-stats | Was ein Spieler verdient hat, als Regeln über seine Zahlen: Stufen, versteckte und geheime Einträge, ein Speicher und ein Melder. |
+
+## Der Mensch an der Tastatur
+
+| | Hängt ab von | |
+| --- | --- | --- |
+| [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Bildschirme, HUD und Menüs ganz ohne Grafik. Ein Screen-Stack, ein Einstellungspanel, erzeugt aus jeder `DotConfig`, und eine Tastenbelegung mit Konflikterkennung. |
+| [dot-settings](/learn/godot/addons/dot-settings) | dot-core | Einstellungen als begrenztes Dokument mit drei Geltungsbereichen — einschließlich der wenigen, die ein Server begrenzen darf und niemals lesen darf. |
+| [dot-console](/learn/godot/addons/dot-console) | dot-core, *optional* dot-server | Die Konsole des Spielers: eine physische Taste, eine Zeile, Verlauf, Vervollständigung, ein begrenzter Rückblick — und Befehls*quellen* statt eines zweiten Befehlssystems. |
+| [dot-audio](/learn/godot/addons/dot-audio) | dot-core | Spiel-Audio, das kein Audio ausliefert: ein Katalog von IDs, gepoolte Stimmen mit Prioritätsverdrängung, Gleichzeitigkeitsgrenzen, Distanz-Culling, Musik und Ducking. |
+| [dot-fx](/learn/godot/addons/dot-fx) | dot-core | Visuelle Effekte als Dokumente: gepoolt, budgetiert, in Qualitätsstufen, distanzgecullt. Ein Effekt ändert nie die Simulation. |
+| [dot-lighting](/learn/godot/addons/dot-lighting) | dot-core | Die Beleuchtung einer Welt als Dokument: Sonne, Umgebungslicht, Nebel, Himmel und Nachbearbeitung, gelesen aus dem, was die Karte mitbringt, mit einem Qualitätsprofil je Maschine. Nicht dot-fx, denn Beleuchtung darf man nicht einfach weglassen. |
 
 <Related>
+- [Erste Schritte](/learn/godot/getting-started) — eines installieren und etwas starten
 - [Erweiterungspunkte](/learn/godot/extending) — der ganze Index in einer Tabelle
-- [Konventionen](/learn/godot/conventions)
-- [Referenzspiele](/learn/godot/games)
+- [Konventionen](/learn/godot/conventions) — die Regeln, an die sich alle halten
+- [Referenzspiele](/learn/godot/games) — wo die Nahtstellen wirklich belastet werden
 </Related>

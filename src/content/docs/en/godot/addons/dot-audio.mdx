@@ -48,9 +48,10 @@ audio.play_music(&"combat", 1.5)     # crossfade; asking for what is playing doe
 audio.duck(&"radio")                 # reference-counted, so two ducks do not fight
 ```
 
-Hand it [dot-randomness](/learn/godot/addons/dot-randomness)' stream and a shot's
-pitch and variant are the same on the server and every client watching, which is
-what makes an audio bug reproducible:
+Hand it a
+[`DotRandomStream`](/learn/godot/addons/dot-core#reproducible-randomness) and a
+shot's pitch and variant are the same on the server and every client watching,
+which is what makes an audio bug reproducible:
 
 ```gdscript
 audio.roll_source = rng.stream(&"audio")
@@ -98,5 +99,5 @@ started first is the failure mode of every fixed pool without priority.
 <Related>
 - [dot-fx](/learn/godot/addons/dot-fx) — the same shape, for what you see
 - [dot-settings](/learn/godot/addons/dot-settings) · [dot-ui](/learn/godot/addons/dot-ui)
-- [dot-randomness](/learn/godot/addons/dot-randomness)
+- [dot-core](/learn/godot/addons/dot-core#reproducible-randomness) — the seeded streams that make a sound reproducible
 </Related>

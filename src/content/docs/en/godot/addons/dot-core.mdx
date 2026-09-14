@@ -13,6 +13,13 @@ keywords:
   - "DotTransport"
   - "DotHttp"
   - "DotRegistry"
+  - "DotRandomStream"
+  - "random"
+  - "randomness"
+  - "seed"
+  - "deterministic"
+  - "loot table"
+  - "pity"
   - "foundation"
 source:
   - ../game-dev/godot/dot-core/README.md
@@ -46,6 +53,7 @@ godot --headless --path . res://examples/capability_report.tscn
 | `DotRateLimiter` | A token bucket, used on every path a client can drive. |
 | `DotSemVer` | Version comparison, for content and engine minimums. |
 | `DotWeb` | The browser-only calls: filesystem sync, secure-context detection, storage estimates. |
+| `DotRandomStream` / `DotRandomTable` / `DotRandomSchedule` | Randomness a second machine can reproduce. See below. |
 
 ## Where a game plugs in
 
@@ -105,6 +113,91 @@ the scene tree off-thread. `_teardown` runs on whichever thread settled the job
 and is for thread-safe APIs only; anything touching the tree belongs in a
 `finished` handler.
 </Callout>
+
+## Reproducible randomness
+
+`dot-core`'s `random/` module replaces `RandomNumberGenerator` with named
+streams whose draws are a pure function of `(key, index)`. It shipped as a
+separate addon, `dot-randomness`, and folded in here: every other addon that
+wanted determinism had to take it, which made it a second hard dependency in a
+collection that has exactly one.
+
+Other addons still find it through
+[`DotRegistry`](/learn/godot/conventions#dotregistry-instead-of-autoloads) under
+`dot_random_source` and call `stream(name)`, so anything with that method can
+stand in.
+
+```gdscript
+var world := DotRandomStream.new(seed)
+var spread := world.stream(&"spread")
+var loot := world.stream(&"loot")
+
+spread.at(tick)             # the same number on every machine, for ever
+loot.next_range_i(1, 6)     # and drawing it does not move `spread`
+```
+
+`at()` advances nothing, so a client can know what the server will do on a tick
+it has not simulated, and a replay can be scrubbed backwards.
+
+A single shared generator is mutable state every caller advances, which is three
+bugs in a networked game:
+
+- **Two peers that draw in a different order diverge.** A server that rolls
+  weapon spread and then a loot drop, and a client that predicts the shot and
+  never sees the loot, are one draw apart for the rest of the session — and the
+  visible symptom is that the *shooting* stops matching, which points at the
+  netcode.
+- **Adding a feature changes the past.** One extra draw shifts every later
+  number, so yesterday's replay plays back differently and a shared seed stops
+  producing the world it was shared for.
+- **A stream nobody can resume.** A receiving peer has to *adopt* an index, not
+  allocate one.
+
+<Callout type="info" title="A seed is not a secret">
+It is meant to be shareable, and a client can compute every number a server
+will. Anything that must be hidden from a player belongs behind a value the
+client does not have.
+</Callout>
+
+### Tables
+
+`DotRandomTable` draws ids and knows nothing about what they are, so a loot
+table validates and draws on a server without the content.
+
+| | |
+| --- | --- |
+| `WITH_REPLACEMENT` | Independent draws. The honest one, and the one that makes a player who has opened forty crates conclude the game is broken. |
+| `WITHOUT_REPLACEMENT` | A shuffled deck, reshuffled when empty. What a rotation and a card game want; not a loot table, because a player can count it. |
+| `PITY` | The weight climbs on a miss and resets on a hit, cutting off the long tail. |
+
+<Callout type="warning" title="`pity_after` is not optional">
+Measured by this addon's own suite: a **2% entry whose weight starts climbing on
+the first miss comes out at 14.5%**, because most droughts are short and the
+ramp was inflating all of them. Start the ramp past the stated mean interval and
+the ordinary case is untouched.
+
+Even then the realised rate sits above the base — removing the tail of a
+distribution raises its mean — and `measure_rate()` is the only honest way to
+find out by how much.
+</Callout>
+
+### Events in ticks
+
+```gdscript
+var s := DotRandomSchedule.new()
+s.mean_interval_ticks = 64 * 30     # about every thirty seconds at 64 Hz
+s.min_gap_ticks = 64 * 8            # never two in eight seconds
+s.max_gap_ticks = 64 * 90           # and never a gap longer than ninety
+
+if s.fires_at(stream, tick, last_fired_tick):
+    ...
+```
+
+`fires_at` is pure, so it answers for tick N without having run ticks 0..N-1 —
+which is what lets a client anticipate a server, a replay scrub, and a restarted
+server land on the schedule it was already running. A stateful countdown can do
+none of those, and its failure mode latches: a due event dropped while a cooldown
+runs, and nothing offered again.
 
 ## Transports
 

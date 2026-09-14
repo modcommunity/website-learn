@@ -59,7 +59,11 @@ at tells you where to look for it.
 | Where bans live (shared DB, HTTP service) | `DotBanStore` subclass on `DotBanManager` |
 | Site groups → server permissions | `DotAuthAdminSource`, or any object with `lookup()` / `source_name()` |
 | Server commands and behaviour | `DotModule` subclass, or `DotConsole.command` |
-| What a server query reports about the game | `DotQueryProvider`, or `DotModule.add_query_provider` |
+| What a server query reports about the game | `DotQueryProvider` subclass on `dot_query_source`, or `DotModule.add_query_provider` |
+| What a server punishes, and how far it escalates | `DotSecurityRule` documents, in JSON or built in code |
+| Where a server reads ban lists from | `DotBanFeed` entries on `DotBanFeeds`, chained onto `dot_ban_source` |
+| Whether a movement claim is possible | `DotAntiCheat.movement_reference`, a `Callable` that re-simulates one tick |
+| How a world is lit, and how much of it this machine draws | `DotLightDocument` and `DotLightProfile`, applied by `DotLightRig` |
 | Reacting to or vetoing anything | `DotEventBus.hook_pre` / `hook_post` |
 | What replicates, and how precisely | `DotNetVar` declarations; `Type.CUSTOM` for any type |
 | Simulation, controls, messages | `DotNetBehaviour`, `DotNetInput`, `DotNetMessage` subclasses |
@@ -188,9 +192,20 @@ ones marked **must** have no useful default.
   <Param name="DotBanStore" type="dot-server">
     `_store_name`, **`_load`**, `_put`, `_remove`, `_refresh`, `_writable`.
   </Param>
-  <Param name="DotQueryProvider" type="dot-server">
+  <Param name="DotQueryProvider" type="dot-server-query">
     `_provider_name`, **`_contribute(snapshot)`** — how a game publishes its own
-    state into a server query.
+    state into a server query. The bot count is the one that proves the point:
+    nothing in a server framework can know it, because a bot never connects.
+  </Param>
+  <Param name="DotSecurityRule" type="dot-server-security">
+    An event name, a threshold, a window, a scope and a ladder of steps. Written
+    as JSON or built in code, and `guard.report_session(&"your.event", session)`
+    is enough to put a game's own event through the whole engine.
+  </Param>
+  <Param name="DotBanFeed" type="dot-server-security">
+    `url`, `auth`, `token_file`, `list_path`, `on_failure`. Six auth modes and
+    several list shapes, because a blocklist you cannot point this at is one you
+    will copy into a file by hand, and then it is stale.
   </Param>
   <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
     The same shape in all three: **`_fetch`**, `_store`, `_remove`, `_open`,
@@ -328,7 +343,10 @@ neither side importing the other.
 
 | Name | Published by | Consulted by |
 | --- | --- | --- |
-| `dot_ban_source` | `DotModerationManager` | `dot-server`'s admission check |
+| `dot_ban_source` | `DotModerationManager`, and `dot-server-security`'s feeds | `dot-server`'s admission check — **both are asked, and both must say yes** |
+| `dot_query_host`, `dot_query_stats` | `dot-server-query` | `dot-server`'s `attach_query_host` hook |
+| `dot_security`, `dot_anticheat`, `dot_security_bans` | `dot-server-security` | its own console commands, and your own code |
+| `dot_random_source` | `DotRandomManager`, in `dot-core` | anything wanting a stream it can reproduce |
 | `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
 | `dot_cloud_client` | `DotCloudClient` | `dot-map`'s loader, `dot-server`'s game change, `dot-user-avatar`'s catalogue |
 | `dot_user_manager` | `DotUserManager` | `dot-server`, `dot-platform` |

@@ -82,6 +82,8 @@ cd dot-bootstrap
 ./bootstrap.sh              # clone what is missing, pull what is not, link everything
 ./bootstrap.sh --links      # only redo the links
 ./bootstrap.sh --status     # branch, dirty, unpushed, per repository
+./bootstrap.sh --check      # does projects.tsv still agree with the disk?
+./bootstrap.sh --content-keys   # a content signing key, so this machine can publish packs
 ```
 
 It contains no list of projects and no list of what each one needs: the projects
@@ -89,7 +91,16 @@ come from `projects.tsv`, and a project's addons are read out of **that
 project's own `.gitignore`**, from its `/addons/<name>` lines — the one place
 that cannot go stale, because the repository that gains a dependency is the
 repository that has to ignore the link. The version before it carried four
-manifests and they had drifted to 19 of the 33 repositories.
+manifests and they had drifted to 19 of the 33 repositories the collection had
+at the time; one run now links getting on for three hundred folders across
+fifty-eight of them.
+
+`--content-keys` is the one mode that is not about repositories:
+[dot-cloud](/learn/godot/addons/dot-cloud) refuses an unsigned manifest, so
+publishing a pack needs a private key, and a private key is the one thing a
+clone can never carry. It mints one and points
+`dot-server-deploy/client/content.json` at it — which leaves that committed file
+locally modified, on purpose, and is why it is opt-in.
 
 [Getting started](/learn/godot/getting-started) is the whole walk-through,
 including what Windows does instead (it copies the folders, because Godot does

@@ -26,7 +26,7 @@ source:
 ---
 
 **Dot** is The Modding Community's open-source game platform for Godot 4:
-forty-eight addons, a launcher, a server tool and five games that exist to run
+fifty addons, a launcher, a server tool and five games that exist to run
 the addons together. Everything on
 [the play center](https://moddingcommunity.com/play) is built out of it, and all
 of it is MIT licensed under
@@ -92,13 +92,22 @@ repository with uncommitted work in it is reported and left alone.
 | `./bootstrap.sh` | Clone what is missing, pull what is not, link everything. |
 | `./bootstrap.sh --links` | Only redo the addon links. |
 | `./bootstrap.sh --status` | Branch, dirty and unpushed, per repository. |
+| `./bootstrap.sh --check` | Does `projects.tsv` still agree with the disk? |
 | `./bootstrap.sh --list` | What there is to play. |
+| `./bootstrap.sh --play <name>` | Play one, offline. |
+| `./bootstrap.sh --content-keys` | Give this machine a content signing key, so it can publish packs. |
+
+Each has a `-Links`, `-Status`, `-Check`, `-List`, `-Play`, `-ContentKeys`
+counterpart on Windows. `--https` reaches GitHub over HTTPS rather than SSH —
+the assets are public, so cloning and pulling need no credentials at all, and
+the script falls back to it on its own if SSH is unavailable.
 
 <Callout type="info" title="Do not make the addon links by hand">
 Every project except `dot-core` needs `dot-core` present just to *open*, and a
 game needs every addon it uses. Those links are gitignored, because a consumer
 copies the folders instead — so a fresh clone of `game-arena` does not open
-until something has linked eight addons into it.
+until something has linked **forty-two** addons into it. Across the whole
+collection one run makes getting on for three hundred.
 </Callout>
 
 ## 2. Play one
@@ -115,6 +124,27 @@ when no dedicated server is attached. `arena` gives you three bots on
 until LIVE, about thirteen seconds in. That is the match loop, not a hang.
 
 What each game is for is on [Reference games](/learn/godot/games).
+
+<Details title="Publishing your own content">
+
+`dot-cloud` refuses an unsigned manifest, and it is right to: a mounted pack can
+contain scripts, so a client that mounts unsigned content runs whatever the
+server sent it. A private key is therefore the one thing a clone can never
+carry, and `dot-server-deploy/keys/` is gitignored precisely so one cannot
+arrive in a commit.
+
+So a fresh clone can **consume** content and publish none. `--content-keys`
+mints this machine an identity and rewrites `dot-server-deploy/client/content.json`
+to trust it:
+
+```bash
+./bootstrap.sh --content-keys
+```
+
+It is opt-in because it leaves that committed file locally modified, now naming
+a key no other machine has. Do not commit the result.
+
+</Details>
 
 ## 3. Add Dot to a project of your own
 
@@ -175,7 +205,7 @@ getting the listing on the site to say you are up.
 
 <Cards>
   <Card title="The addons" href="/learn/godot/addons">
-    All forty-eight, grouped by what they are for, with every hook each exposes.
+    All fifty, grouped by what they are for, with every hook each exposes.
   </Card>
   <Card title="Conventions" href="/learn/godot/conventions">
     The rules every addon obeys — no autoloads, `DotResult`, `DotNodeRef`,

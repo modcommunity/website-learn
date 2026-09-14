@@ -1,6 +1,6 @@
 ---
 title: The addons
-description: All forty-eight Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
+description: All fifty Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
 order: 40
 badge: updated
 keywords:
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-Forty-eight addons that work together and, apart from `dot-core`, work independently.
+Fifty addons that work together and, apart from `dot-core`, work independently.
 Each is its own repository under
 [`modcommunity`](https://github.com/modcommunity), each ships one
 `addons/<name>/` folder, and each has its own headless test suite.
@@ -27,9 +27,11 @@ Everything in an *optionally* column is duck-typed or found through
 those addons names another's identifiers — because in GDScript a script that mentions a
 missing `class_name` fails to parse and takes everything referencing it down with it.
 
-Four are the exception that proves the rule, and each says so: `dot-npc-ai` and
-`dot-npc-ai-director` need `dot-npc`, and `dot-player-controller`, `dot-player-char`
-and `dot-player-class` need `dot-player`.
+Seven are the exception that proves the rule, and each says so: `dot-npc-ai` and
+`dot-npc-ai-director` need `dot-npc`; `dot-player-controller`, `dot-player-char`
+and `dot-player-class` need `dot-player`; and `dot-server-query` and
+`dot-server-security` need `dot-server`, because each one *is* a piece of a
+server rather than something a server optionally consults.
 </Callout>
 
 ## The foundation
@@ -69,6 +71,8 @@ are. Every game in the collection uses these.
 | --- | --- | --- |
 | [dot-net](/learn/godot/addons/dot-net) | dot-core | Netcode: tick sync, a bit-packed wire format, state replication, snapshot interpolation, client-side prediction, lag compensation, interest management. |
 | [dot-server](/learn/godot/addons/dot-server) | dot-core, *optionally* dot-auth + dot-cloud | The dedicated server: console, RCON, queries, permissions, moderation, votes, modules, dynamic game switching. |
+| [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *optionally* dot-stats | The server's side of a server query: DQP — challenged, sectioned, conditionally pollable, reachable from a browser — and the whole of A2S, answered from one snapshot. |
+| [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *optionally* dot-moderation + dot-chat + dot-auth | Hardening as configuration: sliding-window rules that escalate warn to gag to kick to ban, anti-cheat that separates proof from suspicion, and external ban feeds. Ships in dry run. |
 | [dot-browser](/learn/godot/addons/dot-browser) | dot-core | The other half of those queries: a client. DQP over UDP, the same as JSON over a WebSocket, and A2S — behind a list model with sources, filters and favourites. |
 | [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | Sessions players host for each other: join codes, readiness, a host election that is a pure function of the member list, and an honest account of NAT. |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Bans, kicks, gags, voice mutes and warnings as one durable record. Publishes the mute and ban sources the others consult. |
@@ -102,7 +106,6 @@ are. Every game in the collection uses these.
 | [dot-map](/learn/godot/addons/dot-map) | dot-core, *optionally* dot-cloud | Maps as content rather than as builds: a catalogue, a rotation, nominations and voting, and a loader that fetches through dot-cloud. |
 | [dot-props](/learn/godot/addons/dot-props) | dot-core | A sandbox layer: spawnable props, per-player budgets, an undo stack, a physics gun and a gravity gun. Server-authoritative. |
 | [dot-procedural-generation](/learn/godot/addons/dot-procedural-generation) | dot-core | Generation as an ordered pipeline over a document, with a validator that refuses a map nobody could finish. |
-| [dot-randomness](/learn/godot/addons/dot-randomness) | dot-core | Randomness a second machine can reproduce: named, counter-based, splittable streams; tables with honest pity; events scheduled as a pure function of the tick. |
 
 ## Progression
 
@@ -122,6 +125,7 @@ are. Every game in the collection uses these.
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *optionally* dot-server | The player's console: a physical key, a line, history, completion, a bounded scrollback — and command *sources* rather than a second command system. |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | Game audio that ships no audio: a catalogue of ids, pooled voices with priority stealing, concurrency caps, a distance cull, music and ducking. |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | Visual effects as documents: pooled, budgeted, quality-tiered, distance-culled. An effect never changes the simulation. |
+| [dot-lighting](/learn/godot/addons/dot-lighting) | dot-core | A world's lighting as a document: sun, ambient, fog, sky and post-processing, read from what a map carries, with a quality profile per machine. Not dot-fx, because lighting is not safe to drop. |
 
 <Related>
 - [Getting started](/learn/godot/getting-started) — install one and run something

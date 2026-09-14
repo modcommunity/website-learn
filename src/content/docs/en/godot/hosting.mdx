@@ -66,7 +66,10 @@ again after an update is safe: your edits are the server's configuration.
 | `./server check` | Boot, load the game, shut down. Exit 0 if it worked. |
 | `./server config` | The resolved configuration. |
 | `./server games` | What is in `content/`. |
-| `./server export-web` | Build the browser client. |
+| `./server pack <id>` | Publish `content/<id>` as a signed dot-cloud pack. `--all` does every one. |
+| `./server verify <id>` | Check a published pack's manifest against `keys/content.pub`. |
+| `./server export-web` | Build the browser client, plus the loader the site uploads. |
+| `./server export-native` | Build the native client the desktop app installs — one archive per platform. |
 | `./server --help` | Every option. |
 
 ```bash
@@ -181,6 +184,11 @@ mentions a setting from a newer version is worse than ignoring it.
     Answers the twenty-year-old query protocol beside Dot's own, on the same
     socket. The trackers, uptime monitors and server browsers that already exist
     speak A2S and nothing else — **including this site's scanner**.
+
+    Both protocols come from
+    [dot-server-query](/learn/godot/addons/dot-server-query), which the server
+    tool installs for you. A build without it answers nothing on the query port
+    at all, and a server nothing can ask is a server nothing can list.
   </Param>
   <Param name="sv_name / sv_maxplayers" type="server.yml">
     What the listing and the server browser show, and how many seats there are.

@@ -16,13 +16,13 @@ source:
   - ../game-dev/godot/dot-browser/README.md
 ---
 
-`dot-browser` is the asking half of [dot-server](/learn/godot/addons/dot-server)'s
-queries: a query client and a list model. dot-server has answered queries since
-it was written, and until this addon nothing in the family had ever asked one
-anything.
+`dot-browser` is the asking half of
+[dot-server-query](/learn/godot/addons/dot-server-query): a query client and a
+list model. That addon has answered queries since the day it was written, and
+until this one nothing in the family had ever asked one anything.
 
-Requires `dot-core`. dot-server is what it asks and is **not** a dependency —
-the wire format is implemented here and no class from it is named.
+Requires `dot-core`. dot-server-query is what it asks and is **not** a
+dependency — the wire format is implemented here and no class from it is named.
 
 ## Usage
 
@@ -80,19 +80,19 @@ usually with the same three:
 
 ## In a browser build
 
-A web page cannot open a UDP socket, so it can never speak A2S. dot-server
-serves DQP as plain JSON over a WebSocket for this, and `Protocol.AUTO` picks it
-when the platform has no UDP — asking about the capability, not the platform
-name.
+A web page cannot open a UDP socket, so it can never speak A2S. dot-server-query
+serves DQP as plain JSON over a WebSocket for exactly this, and `Protocol.AUTO`
+picks it when the platform has no UDP — asking about the capability, not the
+platform name.
 
 <Callout type="info" title="The wire format is a second implementation on purpose">
 Only `dot-core` may be a hard dependency. The self-test checks this
-implementation against bytes dot-server's own encoder produced, rather than
-against itself.
+implementation against bytes dot-server-query's own encoder produced, rather
+than against itself.
 </Callout>
 
 <Related>
-- [dot-server](/learn/godot/addons/dot-server) — what answers
+- [dot-server-query](/learn/godot/addons/dot-server-query) — what answers
 - [dot-ui](/learn/godot/addons/dot-ui) — where a list model is drawn
 - [Getting listed](/learn/servers/listing) — the site's own browser, and how it queries
 </Related>
