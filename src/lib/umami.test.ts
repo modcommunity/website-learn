@@ -38,9 +38,21 @@ describe('the Umami event registry', () => {
         .map((f) => readFileSync(f, 'utf8'))
         .join('\n')
 
+    /*
+     * A QUOTED occurrence, not a bare substring.
+     *
+     * Both ways an event is fired put the name in quotes —
+     * `track('docs_code_copy')` and `data-umami-event="docs_pager"` — while a
+     * substring match says yes to any prose containing the word. The sibling
+     * check in website-processing found `account` "wired" by thirteen
+     * translation strings about somebody's account.
+     */
+    const fires = (name: string) =>
+        corpus.includes(`'${name}'`) || corpus.includes(`"${name}"`)
+
     it.each(UMAMI_EVENTS)('%s is fired from somewhere', (name) => {
         expect(
-            corpus.includes(name),
+            fires(name),
             `'${name}' is registered but nothing emits it. Wire it up, or ` +
                 `delete the entry — a registry that lists events the site ` +
                 `cannot emit reads as coverage.`
