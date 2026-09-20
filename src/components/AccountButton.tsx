@@ -2,6 +2,7 @@ import { Button } from '@modcommunity/shared'
 import { isLocale, localizeUrl, type LocaleT } from '../i18n/config'
 import { mainUrl } from '../lib/site'
 import { useSignedIn } from '../lib/auth-hint'
+import { track } from '../lib/umami'
 
 /**
  * Header account action for the docs site: "Sign In" (→ website-city login)
@@ -35,6 +36,13 @@ export default function AccountButton({
     return (
         <a
             href={mainUrl(localizeUrl(signedIn ? '/account' : '/login', lang))}
+            /*
+             * `signedIn` is the whole point: this one button is Sign In for a
+             * stranger and My Account for a member, and the split says how
+             * much of the documentation's traffic already has an account —
+             * which is what decides how much of it should assume one.
+             */
+            onClick={() => track('docs_account', { signedIn })}
             className={className}
         >
             <Button btnType="special">

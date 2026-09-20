@@ -56,6 +56,95 @@ const labels = {
         var article = document.querySelector('.docs-prose')
         if (!article) return
 
+        /*
+         * `is:inline` means no module graph, so `src/lib/umami.ts` cannot be
+         * imported here. This is the same contract by hand: never throws,
+         * no-ops before the Umami script has loaded, and fills in the path and
+         * the locale so the two call sites below do not each remember to.
+         *
+         * The names it emits — `docs_code_copy`, `docs_code_copy_error`,
+         * `docs_heading_anchor` — are registered in that file with the rest, so
+         * the registry stays the single list of what this site can emit even
+         * though this script cannot read it.
+         */
+        function emit(name, data) {
+            try {
+                if (!window.umami) return
+
+                var path = window.location.pathname
+                var m = /^\/([a-z]{2})\/learn(\/|$)/.exec(path)
+
+                data = data || {}
+                data.path = path
+                data.locale = m ? m[1] : 'en'
+
+                window.umami.track(name, data)
+            } catch (e) {
+                /* Analytics must never break a page. */
+            }
+        }
+
+        /* ---- Declarative events from the MDX components ---------------- */
+
+        /*
+         * `<Card>`, `<Related>` and `<Details>` mark themselves with
+         * `data-doc-event` and are read here by DELEGATION, because those
+         * components render to static HTML: MDX content carries no `client:*`
+         * directive, so Astro ships no JavaScript for it and a React handler
+         * written in `mdx.tsx` never exists in the browser. One document-level
+         * listener covers every instance on the page and costs nothing per
+         * element.
+         *
+         * Not `data-umami-event`, which Umami's own tracker would pick up:
+         * these events need a value read off the DOM at click time — the href
+         * of whichever link inside a `<Related>` block was hit — and that
+         * attribute set is static, chosen when the page was built.
+         */
+        document.addEventListener('click', function (ev) {
+            var host = ev.target.closest && ev.target.closest('[data-doc-event]')
+            if (!host) return
+
+            var name = host.getAttribute('data-doc-event')
+
+            // A `<details>` is not opened by clicking, so it is handled below.
+            if (name === 'docs_details_open') return
+
+            var data = {}
+            var href = host.getAttribute('data-doc-href')
+
+            // A block-level marker (`<Related>`) carries no href of its own;
+            // the one that matters belongs to the anchor that was clicked.
+            if (!href) {
+                var a = ev.target.closest('a[href]')
+                if (a) href = a.getAttribute('href')
+            }
+
+            if (href) data.href = href
+
+            emit(name, data)
+        })
+
+        /*
+         * `<details>` needs `toggle`, not `click`: it is also opened by the
+         * keyboard and by the browser's own find-in-page, and `open` is the
+         * only reading that is right for all three.
+         *
+         * `toggle` does not bubble, so this is one listener per block rather
+         * than one for the document — and only on OPEN, because a close is the
+         * same reader finishing with it and counting both would read as twice
+         * the interest.
+         */
+        document
+            .querySelectorAll('details[data-doc-event="docs_details_open"]')
+            .forEach(function (d) {
+                d.addEventListener('toggle', function () {
+                    if (d.open)
+                        emit('docs_details_open', {
+                            title: d.getAttribute('data-doc-title') || ''
+                        })
+                })
+            })
+
         /* ---- Section anchors ------------------------------------------- */
 
         var headings = article.querySelectorAll('h2[id], h3[id], h4[id]')
@@ -68,6 +157,19 @@ const labels = {
             a.setAttribute('aria-label', L.anchor)
             a.title = L.anchor
             a.textContent = '#'
+
+            /*
+             * Somebody taking a link TO a section, which is a different act
+             * from reading one: it means this heading is the thing they want
+             * to point a colleague at. Nothing else records it — the anchor
+             * navigates within the page.
+             */
+            a.addEventListener('click', function () {
+                emit('docs_heading_anchor', {
+                    slug: h.id,
+                    depth: Number(h.tagName.slice(1)),
+                })
+            })
 
             h.appendChild(a)
         })
@@ -117,7 +219,35 @@ const labels = {
                 var code = pre.querySelector('code')
                 var text = (code || pre).innerText
 
+                var lang = ''
+                var codeEl = pre.querySelector('code')
+
+                // Shiki puts the language on the <code> as `language-bash`.
+                if (codeEl)
+                    (codeEl.className || '').split(/\s+/).forEach(function (c) {
+                        if (c.indexOf('language-') === 0)
+                            lang = c.slice('language-'.length)
+                    })
+
                 var done = function (ok) {
+                    /*
+                     * Copying an example is the strongest signal a docs page
+                     * can emit that it did its job, and it makes no request of
+                     * any kind. The language and the line count are what say
+                     * WHICH examples get used, which is the argument for
+                     * keeping a long one.
+                     *
+                     * The failure is worth its own name: `navigator.clipboard`
+                     * is undefined on plain HTTP and the execCommand fallback
+                     * can be refused outright, so a copy button that silently
+                     * does nothing for some readers would otherwise look
+                     * exactly like a button nobody presses.
+                     */
+                    emit(ok ? 'docs_code_copy' : 'docs_code_copy_error', {
+                        lang: lang || 'plain',
+                        lines: text.split('\n').length,
+                    })
+
                     btn.textContent = ok ? L.copied : L.failed
                     btn.classList.toggle('is-copied', ok)
 

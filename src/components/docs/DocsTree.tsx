@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { SECTION_META } from '../../docs/sections'
 import type { NavNode } from '../../docs/mount'
+import { track } from '../../lib/umami'
 import { getT } from '../../i18n/t'
 
 /**
@@ -57,6 +58,20 @@ export default function DocsTree({
             const next = new Set(prev)
             if (next.has(path)) next.delete(path)
             else next.add(path)
+
+            /*
+             * The section's PATH, never `navLabel` — the label is translated,
+             * and one section must not become nine rows in Umami.
+             *
+             * Whether the tree is opened at all is the question that decides
+             * how much of it to render expanded by default, and there is no
+             * other trace of it: expanding a section navigates nowhere.
+             */
+            track('docs_nav_section_toggle', {
+                section: path,
+                open: next.has(path),
+            })
+
             return next
         })
 
@@ -111,6 +126,12 @@ function TreeSection({
                 <a
                     href={node.href}
                     aria-current={active ? 'page' : undefined}
+                    onClick={() =>
+                        track('docs_nav_link', {
+                            href: node.href,
+                            level: 'section',
+                        })
+                    }
                     className={`flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 font-semibold ${
                         within ? 'text-foreground' : 'text-muted hover:text-foreground'
                     }`}
@@ -191,6 +212,9 @@ function TreeLeaf({
                 <a
                     href={node.href}
                     aria-current={active ? 'page' : undefined}
+                    onClick={() =>
+                        track('docs_nav_link', { href: node.href, level: 'page' })
+                    }
                     className={`min-w-0 flex-1 rounded-md px-2 py-1 transition-colors ${
                         active
                             ? 'bg-accent/12 font-medium text-accent'

@@ -3,12 +3,24 @@ type Props = {
     src: string
     websiteId: string
     setOutboundClicks?: boolean
+    /**
+     * Report a light/dark switch.
+     *
+     * Off by default so a consumer opts in, and named for what it watches
+     * rather than for the control: see the script below for why this is an
+     * observer and not a click handler.
+     */
+    trackTheme?: boolean
+    /** The event name to emit. Kept a prop so each site can use its own prefix. */
+    themeEvent?: string
 }
 
 const {
     src,
     websiteId,
-    setOutboundClicks = true
+    setOutboundClicks = true,
+    trackTheme = false,
+    themeEvent = 'theme_change'
 } = Astro.props as Props
 ---
 
@@ -34,6 +46,61 @@ const {
                     a.setAttribute('data-umami-event-url', a.href);
                 }
             })
+        })()
+    </script>
+)}
+{trackTheme && (
+    <script is:inline data-theme-event={themeEvent}>
+        (() => {
+            const el = document.currentScript;
+            const name = (el && el.dataset.themeEvent) || 'theme_change';
+            const root = document.documentElement;
+
+            /*
+             * A MutationObserver on `data-theme`, not a click handler on the
+             * toggle.
+             *
+             * The toggle is `@modcommunity/shared`'s `<ThemeToggle/>` and it
+             * takes no `onChange` — adding one would mean a release of that
+             * package and a matching bump in three consumers to record one
+             * click. What it DOES do is write `dark` and `data-theme` on
+             * <html>, which is the signal `theme.css` itself keys off, so
+             * watching the attribute is watching the thing that actually
+             * happened.
+             *
+             * It is also strictly better than a handler would be: the theme
+             * can change without the button, and this sees that too.
+             *
+             * The initial theme is deliberately NOT reported. It is applied
+             * before first paint by the inline init script, so firing here
+             * would file a `theme_change` on every pageview and drown the real
+             * ones. `last` starts at whatever is already set, so only a
+             * transition counts.
+             */
+            let last = root.getAttribute('data-theme');
+
+            new MutationObserver(() => {
+                const now = root.getAttribute('data-theme');
+
+                if (!now || now === last) return;
+
+                const from = last;
+                last = now;
+
+                try {
+                    if (window.umami)
+                        window.umami.track(name, {
+                            from,
+                            to: now,
+                            path: window.location.pathname
+                        });
+                } catch (e) {
+                    /* Analytics must never break a page. */
+                }
+            }).observe(root, {
+                attributes: true,
+                attributeFilter: ['data-theme']
+            });
         })()
     </script>
 )}

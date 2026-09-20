@@ -26,10 +26,20 @@ const t = getT(locale)
                 on the right where the eye is already looking for it, instead of
                 sliding it into the empty prev slot on the left.
             */}
+            {/*
+                `data-umami-event` attributes rather than click handlers: these
+                are plain anchors in a static build, and the Umami script
+                already reads the attributes off the DOM. A handler would mean
+                hydrating the pager — shipping React to the bottom of every
+                page — to record a click on a link.
+            */}
             {prev ? (
                 <a
                     href={prev.href}
                     rel="prev"
+                    data-umami-event="docs_pager"
+                    data-umami-event-dir="prev"
+                    data-umami-event-href={prev.href}
                     class="group col-start-1 flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-secondary p-4 transition-visual hover:border-accent/50 hover:bg-surface-hover"
                 >
                     <ArrowLeft className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:-translate-x-0.5 group-hover:text-accent" />
@@ -50,6 +60,9 @@ const t = getT(locale)
                 <a
                     href={next.href}
                     rel="next"
+                    data-umami-event="docs_pager"
+                    data-umami-event-dir="next"
+                    data-umami-event-href={next.href}
                     class="group col-start-1 flex min-w-0 items-center justify-end gap-3 rounded-xl border border-border bg-surface-secondary p-4 text-right transition-visual hover:border-accent/50 hover:bg-surface-hover @2xl:col-start-2"
                 >
                     <span class="min-w-0">

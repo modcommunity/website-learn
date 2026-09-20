@@ -4,6 +4,7 @@ import DocsSearch from './DocsSearch'
 import { DEFAULT_LOCALE, isLocale, localizeUrl, type LocaleT } from '../../i18n/config'
 import { getT } from '../../i18n/t'
 import { DOCS_ROOT } from '../../docs/mount'
+import { track } from '../../lib/umami'
 
 /**
  * The body of the documentation's 404 page.
@@ -23,6 +24,32 @@ export default function NotFoundBody() {
     useEffect(() => {
         const seg = window.location.pathname.split('/')[1]
         if (isLocale(seg)) setLocale(seg)
+
+        /*
+         * The path that actually missed, and the page that sent them.
+         *
+         * nginx serves this one document for every unmatched path under
+         * `/learn` and `/{locale}/learn`, so in Umami all of them collapse
+         * into a single pageview of `/learn/404/` with no record of what was
+         * asked for. A renamed page whose inbound links went stale is exactly
+         * what this finds, and the only other place it is visible is nginx's
+         * access log.
+         *
+         * `referrer` only when it is ours: an external referrer is somebody
+         * else's URL and not something to file under our own analytics.
+         */
+        let from: string | undefined
+
+        try {
+            if (document.referrer)
+                from = new URL(document.referrer).origin === window.location.origin
+                    ? new URL(document.referrer).pathname
+                    : 'external'
+        } catch {
+            /* A malformed referrer is not worth a broken 404 page. */
+        }
+
+        track('docs_not_found', { missed: window.location.pathname, from })
     }, [])
 
     const t = getT(locale)

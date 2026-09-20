@@ -240,10 +240,22 @@ function Card({
     href?: string
     children?: ReactNode
 }) {
+    /*
+     * The card grids compete with the sidebar tree for the same job, and which
+     * one people use is what decides whether a per-section card grid is worth
+     * maintaining by hand. `href`, never `title` — the title is translated.
+     *
+     * The handler goes on a wrapper rather than on `FeatureCard`, which takes
+     * no `onClick`: a click anywhere in the card reaches the anchor inside it
+     * by bubbling, so one listener on the container covers the whole tile
+     * rather than just the text.
+     */
     return (
-        <FeatureCard title={title} href={href}>
-            {children}
-        </FeatureCard>
+        <div data-doc-event="docs_card_click" data-doc-href={href}>
+            <FeatureCard title={title} href={href}>
+                {children}
+            </FeatureCard>
+        </div>
     )
 }
 
@@ -297,6 +309,26 @@ function Details({
     return (
         <details
             open={open}
+            /*
+             * Analytics is a `data-` attribute rather than an `onToggle`, and
+             * this is the rule for EVERY component in this file:
+             *
+             *   the MDX components render to static HTML at build time.
+             *
+             * Astro only ships JavaScript for an island with a `client:*`
+             * directive, and MDX content has none — these run on the server,
+             * their markup is serialised into the page, and a React handler
+             * attached here never exists in the browser. It type-checks, it
+             * renders, and it silently does nothing. (Measured: an `onToggle`
+             * here fired zero times in a real browser.)
+             *
+             * `DocsEnhancements`'s inline script picks the attribute up by
+             * delegation — see the `[data-doc-event]` block there, which also
+             * explains why a `details` needs a `toggle` listener rather than
+             * a click.
+             */
+            data-doc-event="docs_details_open"
+            data-doc-title={title}
             className="docs-details group my-6 overflow-hidden rounded-xl border border-border bg-surface-secondary"
         >
             <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-pjs text-sm font-semibold text-foreground transition hover:bg-surface">
@@ -326,7 +358,15 @@ function Related({
     children: ReactNode
 }) {
     return (
-        <aside className="my-8 rounded-xl border border-border bg-surface-secondary p-5">
+        <aside
+            /*
+             * Marked on the block, not on each link: the contents are authored
+             * Markdown, so there is no per-link component to annotate. The
+             * delegated reader takes the href off whichever anchor was hit.
+             */
+            data-doc-event="docs_related_click"
+            className="my-8 rounded-xl border border-border bg-surface-secondary p-5"
+        >
             <p className="mb-2 font-pjs text-sm font-semibold text-foreground">
                 {title}
             </p>

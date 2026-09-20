@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getT } from '../../i18n/t'
+import { track } from '../../lib/umami'
 
 export type TocHeading = {
     depth: number
@@ -95,7 +96,7 @@ export default function DocsToc({
             </p>
 
             <ul className="space-y-0.5 border-l border-border">
-                {items.map((h) => {
+                {items.map((h, i) => {
                     const isActive = active === h.slug
 
                     return (
@@ -103,6 +104,25 @@ export default function DocsToc({
                             <a
                                 href={`#${h.slug}`}
                                 aria-current={isActive ? 'location' : undefined}
+                                /*
+                                 * A same-page `#hash` jump produces no
+                                 * pageview and no request, so this control is
+                                 * completely invisible without the event.
+                                 *
+                                 * Depth and position, not `h.text`: "are
+                                 * readers reaching for sub-sections or only
+                                 * top-level ones" is what decides how deep to
+                                 * render the list, and the text is translated
+                                 * prose that would be nine rows per heading.
+                                 */
+                                onClick={() =>
+                                    track('docs_toc_click', {
+                                        slug: h.slug,
+                                        depth: h.depth,
+                                        index: i + 1,
+                                        of: items.length,
+                                    })
+                                }
                                 className={`-ml-px block border-l py-1 pr-2 transition-colors ${
                                     h.depth === 3 ? 'pl-6' : 'pl-3'
                                 } ${

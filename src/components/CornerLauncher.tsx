@@ -50,6 +50,16 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
                 <div className="flex items-stretch">
                     <a
                         href={play}
+                        /*
+                         * Attributes, not a handler. This component renders
+                         * WITHOUT a `client:*` directive — it is two links and
+                         * a CSS animation, and it ships as static HTML with no
+                         * JavaScript at all. A click handler would hydrate it
+                         * on every page of the site to record two clicks; the
+                         * Umami script already reads these off the DOM.
+                         */
+                        data-umami-event="docs_launcher"
+                        data-umami-event-half="play"
                         aria-label={t('dock.play')}
                         title={t('dock.play')}
                         className="corner-launcher-play flex h-10 w-10 items-center justify-center rounded-l-xl text-white transition"
@@ -61,6 +71,8 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
 
                     <a
                         href={chat}
+                        data-umami-event="docs_launcher"
+                        data-umami-event-half="chat"
                         aria-label={t('dock.chat')}
                         title={t('dock.chat')}
                         className="flex h-10 w-10 items-center justify-center rounded-r-xl border-l border-white/15 bg-accent text-white transition hover:brightness-110"

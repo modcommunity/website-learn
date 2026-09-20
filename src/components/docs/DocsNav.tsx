@@ -5,6 +5,7 @@ import DocsSearch from './DocsSearch'
 import DocsTree from './DocsTree'
 import type { NavNode } from '../../docs/mount'
 import { getT } from '../../i18n/t'
+import { track } from '../../lib/umami'
 
 /**
  * The docs rail: search on top, table of contents beneath — and, below the
@@ -50,7 +51,17 @@ export default function DocsNav({
             <div className="flex min-w-0 basis-full items-center gap-2 @4xl:hidden">
                 <button
                     type="button"
-                    onClick={() => setOpen(true)}
+                    /*
+                     * The narrow-viewport entry to the whole tree. Whether it
+                     * is opened at all is what says if a phone reader browses
+                     * the documentation or only ever arrives at one page from
+                     * a search engine and leaves — and the drawer produces no
+                     * navigation of its own, so nothing else can see it.
+                     */
+                    onClick={() => {
+                        track('docs_nav_drawer', { open: true })
+                        setOpen(true)
+                    }}
                     className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-surface-secondary px-3 py-1.5 font-pjs text-sm font-medium whitespace-nowrap text-foreground transition-colors hover:border-accent/40"
                 >
                     <Menu className="h-4 w-4" />

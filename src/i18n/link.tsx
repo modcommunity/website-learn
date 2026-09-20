@@ -1,6 +1,7 @@
 import type { LinkComponent, LinkProps } from '@modcommunity/shared'
 import { isLocale, localizeUrl, type LocaleT } from './config'
 import { isDocsPath, mainUrl } from '../lib/site'
+import { track } from '../lib/umami'
 
 /**
  * Locale-aware link for the shared Header / Sidebar / Footer.
@@ -75,7 +76,14 @@ export function localeLink(locale: string): LinkComponent {
 
     const target: LocaleT = isLocale(locale) ? locale : 'en'
 
-    function LocaleLink({ href, target: t, rel, children, ...rest }: LinkProps) {
+    function LocaleLink({
+        href,
+        target: t,
+        rel,
+        children,
+        onClick: callerOnClick,
+        ...rest
+    }: LinkProps & { onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void }) {
         /*
          * Order matters: localize first (city prefixes locales the same way),
          * then absolutize. `isDocsPath` is asked about the BARE href because by
@@ -91,12 +99,46 @@ export function localeLink(locale: string): LinkComponent {
                 ? mainUrl(localized)
                 : localized
 
+        /*
+         * Every header, sidebar, footer and mobile-drawer link in this build
+         * comes through here, which makes it the one place to record the
+         * journey this site exists to produce: a reader leaving the
+         * documentation for the app.
+         *
+         * Only for internal non-docs paths. A docs → docs link is already
+         * covered by the nav tree's own event, and an external one is
+         * auto-tagged `outbound-link-click` by the analytics snippet — which
+         * ignores same-host links, so without this these are recorded nowhere.
+         *
+         * The BARE href, not `resolved`: the bare form is stable across the
+         * locale prefix and the docs-subdomain origin, so `/mods` is one row
+         * rather than eighteen.
+         */
+        const leaving = isInternal(href) && !isDocsPath(href)
+
+        /*
+         * Composed with whatever the shared component passed, and destructured
+         * out of `rest` above rather than left in it.
+         *
+         * `{...rest}` is spread AFTER the explicit props, so an `onClick`
+         * arriving from `@modcommunity/shared` — the mobile drawer passes one
+         * to close itself — silently replaced this handler and the event fired
+         * nowhere. Measured, not guessed: it took a real browser to notice,
+         * because the version that lost the handler type-checked.
+         */
+        function onClick(e: React.MouseEvent<HTMLAnchorElement>) {
+            if (leaving) track('docs_app_link', { href: href.split('?')[0] })
+
+            callerOnClick?.(e)
+        }
+
         return (
             <a
                 href={resolved}
                 target={t}
                 rel={mergeRel(href, rel, t === '_blank')}
                 {...rest}
+                onClick={onClick}
             >
                 {children}
             </a>

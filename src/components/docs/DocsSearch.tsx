@@ -3,6 +3,31 @@ import { createPortal } from 'react-dom'
 import { Search, CornerDownLeft, X, FileText } from 'lucide-react'
 import { getT } from '../../i18n/t'
 import { search, type Doc } from '../../lib/search'
+import { queryField, track } from '../../lib/umami'
+
+/**
+ * Which mounted instance owns the global keyboard shortcut.
+ *
+ * `DocsNav` renders TWO `<DocsSearch/>`s and both are always mounted: one in
+ * the narrow trigger bar (`@4xl:hidden`) and one in the wide rail
+ * (`hidden @4xl:block`). Only one is ever VISIBLE, but CSS hiding a container
+ * does not unmount what is inside it — so both were listening on `window` for
+ * `/` and ⌘K, both set their own `open`, and both `createPortal`'d a dialog to
+ * `<body>`.
+ *
+ * A portal escapes its hidden ancestor, so the result was two full-screen
+ * search dialogs stacked exactly on top of each other, two fetches of the
+ * index, and Escape closing both. It looked like one dialog, which is why it
+ * survived — it was found by instrumenting the component and seeing
+ * `docs_search_open` fire twice for one keypress.
+ *
+ * A module-level claim rather than a prop: which instance is the visible one
+ * depends on a CONTAINER query, and JavaScript here cannot know the answer.
+ * It does not need to — the dialog is portalled to `<body>` either way, so it
+ * renders identically whichever instance owns it. Clicking is unaffected: only
+ * the visible instance's button can be clicked in the first place.
+ */
+let shortcutOwner: symbol | null = null
 
 /**
  * Documentation search — a client-side index, fetched on first use.
@@ -38,6 +63,21 @@ export default function DocsSearch({
     const listRef = useRef<HTMLUListElement>(null)
 
     /*
+     * Analytics bookkeeping, in refs rather than state: none of it renders,
+     * and putting it in state would re-run the search on every keystroke for
+     * the sake of a counter.
+     *
+     * `lastQuery` is what stops the debounce filing the same settled query
+     * twice when a keystroke lands and is deleted again. `picked` is how
+     * `docs_search_abandon` knows the difference between a reader who closed
+     * the modal having found something and one who gave up — without it, the
+     * two are the same close event.
+     */
+    const lastQuery = useRef('')
+    const picked = useRef(false)
+    const searched = useRef(false)
+
+    /*
      * The index URL has to be built for the locale in hand: an `es` reader is on
      * `/es/learn/...`, and a bare `/learn/search/es.json` would be right only by
      * luck of the mount point. Deriving it from the endpoint's own root (which
@@ -48,8 +88,31 @@ export default function DocsSearch({
         return `${prefix}/learn/search/${locale || 'en'}.json`
     }, [locale])
 
+    /*
+     * Whether this open has already tried to fetch the index.
+     *
+     * A ref, and load-bearing rather than tidy. The guard used to be
+     * `if (docs || loading) return`, and when the fetch FAILED neither
+     * condition held afterwards: `docs` stayed null and `loading` went back to
+     * false. `load` is a `useCallback` over `loading`, so flipping it changed
+     * the callback's identity, which re-ran the effect that calls `load()`,
+     * which fetched again — an unbounded retry loop against the server, at
+     * whatever rate the failures came back. A 404 on the index after a bad
+     * deploy turned every reader with the dialog open into a fetch loop.
+     *
+     * Invisible until the failure was instrumented: the dialog just showed
+     * "search is unavailable" and the loop ran behind it.
+     *
+     * Cleared when the dialog closes (see the `open` effect), so reopening is
+     * a deliberate second attempt — which is the retry a reader would expect
+     * and the only one they get.
+     */
+    const attempted = useRef(false)
+
     const load = useCallback(async () => {
-        if (docs || loading) return
+        if (docs || loading || attempted.current) return
+
+        attempted.current = true
 
         setLoading(true)
         setFailed(false)
@@ -59,15 +122,47 @@ export default function DocsSearch({
             if (!res.ok) throw new Error(String(res.status))
             const json = (await res.json()) as { docs: Doc[] }
             setDocs(json.docs)
-        } catch {
+        } catch (e) {
             setFailed(true)
+
+            /*
+             * The index is a static file fetched on first keystroke. When a bad
+             * deploy leaves it 404ing, search quietly stops working and nothing
+             * server-side records a failure the reader experienced.
+             */
+            track('docs_search_error', {
+                url: indexUrl,
+                reason: e instanceof Error ? e.message : 'unknown',
+            })
         } finally {
             setLoading(false)
         }
     }, [docs, loading, indexUrl])
 
-    // ⌘K / Ctrl+K from anywhere, and `/` when not already typing somewhere.
+    /*
+     * The open event, in an effect keyed on `open` ALONE.
+     *
+     * It cannot live in the effect below that calls `load()`: `load` is a
+     * `useCallback` over `docs` and `loading`, both of which change while the
+     * dialog is up, so that effect re-runs several times per open — and the
+     * first version of this fired six `docs_search_open` rows for one press
+     * of `/`. Measured, not reasoned about.
+     *
+     * Its own effect rather than a call beside each `setOpen(true)` because
+     * there are three of those: the button, ⌘K and `/`.
+     */
     useEffect(() => {
+        if (open) track('docs_search_open')
+    }, [open])
+
+    // ⌘K / Ctrl+K from anywhere, and `/` when not already typing somewhere.
+    const id = useRef(Symbol('docs-search'))
+
+    useEffect(() => {
+        // First one mounted claims it; see `shortcutOwner` above.
+        if (shortcutOwner === null) shortcutOwner = id.current
+        if (shortcutOwner !== id.current) return
+
         const onKey = (e: KeyboardEvent) => {
             const inField =
                 e.target instanceof HTMLElement &&
@@ -88,11 +183,38 @@ export default function DocsSearch({
         }
 
         window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
+
+        return () => {
+            window.removeEventListener('keydown', onKey)
+
+            // Hand the claim back, so a remount does not leave the shortcut
+            // owned by an instance that no longer exists.
+            if (shortcutOwner === id.current) shortcutOwner = null
+        }
     }, [open])
 
     useEffect(() => {
-        if (!open) return
+        if (!open) {
+            /*
+             * Closing. Report an abandonment only when a query was actually
+             * searched and nothing was opened from it — a reader who pressed
+             * escape on an empty box did not fail to find anything.
+             */
+            if (searched.current && !picked.current)
+                track('docs_search_abandon', {
+                    query: queryField(lastQuery.current),
+                    results: hitsRef.current,
+                })
+
+            searched.current = false
+            picked.current = false
+            lastQuery.current = ''
+
+            // One index attempt per open — see `attempted` above.
+            attempted.current = false
+
+            return
+        }
 
         void load()
         // The dialog owns the page while it is up; restoring scroll on close is
@@ -111,7 +233,66 @@ export default function DocsSearch({
         [docs, query]
     )
 
+    /*
+     * The current hit count, readable from the close handler above without
+     * making it depend on `hits` — that dependency would tear the effect down
+     * and rebuild it on every keystroke.
+     */
+    const hitsRef = useRef(0)
+    hitsRef.current = hits.length
+
+    /*
+     * One event per SETTLED query, not per keystroke.
+     *
+     * Typing "authentication" fires `onChange` fourteen times, and thirteen of
+     * those are prefixes nobody searched for — filing them would bury the real
+     * query under its own substrings and make "what do people look for"
+     * unanswerable. 500ms after the last keystroke is a pause; anything
+     * shorter files "auth" on the way to "authentication".
+     *
+     * `results: 0` is the row worth having: a reader asking the documentation
+     * a question it does not answer, in their own words.
+     */
+    useEffect(() => {
+        if (!open || !docs) return
+
+        const q = query.trim()
+
+        if (q.length < 2 || q === lastQuery.current) return
+
+        const id = window.setTimeout(() => {
+            lastQuery.current = q
+            searched.current = true
+
+            track('docs_search_query', {
+                query: queryField(q),
+                results: hitsRef.current,
+            })
+        }, 500)
+
+        return () => window.clearTimeout(id)
+    }, [open, docs, query, hits.length])
+
     useEffect(() => setCursor(0), [query])
+
+    /**
+     * A result was chosen — by click or by Enter.
+     *
+     * `rank` is the only feedback the scoring in `lib/search.ts` ever gets: a
+     * corpus where the answer is habitually fourth is a corpus whose scoring
+     * is wrong, and nothing else would say so.
+     */
+    const onPick = (href: string, rank: number, via: 'enter' | 'click') => {
+        picked.current = true
+
+        track('docs_search_select', {
+            query: queryField(query),
+            href,
+            rank: rank + 1,
+            results: hits.length,
+            via,
+        })
+    }
 
     const onKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -134,6 +315,7 @@ export default function DocsSearch({
             const hit = hits[cursor]
             if (hit) {
                 e.preventDefault()
+                onPick(hit.doc.href, cursor, 'enter')
                 window.location.href = hit.doc.href
             }
         }
@@ -230,6 +412,9 @@ export default function DocsSearch({
                                         <li key={hit.doc.path}>
                                             <a
                                                 href={hit.doc.href}
+                                                onClick={() =>
+                                                    onPick(hit.doc.href, i, 'click')
+                                                }
                                                 onMouseEnter={() => setCursor(i)}
                                                 className={`block rounded-lg px-3 py-2.5 transition-colors ${
                                                     i === cursor
