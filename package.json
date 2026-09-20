@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@types/node": "^24.13.6",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   }
