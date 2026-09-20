@@ -10,10 +10,15 @@ keywords:
   - "scope key"
   - "catalogue"
   - "games list"
+  - "tmc://"
+  - "join link"
+  - "server lookup"
+  - "installable"
 source:
   - src/app/api/app/v1/apps
   - src/app/api/app/v1/play
   - src/app/api/app/v1/avatar
+  - src/app/api/app/v1/servers/lookup
 ---
 
 ## The app catalogue
@@ -32,7 +37,13 @@ visitor reads a page at a time on the site. A bearer token is *accepted* so the
 rate limit is charged per account rather than per address, which matters for a
 household behind one address.
 
-Takes `search`, `ids`, `slugs`, `type`, `playable`, `managed` and `sort`.
+Takes `search`, `ids`, `slugs`, `type`, `playable`, `managed`, `installable`
+and `sort`.
+
+`installable=true` narrows the list to the games this app could actually put on
+disk, so a launcher does not draw an install button it will then have to
+retract. Where that build *is* comes from a second request — see
+[`/apps/:id/build`](/learn/api/app/releases#where-is-this-games-build).
 
 <Callout type="info" title="`playEnabled` is answered even when it is false">
 The play centre is a setting an operator can switch off. An app that could not
@@ -74,6 +85,36 @@ Every decision is made server-side and the client is told the answer:
 
 A server's address is gated on its own `showNetInfo`, by the same helper the
 server page uses.
+
+## Finding a server from a link
+
+<Endpoint method="GET" path="/api/app/v1/servers/lookup?host=&port=">
+Which listed server is at that address. Authentication is **optional**.
+</Endpoint>
+
+What the app calls when it is handed a `tmc://play/<host>:<port>` link. The
+rows that come back are the public catalogue — the same ones the browser
+already publishes — so answering discloses nothing new, and a **delisted server
+is still found**, because a player following a link to one should be told what
+it is rather than shown nothing.
+
+<Params>
+  <Param name="host" type="string" required>
+    Hostname or IP literal, unbracketed. The app strips the brackets off an
+    IPv6 address before it asks.
+  </Param>
+  <Param name="port" type="number">
+    Optional, because `tmc://play/example.com` is a legitimate link. Absent
+    matches any port on that host, and a host running two servers answers with
+    both — which the app renders as a choice rather than guessing.
+  </Param>
+</Params>
+
+<Callout type="info" title="The rate limit here is much tighter than `/browse`">
+Thirty a minute. A person follows one link at a time, so a ceiling this low
+only bites a client with a broken retry — and it is also what stops the
+endpoint being walked as an address oracle.
+</Callout>
 
 ## The scoped player key
 

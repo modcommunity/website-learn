@@ -1,8 +1,9 @@
 ---
 title: Reference games
-description: The five games built out of the Dot collection — what each one exists to prove, and why the seams between addons only get exercised in a game.
+description: The games and packs built out of the Dot collection — what each one exists to prove, and why the seams between addons only get exercised in a game.
 navTitle: Reference games
 order: 50
+badge: updated
 keywords:
   - "example"
   - "sample"
@@ -11,18 +12,28 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
+  - "game-simple-lobby"
+  - "mg-smash-copter"
+  - "mg-buses-from-hell"
+  - "zee-dot-weapons"
   - "lobby"
   - "deathmatch"
   - "sandbox"
 source:
   - ../game-dev/godot/NOTES.md
   - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Five games ship with the collection, and they are not demonstrations. Every
-addon's own suite runs that addon with the others absent, so the joins between
-them exist only in a game — and a code path that only one deployment shape
-reaches is a code path nothing has run.
+Eight projects ship alongside the collection — five reference games, two
+minigames and a weapons pack — and they are not demonstrations. Every addon's
+own suite runs that addon with the others absent, so the joins between them
+exist only in a game, and a code path that only one deployment shape reaches is
+a code path nothing has run.
+
+They live under [`gamemann`](https://github.com/gamemann) rather than under the
+organisation the addons are in; see [the overview](/learn/godot)
+for why the split is a rule.
 
 <Callout type="info" title="This is where the bugs are">
 Putting the gameplay addons through one process found seven bugs, six of them in
@@ -150,6 +161,45 @@ A server with no game loaded is a legitimate thing to run and `dot-server` has
 always supported it; what it did not have was anything to look at, and a player
 who connects and sees nothing cannot tell that from a broken server. It is also
 the game a generic browser client shell downloads first.
+
+## mg-smash-copter
+
+**A minigame whose antagonist is the floor.** Two to six teams stand on
+platforms balanced on single pillars, forty metres up, while a cannon in the
+middle throws things at them. Whoever is still up when the clock runs out is
+thrown into a corner of the sky with a weapon they did not choose, and the last
+team standing wins.
+
+First- and third-person. Uses `dot-props` for everything the cannon throws,
+`dot-vehicle` for the chopper, `dot-combat` for health and hit registration,
+`dot-match` for the round and the sides, `dot-player-controller`, `dot-net`,
+`dot-game` for the server wiring, and `zee-dot-weapons` for the twenty-seven
+weapons the second half is fought with.
+
+## mg-buses-from-hell
+
+**The asymmetric one.** Two drivers in buses against everybody else on foot, in
+a walled sand bowl with crates and exploding barrels in it. The drivers try to
+run the runners over; the runners have a hammer, and the hammer does not hurt
+anybody — it breaks crates and shoves them. That is the whole game.
+
+Uses `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
+`dot-player-controller`, `dot-net` and `dot-game`. It is also the project that
+[dot-entity](/learn/godot/addons/dot-entity) found a leak in: a
+`_next_entity_id` counter with no `forget()` anywhere, which left a `DotHealth`
+per player who had ever joined, each pointing at a freed node.
+
+## zee-dot-weapons
+
+**Not a game — a weapons pack.** It is the half
+[`dot-weapon`](/learn/godot/addons/dot-weapon) deliberately leaves out: the
+view models, the world models, the animation and the art, with twenty-seven
+weapons already built on top of its catalogue.
+
+First-person view models, third-person world models, procedural animation, and
+the replication that makes another player's weapon look right on your screen.
+The art is Kenney's Blaster Kit with melee from the Weapon Pack and Survival
+Kit — all CC0, all vendored, nothing to download.
 
 ## Lessons for your own bridges
 

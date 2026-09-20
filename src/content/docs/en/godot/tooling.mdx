@@ -15,7 +15,7 @@ keywords:
   - "export web"
 source:
   - ../game-dev/godot/dot-serve/README.md
-  - ../game-dev/godot/dot-server-setup-test/README.md
+  - ../game-dev/godot/dot-server-deploy/README.md
 ---
 
 [`dot-server`](/learn/godot/addons/dot-server) is deeply configurable — cvars,
@@ -80,7 +80,7 @@ The generated systemd unit lists all of them under `RestartPreventExitStatus`.
 
 ## TMC's server tool
 
-`dot-server-setup-test` is where the collection comes together into something a
+`dot-server-deploy` is where the collection comes together into something a
 server owner starts with one command. It is a Godot project that boots a
 `dot-server`, reads its configuration from `cfg/*.yml`, loads games out of
 `content/`, and serves a browser client — and it ships **no game of its own**.
@@ -93,6 +93,44 @@ docker compose up -d    # or the same thing in a container
 ```
 
 Windows: `setup.bat` (a shim for `setup.ps1`), then `server.cmd`.
+
+<Callout type="info" title="It used to be called `dot-server-setup-test`">
+Same project, clearer name. If you have an older checkout or an older link, it
+is [`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy)
+now.
+</Callout>
+
+### Three scripts that are easy to confuse
+
+```bash
+./play.sh               # a server and the browser client, on the loopback
+./play.sh playground    # start on a particular game
+./play.sh games         # what else is in content/
+./play.sh status
+./play.sh down
+```
+
+`play.sh` is for a developer who changed a line and wants to look at it. It
+prints a link, rebuilds the export when the game is newer, copies `embed.html`
+over Godot's generated `index.html` — the one that takes `?server=` from the
+query string — and **tells you when the vendored `game/` is older than the
+repositories it was copied from**. `setup.sh` copies that directory while the
+addons beside it stay symlinked, so it is the one part that goes stale, and a
+stale copy exports cleanly, runs, and is last week's game.
+
+`demo.sh` is the other one: five servers, nginx terminating TLS, a public host,
+a separate registrable domain for the game and a `sudo` step to install a
+listener. Right for showing the platform to somebody, wrong for a one-line
+change.
+
+Neither has anything to do with `dev.sh`, which is the **website** and starts
+no game at all. The two run side by side.
+
+<Callout type="warning" title="`play.sh` is loopback HTTP only">
+An HTTPS page may not open a `ws://` socket, so that shape works there and
+nowhere else. Framing a game *inside* the site is a different thing again and
+needs its own registrable domain.
+</Callout>
 
 ### What it gives an operator
 

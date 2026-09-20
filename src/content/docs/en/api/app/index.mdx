@@ -31,6 +31,14 @@ first-party client, and the endpoints assume one.
     The app catalogue, resolving a launch, the scoped player key, and the
     player's own avatar.
   </Card>
+  <Card title="Releases and updating" href="/learn/api/app/releases">
+    How the app learns there is a newer version of itself, resolves a build for
+    the machine it is on, and how CI publishes a release.
+  </Card>
+  <Card title="Publishing packs" href="/learn/api/app/publishing">
+    Claiming a version, uploading, and the namespace and quota rules a publish
+    is checked against.
+  </Card>
 </Cards>
 
 ## Why a separate API exists
@@ -109,21 +117,21 @@ credential — the server's admin password — and the app has none and must nev
 be handed one. An app configured with both simply receives `A2S`.
 </Callout>
 
-## Version checking
+## Version checking and updating
 
 <Endpoint method="GET" path="/api/app/v1/version" auth="Token">
 The newest desktop app there is.
 </Endpoint>
 
-This is **not** an updater endpoint. There is no artifact URL, no signature and
-no checksum, because the app does not update itself — it compares its own
-version against `latest` and, if it is behind, offers to open the download page
-in the user's real browser.
+This one is for a **banner**: a version string and a download page, with no
+artifact URL, no signature and no checksum. The app compares its own version
+against `latest` to decide whether to draw one.
 
-That split is deliberate: a self-updater needs a signing key held by whoever cuts
-releases and a manifest this endpoint would have to serve, and shipping the
-client half against neither would be a switch naming a capability it does not
-have.
+The app also **updates itself**, which is a separate route with a separate
+shape — `/api/app/v1/update/{target}/{arch}/{current}` serves a signed manifest
+for `tauri-plugin-updater`, and the key that signs an artifact is not in this
+database. The two are not interchangeable and the split is deliberate; see
+[Releases and updating](/learn/api/app/releases).
 
 ## Reporting from inside the app
 
@@ -140,6 +148,16 @@ report naming a missing id is a row a moderator has to open to discover is
 meaningless), and it **refuses a duplicate from the same person**.
 
 ## Reviews
+
+<Endpoint method="GET" path="/api/app/v1/reviews">
+What people said about one item, plus the rating breakdown. Authentication is
+**optional** — a mod's reviews are public on the website, and requiring a token
+would make a signed-out app show an empty page where the browser shows fifty.
+</Endpoint>
+
+The breakdown is computed server-side. It is a `groupBy` over an indexed
+column, and doing it in the app would mean fetching every review to draw five
+bars.
 
 <Endpoint method="POST" path="/api/app/v1/reviews/write" auth="Token">
 Leave, edit or vote on a review.

@@ -20,11 +20,18 @@ source:
   - ../game-dev/PLATFORM.md
 ---
 
-**Dot** is The Modding Community's collection of Godot 4 assets: fifty
-addons, a shell launcher, a server tool and five games that exist to run the
-addons together. They are on the site as the
-[Dot assets collection](/co/4-dot-assets) and on GitHub under
-[`modcommunity`](https://github.com/modcommunity).
+**Dot** is The Modding Community's collection of Godot 4 assets: fifty-six
+addons, a shell launcher, a server tool, and eight games and packs that exist
+to run the addons together. They are on the site as the
+[Dot assets collection](/co/4-dot-assets).
+
+**Two GitHub accounts, and the split is a rule rather than an accident.** The
+addons are the organisation's — [`modcommunity/dot-*`](https://github.com/modcommunity)
+— and the games are their author's, under
+[`gamemann`](https://github.com/gamemann). A project's *name* says what it is,
+not who owns it, so `dot-bootstrap`'s `projects.tsv` writes the clone URL out
+per line rather than deriving it. That file is the only copy of the list, and
+`bootstrap --check` fails if it and the disk disagree.
 
 They add the parts of a game platform that are not engine features — accounts,
 avatars, content delivery, netcode, dedicated servers, moderation, timers,

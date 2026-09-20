@@ -1,0 +1,159 @@
+---
+title: dot-entity
+description: The id space every world object shares — an allocator, a table with lookups in both directions, and a record kept beside the node rather than on it.
+navTitle: dot-entity
+order: 15
+badge: new
+keywords:
+  - "entity"
+  - "entity id"
+  - "id"
+  - "handle"
+  - "lookup"
+  - "registry"
+  - "despawn"
+  - "sweep"
+source:
+  - ../game-dev/godot/dot-entity/README.md
+  - ../game-dev/godot/dot-entity/CLAUDE.md
+---
+
+It hands out the ids that every other addon keys its records by, and replaces
+the four incompatible schemes the games invented before it — one of which
+collided in silence.
+
+Requires `dot-core`, and nothing else.
+
+## The bug it exists to make impossible
+
+[dot-combat](/learn/godot/addons/dot-combat) keys hitboxes, health,
+authoritative origins and its `entity_killed` signal by an `entity_id: int`.
+What the family did not have was anywhere that number came from, so every game
+invented one:
+
+| | players | everything else |
+| --- | --- | --- |
+| a 3D deathmatch | the peer id | `1_000_000 + (instance_id % 1_000_000)` |
+| an asymmetric round game | a counter handed out at spawn | — |
+| a movement-timer server | the digits parsed out of a `"u123"` userid | — |
+
+Three id spaces, three hand-written spellings of "is this one a player", and
+one of them collidable: two nodes whose engine instance ids differ by a
+multiple of a million produce the **same** entity id, so the second registers
+its health over the first and the loser simply stops taking damage.
+
+<Callout type="warning" title="Nothing errors, and nothing can">
+That is the shape of the whole class of bug. An id collision is not a crash —
+it is a monster that cannot be killed, and a health record pointing at a node
+that was freed twenty minutes ago.
+</Callout>
+
+## What an id is
+
+```
+id = kind * 1_000_000_000_000 + serial
+```
+
+```gdscript
+var id := DotEntity.make_id(DotEntity.KIND_NPC, 41)
+
+DotEntity.kind_of(id)                          # DotEntity.KIND_NPC
+DotEntity.is_kind(id, DotEntity.KIND_PLAYER)   # false
+DotEntity.describe_id(id)                      # "npc#41"
+```
+
+**An id carries its own kind**, because the question asked most often about one
+is not "which entity" but "what sort of thing" — a kill feed deciding whether
+to write a name, a damage rule deciding whether friendly fire applies, a
+spectator deciding whether this is worth following. Every game answered it with
+a magic constant and a range check; here it is one division.
+
+**A decimal stride rather than a bit layout**, because these numbers are read
+by people far more often than they are decoded by machines. They turn up in
+kill feeds, in `describe()` dumps, in server logs and in bug reports, and
+`2000000000041` is visibly the forty-first NPC.
+
+## The table
+
+```gdscript
+var table := DotEntityTable.new()
+
+var opened := table.open(DotEntity.KIND_PLAYER, body, &"", player.userid)
+if opened.ok:
+    var handle: DotEntityHandle = opened.value
+    combat.register_health(handle.id, health)
+
+# ... on despawn, in this order:
+table.close(handle.id, DotEntityTable.REASON_KILLED)
+combat.forget(handle.id)
+```
+
+`open()` refuses a node that is already an entity, a key that already names
+one, a kind this build does not have, and a null node — each with a
+`DotResult` the caller can branch on. A refusal consumes no serial and leaves
+no half-written index entry.
+
+`close()` does **not** free the node. Whoever put the node in the world takes
+it out; this forgets the bookkeeping. The order above matters: close the handle
+first, so a listener on `closed` can still read where the entity was.
+
+### Both directions, because both are asked constantly
+
+| | |
+| --- | --- |
+| `id_for_node(node)` | a trace returns a `Node` and damage is keyed by id, so this runs once per pellet |
+| `id_for_key(&"u123")` | a game keys its players by a name of its own and dot-combat keys by int |
+| `key_for_id(id)` | the inverse, **looked up and never reconstructed** |
+
+That last row is why `key` is a stored field rather than a formula. The two
+ends of one serialisation are exactly as capable of never meeting as the two
+ends of a wire, and a caller who hashes a name instead produces a number that
+is stable, plausible, and not the one the health and the hitboxes use.
+
+### The sweep
+
+`sweep()` closes every handle whose node was freed without anybody calling
+`close()` — a scene reload, a `queue_free` on a parent, a round reset. It
+returns how many and **warns when that is not zero**, because an orphan is
+recoverable but it means a despawn path somewhere is not calling `close()`.
+
+## The record lives beside the node, never on it
+
+Metadata on a node is invisible to anything that did not put it there, survives
+into a saved scene, and is unreachable the moment the node is freed — and the
+tick an entity's record matters most is the tick it dies on, which is the tick
+its node goes away. dot-props, dot-npc and dot-vehicle each arrived at this
+independently.
+
+`DotEntityHandle` is the **common half only**. A prop is held, an NPC thinks, a
+vehicle has seats: those records keep their own fields and gain a handle.
+
+Everything is dimension-free — a 2D game gets a `Node2D` in the handle and the
+rest works unchanged.
+
+## What is deliberately not here
+
+**No `Node` base class for entities to inherit.** This family keeps state in a
+record beside the node precisely so nothing has to, a mandatory base class is a
+fork point, and we do not own the engine's `Node`.
+
+**No spawner, no catalogue, no budgets.** Those are a real second layer, and
+extracting them is a change across three addons and a dozen consumers. An
+abstract base nobody subclasses is worse than no base at all.
+
+## Who uses it
+
+| | what it replaced | what that cost |
+| --- | --- | --- |
+| game-arena | `1_000_000 + (instance_id % 1_000_000)` for monsters | two monsters a million instance ids apart shared an id, and the loser was unkillable |
+| mg-buses-from-hell | a `_next_entity_id` counter, and no `forget()` anywhere | a `DotHealth` per player who ever joined, pointing at a freed node |
+| game-g2gfast | `"u123"` → `123`, one function doing two jobs | none yet; a loadout filename and a session lookup were riding on a runtime handle |
+| game-playground | a counter in one layer, a **name hash** in another | one player had two ids depending on which modes were switched on |
+
+The two games that do not use it are the two with no combat entity ids at all.
+
+<Related>
+- [dot-combat](/learn/godot/addons/dot-combat) — the addon whose keys these are
+- [dot-props](/learn/godot/addons/dot-props) · [dot-npc](/learn/godot/addons/dot-npc) · [dot-vehicle](/learn/godot/addons/dot-vehicle)
+- [Conventions](/learn/godot/conventions)
+</Related>

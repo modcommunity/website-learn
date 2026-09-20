@@ -1,10 +1,23 @@
 ---
 title: Releases and files
-description: Versions and the files people download — uploads, size limits, scan status, and building releases automatically from a repository.
+description: Versions and the files people download — uploads, size limits, scan status, and mirroring releases automatically from a repository you have proven is yours.
 order: 10
+badge: updated
+keywords:
+  - "release"
+  - "version"
+  - "mirror"
+  - "sync"
+  - "repository"
+  - "GitHub"
+  - "prerelease"
+  - "artifact"
 source:
   - prisma/models/release.prisma
   - prisma/models/file-upload.prisma
+  - prisma/models/content-release-sync.prisma
+  - src/worker/jobs/content/release-sync.ts
+  - src/types/content/repo_ownership.ts
 ---
 
 A **release** is a version of an item: a version string, optional notes, and a
@@ -110,14 +123,124 @@ curl -X PUT https://api.moddingcommunity.com/api/content/asset/10/releases \
   -d '[{ "id": 5, "version": "1.0.1", "files": ["<file-id>"] }]'
 ```
 
-## Building from a repository
+## Mirroring releases from a repository
 
-A mod or asset can declare **build sources**: linked repositories that are built
-automatically into releases. A push produces a release with its files attached,
-with nobody uploading a zip by hand. The queued and finished work appears as
-upload jobs on the item.
+An author publishes `v1.2.0` on their repository with notes, and the item's
+Releases tab here says nothing until they remember to write it twice. A
+**release source** reads the first one and produces the second.
+
+Available on **mods** and **assets**. An item has at most one release source.
+
+### Four switches, and they are not the same size
+
+<Params>
+  <Param name="auto" default="false">
+    Import releases every night. This is the **supporter** perk, and the role is
+    re-read against the configuring account on every pass rather than stamped
+    when the row was written — a lapsed supporter's source stops importing on
+    its own. The **manual pull** in the editor is available to everybody who may
+    edit the item.
+  </Param>
+  <Param name="prereleases" default="false">
+    Mirror prereleases as **hidden** releases rather than skipping them, so
+    turning this on later does not silently leave a hole in your version
+    history.
+  </Param>
+  <Param name="assets" default="false">
+    Also fetch the **files** the forge's CI attached to each release. This is
+    the switch that turns a notes mirror into an artifact pipeline: your own
+    workflow builds the release, and we store what it produced rather than
+    building it ourselves.
+  </Param>
+  <Param name="publish" default="false">
+    Once those files have landed, publish the release as a **signed pack**.
+    Assets only — a pack is addressed `<owner>/<repo>` and mounted into a
+    running game, and a mod has no content id for anything to resolve. On a mod
+    it is inert rather than an error.
+  </Param>
+</Params>
+
+There is deliberately no branch or ref setting. A release is named by its own
+tag; "the releases at a branch" is not a question any forge answers, and a
+field that looks like it narrows something and does not is worse than no field.
+
+### Proving the repository is yours
+
+**Attaching** a repository needs write access on the item and nothing else —
+the same as every other feature that reads a repository URL. Mirroring release
+*notes* is the same: you can already write a release by hand, notification and
+all, so automating something you may already do grants nobody anything.
+
+What needs a proof is the step after. Downloading a repository's release
+**artifacts** and publishing them as a signed pack puts somebody's files into
+players' processes, under your name, signed by this site's key. "I can paste a
+URL" is not a claim to that.
+
+<Callout type="info" title="The proof is an identity match, not a token hunt">
+Unlike [claiming a server](/learn/servers/listing), there is no token to place.
+Link your GitHub account on the Connections tab — the same sign-in flow — and
+we compare GitHub's own durable user id against the repository's owner. For an
+organisation we check its public members instead.
+
+Nothing for you to do, no expiry window, and it survives a rename, because an
+id is not a name.
+</Callout>
+
+Six answers, each one actionable:
+
+| | |
+| --- | --- |
+| `no-link` | No GitHub account is linked to your profile. |
+| `unsupported-host` | GitLab and Codeberg attach and mirror notes fine — but this site has an OAuth link for GitHub only, so there is nothing to match against for publishing. |
+| `not-yours` | The repository's owner is not you. |
+| `org-private` | Your membership of that organisation is private. GitHub answers "not a member" and "cannot see" identically, so we report the one you can act on: make your membership public. |
+| `no-such-owner` | The owner does not exist. |
+| `unreachable` | We could not ask. |
+
+<Callout type="warning" title="Failing to *ask* is not an answer of no">
+Only `unreachable` is transient, and a transient failure leaves an existing
+proof untouched. One bad night at GitHub un-verifying every repository on the
+site is a worse outage than a night with no imports.
+</Callout>
+
+The proof is re-asked when it goes **stale** — a week by default — rather than
+on every pass, because it costs a request to GitHub. The host allow-list and
+the supporter role are local reads and are re-checked every tick.
+
+An **outside collaborator** cannot be verified this way at all. That case is
+enumerated rather than hidden.
+
+### What the nightly pass will and will not do
+
+<Params>
+  <Param name="A never-yet-read source imports its whole backlog silently">
+    Pointing an existing project at its repository would otherwise fire a
+    notification at every follower for every historical tag at once.
+  </Param>
+  <Param name="After that, at most ten releases per item per pass">
+    A release fans out — every follower and every subscriber hears about it —
+    so the rate is bounded even when a repository publishes a burst.
+  </Param>
+  <Param name="A version the item already has is never touched">
+    Whoever wrote it. Mirrored releases carry the tag they came from, which is
+    how a later pass can update its own work and leave a hand-written release
+    alone — and how you can edit a mirrored release's notes without the next
+    pass reverting you.
+  </Param>
+  <Param name="A failure never removes a release">
+    The item keeps the history it has. The reason for the last failure is shown
+    on the source's panel and cleared on success.
+  </Param>
+  <Param name="Removing the source does not delete your releases">
+    They become ordinary hand-authored releases.
+  </Param>
+</Params>
+
+A repository whose top tag has not changed since the last pass costs nothing at
+all, which is what keeps a nightly job over a finished project free.
 
 <Related>
 - [Sources](/learn/content/relations/sources) — where the repo link itself lives
 - [Files through the API](/learn/api/content/files)
+- [Publishing packs](/learn/api/app/publishing) — what a signed pack is, and its namespace rules
 </Related>

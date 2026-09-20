@@ -1,0 +1,153 @@
+---
+title: Publishing packs
+description: The three-step publish a tool performs to put a game content pack on the site — claiming a version, uploading, and saying whether it worked.
+navTitle: Publishing packs
+order: 55
+badge: new
+keywords:
+  - "upload"
+  - "publish"
+  - "pack"
+  - "content id"
+  - "namespace"
+  - "version"
+  - "CLI"
+  - "dot-cloud"
+  - "quota"
+source:
+  - src/app/api/app/v1/packs
+  - src/lib/uploads/publish.ts
+  - src/lib/uploads/policy.ts
+  - src/lib/content/pack-id.ts
+---
+
+<Endpoint method="POST" path="/api/app/v1/packs" auth="Device or CLI token">
+The publishing tool's endpoint. Three actions on one route.
+</Endpoint>
+
+<Callout type="warning" title="Behind a switch that ships off">
+This is the **registry** half of publishing: it hands out `<owner>/<repo>`
+names, takes version numbers permanently, and marks a pack ready. The half that
+moves bytes into the games bucket is not finished, so the whole surface is
+gated on the `uploads.packsEnabled` setting and answers **`503`** until an
+operator turns it on.
+
+`503` rather than `404` on purpose — the endpoint exists and will work, and a
+publishing tool should say "not yet" rather than "no such command".
+</Callout>
+
+## Three actions, because a publish is not one request
+
+`claim` takes the version, then the tool uploads, then `complete` or `fail`
+closes it out. They are one transaction spread over however long an upload
+takes, and the middle step is the slow one — exploding an archive, hashing every
+file, signing a manifest. The version number has to be **ours** before that
+starts.
+
+<Params>
+  <Param name="claim">
+    Takes `version`, `fileCount`, `byteSize`, and either `repoName` or an
+    `assetId` to publish under that asset's name. Returns the row id and the
+    resolved `contentId`. The row is created **pending** and holds the version
+    from this moment.
+  </Param>
+  <Param name="complete">
+    Takes the row `id`, the final `fileCount` and `byteSize`, an optional
+    `manifestSha`, and an optional `contains` bill of materials (at most 200
+    entries). Marks the pack ready.
+  </Param>
+  <Param name="fail">
+    Takes the row `id` and an `error` string. Closes the claim out as failed —
+    and the version stays spent.
+  </Param>
+</Params>
+
+<Callout type="info" title="A tool that dies mid-upload leaves a pending row">
+That is the correct outcome, not a leak. The alternative is handing that version
+number to the next attempt while the first is still uploading to it — two
+publishes doing the same work, one of them throwing it away, and the loser has
+already spent the storage.
+</Callout>
+
+## What a content id is
+
+`<owner>/<repo>`, and it is a **path component in the player's client**: a pack
+mounts at `res://<mount_root>/<content_id>/<version>/`, and its manifest is
+fetched from `{base}/{content_id}/manifest.json`.
+
+Each segment is at most 64 characters of lowercase alphanumerics, `-` and `_` —
+and must **equal its own slug**, which rules out `_foo`, `foo_`, `a__b` and
+`__x__`. Those pass a plain charset test and are then refused by every client
+that tries to mount them.
+
+<Callout type="info" title="Why the separator is a slash and never a flattened name">
+`_` and `-` are both legal inside an owner and inside a name, so `alice_bob` is
+ambiguous: it is `alice_bob` + `x` and also `alice` + `bob_x`. That is not
+untidy, it is a security bug —
+[dot-cloud](/learn/godot/addons/dot-cloud) scopes a publisher's signing key with
+a glob over the id, so a key scoped `alice_*` would be entitled to sign for the
+member called `alice_bob`. A `/` cannot occur inside either half, so `alice/*`
+is exact.
+</Callout>
+
+The owner segment `tmc` is reserved for first-party content, and staff are the
+only callers who may publish into it.
+
+## The gates, in the order they are asked
+
+Shape, then ownership, then collision, then quota. Telling somebody they are out
+of space for a version number that was already taken sends them to delete
+something they did not need to.
+
+| Denial | What it means |
+| --- | --- |
+| `BAD_ID` | The id or the version cannot survive being a path component. |
+| `NOT_YOUR_NAMESPACE` | That `<owner>/<repo>` belongs to somebody else. |
+| `VERSION_TAKEN` | That exact version has already been published. |
+| `TOO_MANY_FILES` | Over `uploads.maxFilesPerVersion` for your role. |
+| `TOO_MANY_VERSIONS` | Over `uploads.maxVersions` for that content id. |
+| `OUT_OF_SPACE` | Over `uploads.maxBytesPerUser` for your role. |
+
+<Callout type="warning" title="A version is never republished">
+Not "should not" — **cannot**. Godot has no API to unmount a resource pack, so
+every version gets its own path and nothing is ever replaced. Reusing a number
+would mean two different sets of bytes answering to one mount path on machines
+that have already cached the first.
+</Callout>
+
+Two details worth knowing about the quotas. `maxVersions` counts rows in **every
+state**, including failed ones — a failed row is still holding its version
+number, and not counting it would let somebody mint versions by failing.
+`maxBytesPerUser` counts **ready** rows only: a pending row has stored nothing
+yet and a failed one never will, so charging either would bill for bytes nobody
+is holding.
+
+The same limits are asked **again** on `complete`, because the numbers on a
+claim are a promise and the numbers on a complete are what actually landed.
+
+## Credentials
+
+A **CLI credential**, minted by the same device grant the desktop app uses: the
+member approves a named credential in a real browser and revokes it from the
+same Account page. `allowCli` is opt-in across the whole app API, and this is
+the route that opts in.
+
+An ordinary **device** credential is accepted too — that is how the site's own
+upload form reaches the same code. There is deliberately no second publish path:
+the namespace check and every quota live in one place, and a second entry point
+that skipped them would make both advisory.
+
+<Callout type="info" title="Publishing under an asset">
+Pass `assetId` instead of `repoName` and the pack publishes under that asset's
+name — but the asset has to be **yours**. Without that check an asset id would
+be enough to publish into somebody else's namespace. If the asset has no repo
+name yet, the first publish claims one derived from it and writes it down;
+claiming it is what stops two of your assets interleaving their versions under
+one mount path.
+</Callout>
+
+<Related>
+- [dot-cloud](/learn/godot/addons/dot-cloud) — the client that mounts what this publishes
+- [Releases and files](/learn/content/relations/releases) — including mirroring a repository's releases
+- [App authentication](/learn/api/app/auth) — the device grant that mints the credential
+</Related>

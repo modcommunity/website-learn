@@ -1,0 +1,163 @@
+---
+title: dot-log
+description: The sink layer for dot-core's DotLog — a rotating file, a memory ring, syslog, a database table or a hosted collector, with the gating, redaction and batching done once in front of all of them.
+navTitle: dot-log
+order: 12
+badge: new
+keywords:
+  - "logging"
+  - "log"
+  - "sink"
+  - "syslog"
+  - "Loki"
+  - "Datadog"
+  - "Seq"
+  - "OpenTelemetry"
+  - "Sentry"
+  - "redaction"
+  - "rate limit"
+source:
+  - ../game-dev/godot/dot-log/README.md
+  - ../game-dev/godot/dot-log/CLAUDE.md
+---
+
+Every other addon in the collection already calls `DotLog`. This one decides
+where those records actually go.
+
+Requires `dot-core`.
+
+```gdscript
+var router := DotLogRouter.new()
+router.set_context({"service": "arena", "env": "prod", "host": "eu-1"})
+
+router.targets.append(DotLogTargetFile.new("user://logs", "arena"))
+router.targets.append(DotLogTargetMemory.new(512))   # the console, and bug reports
+
+add_child(router)                                    # starts on _ready
+```
+
+<Callout type="info" title="`DotLog` is the front door and does not change">
+Roughly four hundred and fifty files across the family call `DotLog.info(...)`,
+and none of them changes. dot-log attaches as a **sink** and takes over the
+other half of the question: what happens to a record after it has been emitted.
+There is no autoload — you place a `DotLogRouter` where you want one.
+</Callout>
+
+## Why this is an addon and not four lines of `FileAccess`
+
+A dedicated server's log is an operational artefact: admins grep it, moderation
+decisions are justified from it, and on a headless box it is the only interface
+there is. Once you are running more than one server, the useful questions stop
+being answerable from a file on one machine.
+
+Everything that makes sending them somewhere *safe* rather than merely possible
+is the same for every destination, and that is what this addon is:
+
+<Params>
+  <Param name="A flood must not become an outage">
+    The log a server produces under attack is not the log it produces normally:
+    one malformed packet in a loop turns a line a second into ten thousand,
+    all identical. dot-log collapses them into one line and a count,
+    rate-limits per channel, and says out loud how many it suppressed.
+  </Param>
+  <Param name="A queue must be bounded">
+    A collector goes away, the game keeps logging, and forty minutes later the
+    server is killed for running out of memory — by its own logging. Every
+    queue has a bound in records *and* in bytes, a drop policy, and a record of
+    what it dropped.
+  </Param>
+  <Param name="Secrets must not leave">
+    A file on a machine an admin owns can hold a session ticket; a hosted
+    service with a web UI and ninety days of retention cannot, and neither can
+    the bug report somebody pastes into a public tracker. Redaction happens
+    once, in front of every target.
+  </Param>
+  <Param name="A dead collector must not cost frames">
+    One request in flight, a circuit that opens after repeated failures, and a
+    batch that can never be accepted is dropped rather than retried for ever
+    behind every record queued after it.
+  </Param>
+</Params>
+
+## Levels are a promise, not a volume knob
+
+| Level | Means | Who is expected to act |
+| --- | --- | --- |
+| `TRACE` | Per-frame, per-packet, per-entity detail | Nobody. You are debugging right now. |
+| `DEBUG` | A decision or a state transition | You, later, reading it back. |
+| `INFO` | Something an admin would want kept | Nobody. It is the record. |
+| `WARN` | Recoverable, and somebody should look eventually | Somebody, eventually. |
+| `ERROR` | The operation failed | Somebody, today. |
+| `FATAL` | The process cannot continue | Somebody, now. |
+
+The value of `ERROR` is entirely in its never having meant *"a player typed an
+unknown command"*.
+
+<Callout type="warning" title="`FATAL` is reserved, and it is a promise">
+It means boot failed, the listener could not open, the state the process needs
+is gone — not "a very bad error". The promise is that a shutdown follows, and
+it is worth something only because it is made rarely: there is exactly **one**
+`FATAL` in the whole family. dot-log keeps its side of it and **flushes every
+target the moment one arrives**, because a record still sitting in a buffer when
+the process goes is a record nobody will ever read. `log test fatal` is refused
+for the same reason.
+</Callout>
+
+The level is in every line, in every format, always:
+
+```
+2026-09-14T04:59:08.051Z inf server   booting hostname="arena" port=27015 slots=16
+2026-09-14T04:59:09.114Z WRN vote     could not open the vote yet reason=time
+```
+
+Three characters at a fixed width, so the message column lines up in a wall of
+them and the eye finds the upper-case ones without reading.
+
+In the database it is **two columns** — `level` as an integer to sort and
+filter on, `level_name` beside it to read. Sorting on the name alone gives
+`ERROR < FATAL < INFO < WARN`: alphabetical, and almost exactly the wrong
+order.
+
+## Where records can go
+
+| Target | For |
+| --- | --- |
+| `DotLogTargetFile` | The rotating file every dedicated server has. Human format or JSON lines. |
+| `DotLogTargetMemory` | A ring buffer: the in-game console, `status` output, bug reports, and the breadcrumbs attached to a crash. |
+| `DotLogTargetSyslog` | RFC 5424 over UDP or TCP. Already listening on every Linux host, and needs no account. |
+| `DotLogTargetSql` | A table, through any driver with `execute(sql, params)`. Batched inserts, a retention delete, and a tail query. |
+| `DotLogTargetHttp` | Everything hosted, with a `DotLogFormat` deciding the bytes. |
+
+## Wire formats
+
+| Format | Notes |
+| --- | --- |
+| `DotLogFormatNdjson` | One JSON object per line. What every agent, pipeline and hand-written receiver accepts. **Start here.** |
+| `DotLogFormatLoki` | Grafana Loki's push API, with labels kept deliberately low-cardinality. |
+| `DotLogFormatElastic` | Elasticsearch and OpenSearch through `_bulk` — and it checks the body, because that API answers `200` when it has rejected everything. |
+| `DotLogFormatSplunk` | The HTTP Event Collector. |
+| `DotLogFormatDatadog` | The v2 log intake. |
+| `DotLogFormatSeq` | Seq, in CLEF. The one on this list a community can self-host in an afternoon. |
+| `DotLogFormatGelf` | Graylog's GELF over HTTP. |
+| `DotLogFormatOtlp` | OpenTelemetry logs over OTLP/HTTP. Point it at a collector and fan out from there. |
+| `DotLogFormatSentry` | Error tracking rather than log collection: only the serious records become events, and the ring buffer supplies the breadcrumbs. |
+
+Adding another is one small file — build the body, name the path and the
+header, say what a successful response looks like.
+
+## The `log` command
+
+`DotLogCommands` has the shape
+[dot-console](/learn/godot/addons/dot-console)'s `DotConsoleBridge` duck-types,
+so it plugs into a client or server console without dot-log depending on
+either:
+
+```gdscript
+console.add_source(DotConsoleBridge.wrap(DotLogCommands.new(router), "log"))
+```
+
+<Related>
+- [dot-core](/learn/godot/addons/dot-core) — where `DotLog` itself lives
+- [dot-console](/learn/godot/addons/dot-console)
+- [dot-server](/learn/godot/addons/dot-server) — the one process with a log worth tailing
+</Related>

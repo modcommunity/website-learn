@@ -1,0 +1,187 @@
+---
+title: Releases and updating
+description: How the desktop app learns there is a newer version of itself, how it resolves an installable build for the machine it is on, and how CI publishes a release.
+navTitle: Releases and updating
+order: 50
+badge: new
+keywords:
+  - "updater"
+  - "update"
+  - "tauri"
+  - "manifest"
+  - "signature"
+  - "native build"
+  - "install"
+  - "CI"
+  - "release"
+source:
+  - src/app/api/app/v1/version
+  - src/app/api/app/v1/update/[target]/[arch]/[current]
+  - src/app/api/app/v1/apps/[id]/build
+  - src/app/api/app/v1/releases
+  - src/types/app-api/contract.ts
+---
+
+Four endpoints, and they answer four different questions that are easy to
+confuse:
+
+| | Question |
+| --- | --- |
+| [`/version`](#is-there-a-newer-app) | Is there a newer app? — for a banner. |
+| [`/update/…`](#give-me-the-newer-app) | Give me the newer app. — for the updater. |
+| [`/apps/:id/build`](#where-is-this-games-build) | Where is *this game's* build, for this machine? |
+| [`/releases`](#publishing-a-release) | Here is a new app release. — for CI, not for clients. |
+
+## Is there a newer app?
+
+<Endpoint method="GET" path="/api/app/v1/version" auth="Token">
+The newest desktop app there is.
+</Endpoint>
+
+A version string and a download page. No artifact URL, no signature and no
+checksum — this is the endpoint behind a *banner*, and the app compares its own
+version against `latest` to decide whether to draw one.
+
+## Give me the newer app
+
+<Endpoint method="GET" path="/api/app/v1/update/{target}/{arch}/{current}">
+The updater manifest. **No authentication.**
+</Endpoint>
+
+The app updates itself, and this is the route that lets it. The path segments
+are the placeholders `tauri-plugin-updater` substitutes — `{{target}}`,
+`{{arch}}` and `{{current_version}}` — and the body is the manifest that plugin
+parses.
+
+<Callout type="info" title="The shape is Tauri's, not ours">
+Inventing a shape here would mean writing the client half by hand, and the
+client half is the one whose bugs are silent: an updater that quietly stops
+checking looks exactly like an updater with nothing to report.
+</Callout>
+
+<Params>
+  <Param name="204 means you are current">
+    Not a `200` carrying the version you already have. The plugin treats
+    anything that is not a `204` as a manifest it should act on, so answering an
+    up-to-date client with a manifest naming an older build is how you downgrade
+    somebody who is already ahead.
+  </Param>
+  <Param name="It is unauthenticated, on purpose">
+    The answer is the same for everybody and is public the moment a release is
+    published — and the normal state for an app that has just been installed is
+    *signed out*. What bounds the route is not a token: nothing it names is
+    installable without a signature, and the key that makes one is not in this
+    database.
+  </Param>
+  <Param name="There is no rate limit, also on purpose">
+    Every other route in this family has one. The plugin checks once per launch,
+    and a ceiling reached by an office behind a single address would answer a
+    real client with a `429` that it surfaces as "update check failed" — a
+    failure whose remedy is invisible to the person it happens to. The route
+    reads one indexed row and one cached setting.
+  </Param>
+  <Param name="Never cached">
+    `Cache-Control: no-store`. The window between publishing a release and it
+    being offered should be zero, and an edge holding a stale manifest is a
+    release nobody receives with nothing to look at.
+  </Param>
+</Params>
+
+## Where is this game's build?
+
+<Endpoint method="GET" path="/api/app/v1/apps/{id}/build?platform=LINUX_X64">
+Resolve **one** installable build, for the machine asking. Authentication is
+**optional**.
+</Endpoint>
+
+The install half of [`/play/launch`](/learn/api/app/play#resolving-a-launch),
+and built the same way for the same reasons.
+
+<Params>
+  <Param name="platform" type="enum" required>
+    The machine asking. There is deliberately no "all of them" — the whole
+    reason this is a second request is that a device receives one download
+    address, for itself.
+  </Param>
+  <Param name="`null` is the whole refusal vocabulary">
+    The app is hidden, the build is disabled, nothing is published for that
+    platform, or the row is malformed. None of them changes what the device does
+    next, and naming which one would tell a caller which column to probe.
+  </Param>
+  <Param name="Every decision is made server-side">
+    The app sends an id and its own platform. It never sends a URL and never
+    chooses a file.
+  </Param>
+</Params>
+
+The catalogue at [`/apps`](/learn/api/app/play#the-app-catalogue) says a build
+*exists*; this says where it is. A device browsing the app list must not come
+away holding download addresses for every game on every machine it is not.
+
+<Callout type="info" title="`installable` narrows the catalogue">
+`/apps?installable=true` asks for only the games this app could actually put on
+disk, so a launcher does not draw an install button it will then have to
+retract.
+</Callout>
+
+## Publishing a release
+
+<Endpoint method="POST" path="/api/app/v1/releases" auth="Shared secret">
+Publish one desktop release — every platform at once. **Called by CI, not by
+clients.**
+</Endpoint>
+
+The step that used to be a person running a script per platform and then
+remembering to promote. The release workflow calls this once, after it has
+uploaded the artifacts to GitHub, and the app can install the release from the
+moment it returns.
+
+<Params>
+  <Param name="version" type="string" required>
+    Dotted numeric, optionally with a `-pre` or `+build` suffix. The app
+    **compares** this, and one it cannot order is one it never offers.
+  </Param>
+  <Param name="notes" type="string">
+    Shown in the app before it installs. Plain text.
+  </Param>
+  <Param name="artifacts" type="array" required>
+    One to sixteen. Each names a target, an architecture, a URL and the
+    signature the updater verifies.
+  </Param>
+  <Param name="promote" type="boolean" default="false">
+    Also move the `app.version.latest` setting, which is what actually offers
+    the release to anybody. `false` publishes the artifacts and leaves them
+    unreachable — the right shape for a pre-release somebody wants staged.
+  </Param>
+</Params>
+
+### Why a shared secret, and why it 404s
+
+The caller is a CI job on the internet. It cannot be an `/api/internal/` route —
+nginx refuses those on both public server blocks, which is right for a
+container-to-container hook and fatal for one called from GitHub — and it cannot
+be a member session, because there is no member.
+
+<Callout type="warning" title="Unset means the route does not exist">
+`404`, not `401`, and it **fails closed**. An unconfigured publishing hook costs
+a manual release; an open one lets anybody point every installed copy of the app
+at a binary of their choosing. A bad token gets the same `404`: this route's
+existence is not something an unauthenticated caller needs confirmed.
+</Callout>
+
+The comparison against the secret is constant-time. `===` on a secret leaks its
+length and its matching prefix through timing.
+
+### Every artifact moves at once
+
+Every artifact and the `app.version.latest` setting are written in **one
+transaction**. Publishing platform by platform and promoting afterwards has a
+window in it where the setting names a version some machines have no artifact
+for, and what those users get is being told there is an update and then handed a
+`404`.
+
+<Related>
+- [Play and avatars](/learn/api/app/play) — resolving a launch, and the app catalogue
+- [Publishing packs](/learn/api/app/publishing) — the *other* publish: game content, not the app
+- [Releases and files](/learn/content/relations/releases) — an item's own versions
+</Related>

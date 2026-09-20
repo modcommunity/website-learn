@@ -1,6 +1,6 @@
 ---
 title: The addons
-description: All fifty Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
+description: All fifty-six Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
 order: 40
 badge: updated
 keywords:
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-Fifty addons that work together and, apart from `dot-core`, work independently.
+Fifty-six addons that work together and, apart from `dot-core`, work independently.
 Each is its own repository under
 [`modcommunity`](https://github.com/modcommunity), each ships one
 `addons/<name>/` folder, and each has its own headless test suite.
@@ -27,11 +27,12 @@ Everything in an *optionally* column is duck-typed or found through
 those addons names another's identifiers — because in GDScript a script that mentions a
 missing `class_name` fails to parse and takes everything referencing it down with it.
 
-Seven are the exception that proves the rule, and each says so: `dot-npc-ai` and
+Eight are the exception that proves the rule, and each says so: `dot-npc-ai` and
 `dot-npc-ai-director` need `dot-npc`; `dot-player-controller`, `dot-player-char`
-and `dot-player-class` need `dot-player`; and `dot-server-query` and
+and `dot-player-class` need `dot-player`; `dot-server-query` and
 `dot-server-security` need `dot-server`, because each one *is* a piece of a
-server rather than something a server optionally consults.
+server rather than something a server optionally consults; and `dot-game` needs
+`dot-server` and `dot-net` together, because it is the wiring *between* them.
 </Callout>
 
 ## The foundation
@@ -39,6 +40,8 @@ server rather than something a server optionally consults.
 | | Depends on | |
 | --- | --- | --- |
 | [dot-core](/learn/godot/addons/dot-core) | — | Logging, platform capabilities, paths, configurable node references, layered config, frame-budgeted jobs, multiplayer transports, HTTP. |
+| [dot-log](/learn/godot/addons/dot-log) | dot-core | Where `DotLog`'s records actually go: a rotating file, a memory ring, syslog, a database table or a hosted collector — with flood collapsing, bounded queues and redaction done once in front of all of them. |
+| [dot-entity](/learn/godot/addons/dot-entity) | dot-core | The id space every world object shares. An allocator whose ids carry their own kind, lookups in both directions, and a record kept beside the node rather than on it. |
 
 ## The player
 
@@ -71,6 +74,7 @@ are. Every game in the collection uses these.
 | --- | --- | --- |
 | [dot-net](/learn/godot/addons/dot-net) | dot-core | Netcode: tick sync, a bit-packed wire format, state replication, snapshot interpolation, client-side prediction, lag compensation, interest management. |
 | [dot-server](/learn/godot/addons/dot-server) | dot-core, *optionally* dot-auth + dot-cloud | The dedicated server: console, RCON, queries, permissions, moderation, votes, modules, dynamic game switching. |
+| [dot-game](/learn/godot/addons/dot-game) | dot-core, dot-server, dot-net | The server-side wiring every game repeated: netcode, a bridge, identity, services, a roster, one authoritative tick, and a teardown in reverse. Subclass `DotGameModule` and write only what is yours. |
 | [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *optionally* dot-stats | The server's side of a server query: DQP — challenged, sectioned, conditionally pollable, reachable from a browser — and the whole of A2S, answered from one snapshot. |
 | [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *optionally* dot-moderation + dot-chat + dot-auth | Hardening as configuration: sliding-window rules that escalate warn to gag to kick to ban, anti-cheat that separates proof from suspicion, and external ban feeds. Ships in dry run. |
 | [dot-browser](/learn/godot/addons/dot-browser) | dot-core | The other half of those queries: a client. DQP over UDP, the same as JSON over a WebSocket, and A2S — behind a list model with sources, filters and favourites. |

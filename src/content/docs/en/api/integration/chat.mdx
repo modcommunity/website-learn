@@ -1,9 +1,18 @@
 ---
 title: Chat relay
-description: Relaying in-game chat into the site, and injecting the site's chat back into the game — the two halves of the loop.
+description: Relaying in-game chat into the site, injecting the site's chat back into the game, and telling the site which console commands your server accepts.
 order: 20
+badge: updated
+keywords:
+  - "relay"
+  - "chat"
+  - "commands"
+  - "slash commands"
+  - "composer"
 source:
   - docs/api/integration-api.md
+  - src/app/api/integration/v1/chat/commands
+  - src/types/integration/ingest.ts
 ---
 
 Without a relay, a party's conversation sits in a room none of the players in
@@ -86,6 +95,55 @@ coming from the website rather than from a player standing next to them.
 
 `muted: true` means the author was not in the party when they wrote it. The site
 renders those dimmed, and you may want to skip or de-emphasise them too.
+
+## Telling the site what commands you accept
+
+<Endpoint method="POST" path="/api/integration/v1/chat/commands" auth="Integration" scope="CHAT_WRITE">
+What this server accepts as console commands, so the site's chat composer can
+offer them when a member types `/`. **Server-scoped credentials only.**
+</Endpoint>
+
+The list comes from the server because only the server has it. A member typing
+`/` into a relayed game chat is typing at a machine we do not control, whose
+command table depends on which game is loaded and which modules an operator
+installed — and a hard-coded list here would be stale the first time either
+changed.
+
+<Params>
+  <Param name="commands" type="array" required>
+    Up to 256. Each has a `name` (one word, no prefix on it), and optionally
+    `usage` (`<map_id>`, `[reason]`), a one-line `description`, `chatAllowed`,
+    and `permission`.
+  </Param>
+  <Param name="prefix" type="string">
+    The prefix members type in front of them — **for the menu's label only**.
+    The site's own trigger is `/` and stays `/` whatever this says: it is what
+    a member's keyboard does, not what your server parses. A server whose
+    prefix is `!` still gets a `/` menu here and receives the line it expects,
+    because the relay writes the prefix on the way in.
+  </Param>
+</Params>
+
+<Callout type="warning" title="Nothing you send here is a permission">
+Your server decides what a given member may run, every time, against its own
+admin file. `permission` and `chatAllowed` are **text for the menu**. A report
+claiming a command needs nothing therefore grants nothing — and that is the
+property that makes accepting this list from an external program safe at all.
+</Callout>
+
+The payload is **absolute, not incremental**: it replaces what we hold. A
+command an operator removed has to disappear from the menu, and a merge has no
+way to say so. An empty list is how a server turns the menu off.
+
+Two things happen on our side that are worth knowing. Names are deduplicated
+case-insensitively before the write, so a payload naming `map` and `Map` does
+not fail the whole batch — it would otherwise read to an operator as "the site
+refuses my command list" rather than "you listed one twice". And the replace is
+one transaction, so a server reporting while a member has the menu open can
+never show them an empty list followed by a full one.
+
+An app-scoped credential is refused with a `403`: it covers every server the
+app has, and a command list posted under one would have no server to belong to.
 
 ## Retention
 
