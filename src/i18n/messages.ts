@@ -70,6 +70,23 @@ export const en = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Open chats',
+        /*
+         * `chatLabel` is the noun on the phone stack's row, where `chat` — a
+         * verb phrase, because it is the aria-label of an unlabelled square —
+         * would sit beside "Play" and "Console" reading like an instruction.
+         * It is the one dock string with no counterpart in city, which has no
+         * labelled chat control to name.
+         */
+        chatLabel: 'Chat',
+        /*
+         * The phone launcher's collapsed/expanded toggle. Translated, unlike
+         * `play` and `console` above: those two stay English because city fills
+         * them under `en` alone and the same button must not read differently
+         * between the shells — this control does not exist over there yet, so
+         * there is nothing to stay in step with.
+         */
+        open: 'Open the play menu',
+        close: 'Close the play menu',
         signIn: 'Sign in',
     },
 }
@@ -103,6 +120,9 @@ const es: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Abrir los chats',
+        chatLabel: 'Chats',
+        open: 'Abrir el menú de juego',
+        close: 'Cerrar el menú de juego',
         signIn: 'Iniciar sesión',
     },
 }
@@ -133,6 +153,9 @@ const fr: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Ouvrir les discussions',
+        chatLabel: 'Discussions',
+        open: 'Ouvrir le menu de jeu',
+        close: 'Fermer le menu de jeu',
         signIn: 'Se connecter',
     },
 }
@@ -163,6 +186,9 @@ const de: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Chats öffnen',
+        chatLabel: 'Chats',
+        open: 'Spielmenü öffnen',
+        close: 'Spielmenü schließen',
         signIn: 'Anmelden',
     },
 }
@@ -190,6 +216,9 @@ const ru: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Открыть чаты',
+        chatLabel: 'Чаты',
+        open: 'Открыть игровое меню',
+        close: 'Закрыть игровое меню',
         signIn: 'Войти',
     },
 }
@@ -217,6 +246,9 @@ const nl: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Chats openen',
+        chatLabel: 'Chats',
+        open: 'Speelmenu openen',
+        close: 'Speelmenu sluiten',
         signIn: 'Inloggen',
     },
 }
@@ -244,6 +276,9 @@ const ja: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'チャットを開く',
+        chatLabel: 'チャット',
+        open: 'プレイメニューを開く',
+        close: 'プレイメニューを閉じる',
         signIn: 'ログイン',
     },
 }
@@ -271,6 +306,9 @@ const zh: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: '打开聊天',
+        chatLabel: '聊天',
+        open: '打开游戏菜单',
+        close: '关闭游戏菜单',
         signIn: '登录',
     },
 }
@@ -298,6 +336,9 @@ const pt: DeepPartial<Messages> = {
         playAria: 'Play, open the play center',
         console: 'Console',
         chat: 'Abrir conversas',
+        chatLabel: 'Conversas',
+        open: 'Abrir o menu de jogo',
+        close: 'Fechar o menu de jogo',
         signIn: 'Entrar',
     },
 }

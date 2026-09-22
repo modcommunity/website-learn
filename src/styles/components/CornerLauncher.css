@@ -142,6 +142,41 @@
 }
 
 /*
+ * The phone stack's rows — see the `sm:hidden` coat in
+ * `src/components/CornerLauncher.tsx`.
+ *
+ * A rise rather than a fade alone: the rows come OUT OF the button that opened
+ * them, so the motion has to say where they came from. They are staggered by
+ * 45ms from the bottom up (the delay is inline, one per row, because it is a
+ * property of the row's position in the stack rather than of the class), which
+ * is short enough that the last row has landed before a thumb has moved off the
+ * toggle.
+ *
+ * `both` fills the start frame backwards, so a row with a 90ms delay is
+ * invisible for those 90ms instead of flashing at full opacity and then
+ * starting its own animation.
+ *
+ * Nothing animates on the way OUT: the rows are unmounted on close, and holding
+ * them in the DOM for an exit transition would mean a stack that still takes
+ * taps after the press that dismissed it.
+ */
+.corner-launcher-item {
+    animation: corner-launcher-rise 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes corner-launcher-rise {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/*
  * Removed outright, not paused. A parked band is a faint permanent gradient
  * down one side of the button, which is worse than no effect at all — and
  * unlike the dashed ring it replaced, there is nothing here worth keeping
@@ -150,5 +185,15 @@
 @media (prefers-reduced-motion: reduce) {
     .corner-launcher-sheen {
         display: none;
+    }
+
+    /*
+     * The rows still appear, they just appear AT ONCE. Unlike the sheen this
+     * animation is not decoration — it is the only thing tying the stack to the
+     * button it came from — but a reader who has asked for stillness gets the
+     * end state directly rather than a slower version of the trip.
+     */
+    .corner-launcher-item {
+        animation: none;
     }
 }

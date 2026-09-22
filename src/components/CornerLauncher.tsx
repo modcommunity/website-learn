@@ -1,4 +1,5 @@
-import { MessageSquare, Play, Terminal } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { MessageSquare, Play, Terminal, X } from 'lucide-react'
 import { isLocale, localizeUrl, DEFAULT_LOCALE } from '../i18n/config'
 import { getT } from '../i18n/t'
 import { mainUrl } from '../lib/site'
@@ -41,6 +42,31 @@ import { useSignedIn } from '../lib/auth-hint'
  * screens with the least room for it — and city labels the same one and only
  * one.
  *
+ * BELOW `sm` THE WHOLE BLOCK IS ONE ROUND BUTTON that opens the three controls
+ * as a stack above it, and that is the one place this copy diverges from the
+ * other two shells. 17rem of card is a fifth of a 390px screen standing over the
+ * prose on every route — a reader scrolling a doc page on a phone meets it
+ * against the text rather than beside it, and the two squares land under the
+ * thumb that is trying to scroll. Collapsed it is a 3.5rem target that hides
+ * nothing, and the stack it opens can afford WORDS, because they are only on
+ * screen while a reader is looking at them: the objection above is to a label
+ * that is permanent, not to one that is asked for. **city and processing want
+ * the same treatment** — city's card already collapses its friends LIST on a
+ * phone, so the row is all that is left to do.
+ *
+ * Both coats are in the DOM and Tailwind picks between them (`sm:hidden` /
+ * `hidden sm:flex`) rather than a `matchMedia` in the component. This island is
+ * `client:idle`: a JS-chosen variant would render the wide card into the HTML
+ * and swap it for the round button whenever the browser got round to hydrating,
+ * which is a visible jump on the slowest devices — the ones that get the round
+ * button.
+ *
+ * VIEWPORT VARIANTS ARE CORRECT HERE, unlike everywhere else in this repo (see
+ * CLAUDE.md, "Responsive layout"). The rule there is that `<main>`'s width and
+ * the viewport's differ by the sidebar, so a viewport breakpoint fires at the
+ * wrong moment. This block is `fixed` and lives OUTSIDE `<main>`, in no
+ * container at all: the space it has to lay out in really is the viewport.
+ *
  * Hydrated (`client:idle` in `Layout.astro`), which it did not used to be: the
  * signed-in coat is read from the cookie after mount. First paint is the
  * signed-out state on both server and client, so there is nothing for hydration
@@ -53,6 +79,38 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
     const t = getT(locale)
     const loc = isLocale(locale) ? locale : DEFAULT_LOCALE
     const signedIn = useSignedIn()
+
+    /* The phone stack's open state. It starts closed on every page: this is a
+       shell control rather than a document, and an Astro build is a full page
+       load per navigation, so there is nothing to carry across anyway. */
+    const [open, setOpen] = useState(false)
+    const dial = useRef<HTMLDivElement>(null)
+
+    /* Escape, and a press anywhere else, close it — the two ways out every
+       transient overlay on this site offers (`DocsSearch`, the nav drawer).
+       `pointerdown` rather than `click` so the stack is gone by the time a tap
+       on the page underneath lands, and both listeners are attached only while
+       it is open: a closed launcher costs the document nothing. */
+    useEffect(() => {
+        if (!open) return
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setOpen(false)
+        }
+
+        const onDown = (e: PointerEvent) => {
+            const el = dial.current
+            if (el && !el.contains(e.target as Node)) setOpen(false)
+        }
+
+        document.addEventListener('keydown', onKey)
+        document.addEventListener('pointerdown', onDown)
+
+        return () => {
+            document.removeEventListener('keydown', onKey)
+            document.removeEventListener('pointerdown', onDown)
+        }
+    }, [open])
 
     /* Every destination belongs to website-city, not to this build — so they go
        through `mainUrl` as well as `localizeUrl`, exactly as every non-docs href
@@ -72,16 +130,120 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
         'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition'
     const greyed = `${square} border border-border bg-surface-secondary text-muted hover:text-foreground`
 
+    /* The stack's rows: the same three destinations at thumb size, labelled.
+       `h-11` is the 44px minimum a touch target wants; the squares above are 36
+       because a mouse is aiming at them. */
+    const pill =
+        'corner-launcher-item flex h-11 items-center justify-end gap-2.5 rounded-full px-4 text-sm font-semibold shadow-lg transition'
+    const pillQuiet = `${pill} border border-border bg-background/95 text-foreground backdrop-blur`
+
     return (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-end gap-2">
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
             {/*
+             * THE PHONE COAT. `flex-col-reverse` so the DOM reads Play →
+             * Console → Chat while the screen shows Play at the BOTTOM, against
+             * the button that opened it: the order a screen reader wants and the
+             * order a thumb wants are opposite here, and only one of them is
+             * expressible in markup.
+             */}
+            <div
+                ref={dial}
+                className="pointer-events-auto flex flex-col items-end gap-2 sm:hidden"
+            >
+                {open && (
+                    <div
+                        id="corner-launcher-stack"
+                        className="flex flex-col-reverse items-end gap-2"
+                    >
+                        <a
+                            href={play}
+                            data-umami-event="docs_launcher"
+                            data-umami-event-half="play"
+                            className={`${pill} corner-launcher-play relative overflow-hidden text-white`}
+                            style={{ animationDelay: '0ms' }}
+                        >
+                            <span
+                                aria-hidden
+                                className="corner-launcher-sheen"
+                            />
+                            <Play className="h-4 w-4 shrink-0 fill-current" />
+                            {t('dock.play')}
+                        </a>
+
+                        <a
+                            href={term}
+                            data-umami-event="docs_launcher"
+                            data-umami-event-half="console"
+                            title={signedIn ? undefined : t('dock.signIn')}
+                            className={pillQuiet}
+                            style={{ animationDelay: '45ms' }}
+                        >
+                            <Terminal
+                                className={`h-4 w-4 shrink-0 ${signedIn ? 'text-accent' : 'text-muted'}`}
+                            />
+                            {t('dock.console')}
+                        </a>
+
+                        <a
+                            href={chat}
+                            data-umami-event="docs_launcher"
+                            data-umami-event-half="chat"
+                            title={signedIn ? undefined : t('dock.signIn')}
+                            className={pillQuiet}
+                            style={{ animationDelay: '90ms' }}
+                        >
+                            <MessageSquare
+                                className={`h-4 w-4 shrink-0 ${signedIn ? 'text-accent' : 'text-muted'}`}
+                            />
+                            {t('dock.chatLabel')}
+                        </a>
+                    </div>
+                )}
+
+                {/*
+                 * The one button. It carries the PLAY glyph rather than a plus
+                 * or a chevron, because a reader has to be able to tell what is
+                 * folded up in the corner without opening it — and turns into a
+                 * close cross once it is open, which is the only state where the
+                 * glyph would be lying about what the press does.
+                 */}
+                <button
+                    type="button"
+                    onClick={() => setOpen((o) => !o)}
+                    aria-expanded={open}
+                    aria-controls="corner-launcher-stack"
+                    aria-label={open ? t('dock.close') : t('dock.open')}
+                    title={open ? t('dock.close') : t('dock.open')}
+                    className={
+                        open
+                            ? 'flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-xl backdrop-blur transition'
+                            : 'corner-launcher-play relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full text-white shadow-xl transition'
+                    }
+                >
+                    {open ? (
+                        <X className="h-5 w-5" />
+                    ) : (
+                        <>
+                            <span
+                                aria-hidden
+                                className="corner-launcher-sheen"
+                            />
+                            <Play className="h-5 w-5 fill-current" />
+                        </>
+                    )}
+                </button>
+            </div>
+
+            {/*
+             * THE DESKTOP COAT, unchanged.
+             *
              * Rounded and bordered on all four sides: the block FLOATS over the
              * page rather than being docked into it. Flush was tried and
              * reverted over there — `fixed right-0` resolves against the
              * viewport minus a classic scrollbar, leaving an 8px strip of
              * scrollbar track beside the card in the card's own colour.
              */}
-            <div className="pointer-events-auto relative flex w-[min(17rem,calc(100vw-2rem))] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-xl backdrop-blur">
+            <div className="pointer-events-auto relative hidden w-[min(17rem,calc(100vw-2rem))] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-xl backdrop-blur sm:flex">
                 <div className="flex items-stretch gap-1.5 p-1.5">
                     <a
                         href={play}
