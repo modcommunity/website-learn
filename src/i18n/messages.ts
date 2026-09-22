@@ -48,20 +48,29 @@ export const en = {
         current: 'Language: {name}',
     },
     /*
-     * The bottom-right launcher block — Play beside Chat. Ported from
-     * website-city's `chat.widget.*`, whose block this one mirrors, and carried
-     * here and in website-processing so the control sits in the same corner
-     * whichever of the three shells a reader is on.
+     * The bottom-right launcher block — Play, Console, Chat. Ported from
+     * website-city's `chat.dock.*` and `chat.widget.*`, whose row this one
+     * mirrors, and carried here and in website-processing so the control sits
+     * in the same corner whichever of the three shells a reader is on.
      *
-     * `play` stays English in every locale on purpose: city carries
-     * `widget.playAria` in English alone, and its request pipeline merges
-     * English under every locale, so translating it on this side alone would
+     * `play`, `playAria` and `console` stay English in every locale on purpose:
+     * city fills those three under `en` alone, and its request pipeline merges
+     * English under every locale, so translating them on this side alone would
      * make the same button read DIFFERENTLY from the app's. `chat` is city's
      * `widget.aria`, which IS translated there.
+     *
+     * `signIn` is the one string taken from THIS catalogue rather than city's:
+     * it repeats `account.signIn`, because the header button and the launcher's
+     * signed-out title sit on the same page and must not offer two different
+     * words for the same act. (City's `chat.widget.signIn` says サインイン where
+     * its account menu says ログイン; that is not worth copying.)
      */
     dock: {
-        play: 'Open the play center',
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
         chat: 'Open chats',
+        signIn: 'Sign in',
     },
 }
 
@@ -89,7 +98,13 @@ const es: DeepPartial<Messages> = {
         toDark: 'Cambiar al modo oscuro',
     },
     picker: { select: 'Selecciona un idioma', current: 'Idioma: {name}' },
-    dock: { play: 'Open the play center', chat: 'Abrir los chats' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'Abrir los chats',
+        signIn: 'Iniciar sesión',
+    },
 }
 
 const fr: DeepPartial<Messages> = {
@@ -113,7 +128,13 @@ const fr: DeepPartial<Messages> = {
         select: 'Sélectionner une langue',
         current: 'Langue : {name}',
     },
-    dock: { play: 'Open the play center', chat: 'Ouvrir les discussions' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'Ouvrir les discussions',
+        signIn: 'Se connecter',
+    },
 }
 
 const de: DeepPartial<Messages> = {
@@ -137,7 +158,13 @@ const de: DeepPartial<Messages> = {
         select: 'Sprache auswählen',
         current: 'Sprache: {name}',
     },
-    dock: { play: 'Open the play center', chat: 'Chats öffnen' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'Chats öffnen',
+        signIn: 'Anmelden',
+    },
 }
 
 const ru: DeepPartial<Messages> = {
@@ -158,7 +185,13 @@ const ru: DeepPartial<Messages> = {
         toDark: 'Переключить на тёмную тему',
     },
     picker: { select: 'Выберите язык', current: 'Язык: {name}' },
-    dock: { play: 'Open the play center', chat: 'Открыть чаты' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'Открыть чаты',
+        signIn: 'Войти',
+    },
 }
 
 const nl: DeepPartial<Messages> = {
@@ -179,7 +212,13 @@ const nl: DeepPartial<Messages> = {
         toDark: 'Overschakelen naar donkere modus',
     },
     picker: { select: 'Kies een taal', current: 'Taal: {name}' },
-    dock: { play: 'Open the play center', chat: 'Chats openen' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'Chats openen',
+        signIn: 'Inloggen',
+    },
 }
 
 const ja: DeepPartial<Messages> = {
@@ -200,7 +239,13 @@ const ja: DeepPartial<Messages> = {
         toDark: 'ダークモードに切り替え',
     },
     picker: { select: '言語を選択', current: '言語: {name}' },
-    dock: { play: 'Open the play center', chat: 'チャットを開く' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'チャットを開く',
+        signIn: 'ログイン',
+    },
 }
 
 const zh: DeepPartial<Messages> = {
@@ -221,7 +266,13 @@ const zh: DeepPartial<Messages> = {
         toDark: '切换到深色模式',
     },
     picker: { select: '选择语言', current: '语言：{name}' },
-    dock: { play: 'Open the play center', chat: '打开聊天' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: '打开聊天',
+        signIn: '登录',
+    },
 }
 
 const pt: DeepPartial<Messages> = {
@@ -242,7 +293,13 @@ const pt: DeepPartial<Messages> = {
         toDark: 'Mudar para o modo escuro',
     },
     picker: { select: 'Selecione um idioma', current: 'Idioma: {name}' },
-    dock: { play: 'Open the play center', chat: 'Abrir conversas' },
+    dock: {
+        play: 'Play',
+        playAria: 'Play, open the play center',
+        console: 'Console',
+        chat: 'Abrir conversas',
+        signIn: 'Entrar',
+    },
 }
 
 const SHELL: Record<LocaleT, DeepPartial<Messages>> = {

@@ -195,14 +195,18 @@ const desc = descMeta ?? import.meta.env.PUBLIC_DESCRIPTION ?? "Documentation fo
 				<SiteFooter locale={locale} client:load />
 
 				<!--
-					The bottom-right launcher block: Play beside Chat, on every
-					page, exactly where website-city and website-processing put
-					it — a reader crossing between the three shells must not
-					have to look for it twice. No `client:*` directive: it is
-					two links and a CSS animation, so it renders to static HTML
-					and ships no JavaScript.
+					The bottom-right launcher block: Play, Console and Chat, on
+					every page, exactly where website-city and
+					website-processing put it — a reader crossing between the
+					three shells must not have to look for it twice.
+
+					`client:idle` rather than nothing at all: the two squares
+					point at `/login` until the auth-hint cookie says otherwise,
+					and that cookie can only be read after mount. It is three
+					links and a CSS animation either way, so the hydration is
+					for the hrefs alone and can wait for an idle moment.
 				-->
-				<CornerLauncher locale={locale} />
+				<CornerLauncher locale={locale} client:idle />
 			</div>
 		</ObserverProvider>
 	</body>
