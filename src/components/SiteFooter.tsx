@@ -1,4 +1,5 @@
 import { Footer } from '@modcommunity/shared'
+import BrandLogo from './BrandLogo'
 import { getT } from '../i18n/t'
 import { buildFooterColumns } from '../i18n/nav'
 import { localeLink } from '../i18n/link'
@@ -18,6 +19,7 @@ export default function SiteFooter({ locale = 'en' }: { locale?: string }) {
             slogan={t('footer.slogan')}
             columns={buildFooterColumns(t)}
             linkComponent={localeLink(locale)}
+            logo={<BrandLogo linkComponent={localeLink(locale)} />}
             copyright={t('footer.copyright', { year })}
         />
     )

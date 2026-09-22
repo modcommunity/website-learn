@@ -27,7 +27,6 @@
     "@astrojs/react": "^6.0.1",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.5",
-    "@fontsource-variable/orbitron": "^5.3.0",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@modcommunity/shared": "^4.3.3",
     "@tailwindcss/vite": "^4.1.11",

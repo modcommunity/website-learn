@@ -1,5 +1,6 @@
 import { Header, MobileNav, ThemeToggle } from '@modcommunity/shared'
 import AccountButton from './AccountButton'
+import BrandLogo from './BrandLogo'
 import LanguagePicker from './LanguagePicker'
 import { getT } from '../i18n/t'
 import { buildNav, buildVisibleSidebarSections } from '../i18n/nav'
@@ -46,6 +47,10 @@ export default function SiteHeader({
             activePath={stripLocale(pathName)}
             nav={nav}
             linkComponent={localeLink(locale)}
+            // The mark as a file rather than the package's inline data URI —
+            // see <BrandLogo/>. Given the same locale-aware link the rest of
+            // the bar uses, since a slotted logo does not inherit it.
+            logo={<BrandLogo linkComponent={localeLink(locale)} />}
             // Entries that no longer fit collapse into this dropdown as the bar
             // narrows (see the shared <HeaderNav/>). Without it the trigger
             // reads "More" in all nine languages; city passes its own `nav.more`

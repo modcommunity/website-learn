@@ -103,7 +103,6 @@
    * name matches nothing and the whole site silently falls back to the system
    * sans. The unsuffixed name is kept as a fallback for the static packages.
    */
-  --font-orbitron: "Orbitron Variable", "Orbitron", sans-serif;
   --font-dm-sans: "DM Sans Variable", "DM Sans", sans-serif;
   --font-pjs: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", sans-serif;
 
