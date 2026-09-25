@@ -20,6 +20,19 @@ server {
     # client its own container address and port instead of the public one.
     absolute_redirect off;
 
+    # Two headers nothing upstream sets: the host nginx in front of this
+    # container adds neither (checked against website-city's
+    # deployment/docker/nginx.conf, the only host config in the stack), so
+    # without these they are simply missing. `always` so the 404 page carries
+    # them too. strict-origin-when-cross-origin is what browsers already do
+    # by default; stating it pins it rather than changing it.
+    #
+    # add_header is inherited ONLY by a location that declares none of its
+    # own, so every location below with its own add_header repeats both.
+    # Adding a location with a Cache-Control? Copy these two lines into it.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
     gzip on;
     gzip_proxied any;
     gzip_vary on;
@@ -32,6 +45,8 @@ server {
     # collide with website-processing's own /_astro/ on the same domain.
     location /learn/_astro/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         access_log off;
     }
 
@@ -39,6 +54,8 @@ server {
     # at page load, and rebuilt on every deploy — so cache them, but briefly.
     location /learn/search/ {
         add_header Cache-Control "public, max-age=3600, must-revalidate";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         access_log off;
     }
 
