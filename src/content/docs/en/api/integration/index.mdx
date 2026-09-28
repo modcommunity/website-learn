@@ -41,6 +41,10 @@ Manage your credentials under **Account → Integrations**.
     Per-player figures the game keeps — counters, gauges and bests — and how a
     reading meets the value already held.
   </Card>
+  <Card title="Skill ratings" href="/learn/api/integration/ratings">
+    Declaring the game's queues, filing finished matches, and reading ratings
+    back for a matchmaker.
+  </Card>
   <Card title="Avatars" href="/learn/api/integration/avatars">
     Reading and publishing a player's avatar by their scoped key, so it follows
     them onto your server.
@@ -103,6 +107,8 @@ in practice — and to a set of scopes:
 | `STATS_WRITE` | Declare statistics, and file readings on them |
 | `AVATAR_READ` | Read a player's avatar, by the scoped key this credential was given |
 | `AVATAR_WRITE` | Publish or erase a player's avatar on their behalf |
+| `RATING_READ` | Read players' skill ratings on the item's own queues |
+| `RATING_WRITE` | Declare queues, and file finished matches to be rated |
 
 A server-scoped credential may only touch parties **on that server**. An
 app-scoped one may only touch parties **for that app**. Anything else — a

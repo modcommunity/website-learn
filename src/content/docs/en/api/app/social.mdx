@@ -1,0 +1,321 @@
+---
+title: Parties, friends and presence
+description: What a game client speaks to be social — joining and running a party, the ready round, bookings, friend requests, and telling friends where a player is.
+navTitle: Parties and friends
+order: 45
+badge: new
+keywords:
+  - "party"
+  - "friends"
+  - "friend request"
+  - "presence"
+  - "online status"
+  - "ready check"
+  - "invite"
+  - "reservation"
+  - "dot-party"
+  - "dot-friends"
+source:
+  - docs/api/app-social.md
+  - src/app/api/app/v1/party
+  - src/app/api/app/v1/friends
+  - src/app/api/app/v1/presence
+  - src/lib/party/limits.ts
+---
+
+These are the routes a **game client** calls to be social: the party routes
+[dot-party](/learn/godot/addons/dot-party)'s `DotPartyBackendApp` calls, and the
+friend and presence routes [dot-friends](/learn/godot/addons/dot-friends)'
+`DotFriendsBackendApp` calls.
+
+Every one is under `/api/app/v1`, takes the player's own token, answers
+cross-origin (preflight included), and **accepts a game token** — the credential
+a game in [the web player](/learn/api/app/auth#the-web-player-handoff) holds. A
+device token works too.
+
+The game *server's* half — reading a party's roster, reporting its state,
+learning it has been booked — is the integration API: see
+[Parties](/learn/api/integration/parties).
+
+## One implementation, two front doors
+
+**Every route is a thin wrapper over the function the website's own party or
+friend procedure calls**, with that procedure's gates and its rate limit — under
+the same bucket name. A member alternating between a browser tab and a game
+gets what either gets alone, not double.
+
+That is also why a refusal looks the way it does.
+
+<Params>
+  <Param name="code is the site's own translation key">
+    `party.join.deny.full`, `friends.request.deny.cooldown` — exactly the key
+    the website throws and its page translates. `message` is the English
+    sentence behind it. Branch on `code`; dot-party and dot-friends put it in
+    `DotError.detail`.
+  </Param>
+  <Param name="A refusal with no key of its own">
+    Falls back to a generic code for its kind: `not_found`, `forbidden`,
+    `conflict`, `invalid`, `rate_limited`.
+  </Param>
+  <Param name="The pipeline's own refusals are unchanged">
+    `unauthorized`, `token_expired`, `wrong_credential`, `bad_request` (the body
+    did not match), `rate_limited` with `retryAfter`, and `internal_error`. See
+    [the envelope](/learn/api/app#the-envelope).
+  </Param>
+</Params>
+
+<Callout type="info" title="A game credential reaches only its own game">
+Every route addressing a party refuses one in another app with
+`party.deny.otherApp`; `party/mine` and `party/invites` only list its own
+game's; `party/create` takes the app off the token and refuses an `appId` that
+disagrees. A device credential is bound to no app and is not narrowed.
+</Callout>
+
+## Parties
+
+Ids are decimal **strings** — they can pass 2^53. Dates are ISO strings. For
+what the stages and roles mean, see [the party lifecycle](/learn/parties/lifecycle).
+
+| Route | Body / query | `data` |
+| --- | --- | --- |
+| `GET party/mine` | — | the party, or `null` |
+| `GET party/{id}` | — | the party |
+| `POST party/create` | the website's create input; `appId` optional on a game token | the party |
+| `POST party/join` | `{ id, password?, token? }` | `{ partyId, role, leftPartyId }` |
+| `POST party/leave` | `{ id, silent? }` | `{ left, ended }` |
+| `POST party/heartbeat` | `{ id }` | `null` |
+| `POST party/kick` | `{ id, userId, ban }` | `null` |
+| `POST party/role` | `{ id, userId, role }` — `CO_HOST` or `MEMBER` | `null` |
+| `POST party/transfer` | `{ id, userId }` | `null` |
+| `POST party/invite` | `{ id, userIds[1..25], message? }` | the invite ids made |
+| `GET party/invites` | — | `[{ id, partyId, partyName, inviterId, message }]` |
+| `POST party/invite/respond` | `{ inviteId, accept }` | `null`, or as `join` when accepted |
+| `POST party/start` | `{ id, serverId? }` | the ready view |
+| `GET party/{id}/ready` | — | the ready view |
+| `POST party/ready` | `{ id, ready }` | the ready view |
+| `POST party/connected` | `{ id }` | `null` |
+| `POST party/force-start` | `{ id }` | `null` |
+| `POST party/cancel` | `{ id }` | `null` |
+| `POST party/end` | `{ id }` | `null` |
+| `GET party/{id}/reserve/offer?serverId=` | — | the booking offer |
+| `POST party/reserve` | `{ partyId, serverId, minutes, private?, note? }` | the reservation |
+| `POST party/reserve/cancel` | `{ reservationId }` | the reservation |
+
+### The party object
+
+Flat: the [integration API's party](/learn/api/integration/parties#reading-a-party)
+with `stage` and `members` inside it.
+
+```json
+{
+  "id": "4471", "name": "Scrim", "type": "PUBLIC", "techType": "NATIVE",
+  "maxUsers": 10, "users": 4, "stage": "LOBBY",
+  "startTime": "2026-09-23T20:00:00.000Z", "endTime": null,
+  "mapName": null, "gameMode": null, "hostId": "clx…", "appId": 3, "serverId": null,
+  "members": [
+    {
+      "userId": "clx…", "displayName": "Ashley", "gameName": null,
+      "role": "HOST", "state": "JOINED", "presence": "NONE",
+      "joinedAt": "…", "leftAt": null, "readyAt": null, "connectedAt": null,
+      "score": 0, "kills": 0, "deaths": 0, "assist": 0
+    }
+  ]
+}
+```
+
+It is gated exactly as the party page is. Whether the party is visible at all,
+whether its roster travels, and each member through the viewer's own
+[privacy resolution](/learn/account/privacy) — an anonymous member, one who
+opted out of listings, and one either side has blocked are **left out** rather
+than named. `hostId` is `null` when the host is somebody this viewer may not
+name.
+
+<Callout type="warning" title="The caller's own row is always there">
+Whatever state it is in, and even after the party has become invisible to them.
+A game polls this to learn what happened to its player, and kicked, banned and
+left are different things to tell them. A member kicked from a `PRIVATE` party
+could no longer see it by the ordinary rule — without this, the kick would read
+as the party vanishing.
+</Callout>
+
+### Where it differs from the website
+
+<Params>
+  <Param name="heartbeat">
+    Refuses with `party.heartbeat.deny.member` when the player is no longer in
+    the party — kicked, or reaped after enough silence — where the website's
+    procedure answers `{ alive: false }`. A client treats the refusal as "you
+    are out".
+  </Param>
+  <Param name="invite/respond">
+    Accepting also **joins**, through the ordinary join, so capacity and bans
+    still decide. A party that filled since the invite answers
+    `party.join.deny.full`, and the invite stays usable.
+  </Param>
+  <Param name="start">
+    Opens the ready round on a server — `serverId` if given (it must be the
+    party's game), else the one the party already has, and
+    `party.search.err.noServer` when there is none. The website's
+    criteria-driven [search](/learn/parties/matchmaking) is **not** offered
+    here: a game that wants a server found picks one itself.
+  </Param>
+  <Param name="{id}/ready">
+    A `GET` that **advances** the round, as the website's is: reading it is what
+    fires an auto-start whose countdown lapsed. It is idempotent, so polling it
+    is safe.
+  </Param>
+  <Param name="create">
+    Skips the website form's captcha — the caller holds a token minted for a
+    signed-in member, which is what a captcha stands in for — and keeps every
+    other gate, including the per-day party budget.
+  </Param>
+</Params>
+
+The reservation is `{ id, partyId, serverId, status, private, startsAt, endsAt,
+releasedAt, requestedById, note }` — the same shape the booked server reads
+from [`GET /party/reservation`](/learn/api/integration/parties#learning-a-server-is-booked).
+
+### Polling budgets
+
+Two reads have no website procedure to borrow a limit from, so they have
+app-only buckets:
+
+| Route | Bucket |
+| --- | --- |
+| `GET party/mine` | `app:party-mine` |
+| `GET party/invites` | `app:party-read` |
+
+`party/mine` is sized for **three clients on one account** polling the ready
+round every 1.5 seconds. The two used to share one bucket, until a player with
+the web player open in a tab *and* the desktop game running 429'd themselves
+mid-round.
+
+## Friends
+
+The website's friend flow, rule for rule:
+
+- **One row per pair**, whoever asked first.
+- **Asking somebody who already asked you accepts them.**
+- After a decline, **only the declined sender waits** seven days; a re-request
+  re-uses the row, turned round to face the new asker.
+- Only the addressee may answer. Removing deletes the row.
+
+| Route | Body / query | `data` |
+| --- | --- | --- |
+| `GET friends` | — | `[{ userId, displayName, avatarUrl, presence }]` |
+| `GET friends/requests` | — | `{ incoming: [Request], outgoing: [Request] }` |
+| `POST friends/request` | `{ userId }` | `{ id }` |
+| `POST friends/respond` | `{ requestId, accept }` | `null` |
+| `POST friends/cancel` | `{ requestId }` — an `outgoing` request's `id` | `null` |
+| `POST friends/remove` | `{ userId }` | `null` |
+
+A `Request` is `{ id, userId, displayName, createdAt }`. `id` is an **integer**
+and goes back as `requestId`; `userId` is always the *other* person.
+
+`GET friends` lists who the website's friend dock lists: a block either way, or
+a member who opted out of social listings, is left out.
+
+<Details title="Refusal codes">
+
+| `code` | When |
+| --- | --- |
+| `friends.request.deny.self` | Asking yourself |
+| `friends.request.deny.notFound` | No such member, **or blocked** — never distinguished |
+| `friends.request.deny.closed` | The member has turned friend requests off |
+| `friends.request.deny.already` | Already friends |
+| `friends.request.deny.pending` | You already asked and they have not answered |
+| `friends.request.deny.cooldown` | They declined you less than seven days ago |
+| `friends.respond.deny.notFound` | Not a pending request addressed to you (a blocked requester reads the same) |
+| `friends.cancel.deny.notFound` | Not a pending request you sent — already answered, withdrawn, or somebody else's |
+| `friends.remove.deny.notFriends` | Not friends |
+
+</Details>
+
+<Callout type="info" title="Not found and blocked read the same on purpose">
+A distinct "blocked" answer would tell anybody who has been blocked that they
+have been.
+</Callout>
+
+## Presence
+
+What a game reports about where its player is, so their friends can follow them
+in.
+
+<Endpoint method="POST" path="/api/app/v1/presence" auth="Token">
+Report where the player is. Answers `{ ttlSec }`.
+</Endpoint>
+
+```json
+{ "status": "in_game", "serverId": 4821, "partyId": "4471", "joinable": true, "detail": "Round 3" }
+```
+
+<Endpoint method="GET" path="/api/app/v1/presence?userIds=a,b" auth="Token">
+Friends' presence, keyed by user id. At most 100 ids, comma-separated.
+</Endpoint>
+
+```json
+{
+  "status": "in_game",
+  "appId": 3, "appName": "Arena",
+  "serverId": 4821, "serverName": "EU #1",
+  "partyId": "4471",
+  "joinable": true,
+  "detail": "Round 3",
+  "updatedAt": "2026-09-23T20:00:10.000Z"
+}
+```
+
+`status` is `offline`, `online`, `in_game` or `away`.
+
+<Params>
+  <Param name="A post lives ttlSec after the last one">
+    Then it reads as offline; posting `offline` clears it at once. Heartbeat
+    well inside the window — dot-friends posts often enough that two lost posts
+    do not blink a player offline.
+  </Param>
+  <Param name="Each post replaces the whole presence">
+    A field left out is cleared, not kept.
+  </Param>
+  <Param name="The app is the token's, never the post's">
+    A `serverId` that is hidden or another game's, and a `partyId` the player
+    is not in, are **dropped** from the post rather than refused. `joinable`
+    means nothing without one of them and is dropped with them.
+  </Param>
+  <Param name="Only a game token places its player">
+    A device token is bound to no game, so its post keeps `status` and
+    `detail` and drops `serverId`, `partyId` and `joinable` — with no game to
+    check against, it could otherwise name any game's server.
+  </Param>
+  <Param name="Without a fresh game post">
+    A friend reads the website's own presence: active on the site is `online`,
+    idle is `away`, anything else offline.
+  </Param>
+</Params>
+
+**Offline is blank**: every nullable field null, `joinable` false, `updatedAt`
+null. That is the answer for an expired post, a posted `offline`, and **a member
+whose [privacy settings](/learn/account/privacy) hide their activity** — who
+reads as offline to everybody, friends included.
+
+What a reader is told is checked against what they could see on the site: a
+`PRIVATE` party, or one that has ended, is not named, nor is a hidden server.
+
+<Callout type="warning" title="Friends only — and not &quot;offline&quot; for strangers">
+`GET presence` **leaves out** anybody who is not the caller's friend, rather
+than answering offline for them. "Offline" would still confirm the id is
+somebody.
+</Callout>
+
+| Refusal `code` | When |
+| --- | --- |
+| `presence.deny.status` | `status` is not one of the four |
+| `presence.deny.detail` | `detail` over 128 characters |
+| `presence.deny.batch` | More than 100 ids |
+
+<Related>
+- [Parties, conceptually](/learn/parties)
+- [Joining a party](/learn/parties/joining)
+- [Parties on the integration API](/learn/api/integration/parties) — the server's half
+- [Privacy](/learn/account/privacy)
+- [dot-party](/learn/godot/addons/dot-party) and [dot-friends](/learn/godot/addons/dot-friends)
+</Related>

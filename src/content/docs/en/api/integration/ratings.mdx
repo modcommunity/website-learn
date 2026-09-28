@@ -1,0 +1,207 @@
+---
+title: Skill ratings
+description: Declaring a game's queues, filing finished matches, and reading ratings back for a matchmaker — Glicko-2 with a team extension, rated by the site.
+navTitle: Skill ratings
+order: 45
+badge: new
+keywords:
+  - "rating"
+  - "elo"
+  - "glicko"
+  - "glicko-2"
+  - "mmr"
+  - "skill"
+  - "ranked"
+  - "matchmaking"
+  - "playlist"
+  - "queue"
+  - "dot-matchmaking"
+source:
+  - docs/api/integration-api.md
+  - src/app/api/integration/v1/rating
+  - src/types/rating/glicko2.ts
+  - src/types/integration/rating.ts
+---
+
+A game's **matchmaker** — [dot-matchmaking](/learn/godot/addons/dot-matchmaking)'s
+`DotMatchmaker`, running in a lobby server — decides who plays whom. The site
+keeps the ratings it decides by.
+
+<Callout type="info" title="Not the same thing as party matchmaking">
+The site's own [party matchmaking](/learn/parties/matchmaking) finds a party a
+**server** to play on. Ratings decide **who plays whom**. The two do not
+consult each other.
+</Callout>
+
+The three routes are shaped after the [statistics](/learn/api/integration/stats)
+routes, with the same two rules:
+
+- **Ownership comes from the credential**, never the payload. A credential
+  scoped to anything but an app or one of its servers is refused.
+- **`player` is the credential's per-scope pseudonym** — [the player
+  key](/learn/api/integration/avatars#the-player-key) — never a site user id.
+
+## The site rates, you report
+
+A result carries who played on which side, how much of the match each was there
+for, who left, and where each side placed. **It carries no rating.** The server
+computes the new ones and hands them back.
+
+The rule is **Glicko-2** as published (Glickman 2012, with the Illinois
+iteration for the volatility), τ 0.5, rated per match, plus the team extension
+below.
+
+<Callout type="warning" title="The rule runs in two places">
+In the game when there is no website, and here. Both are checked against the
+same reference figures — the site's `glicko2` tests and the addon's
+`matchmaking_selftest.gd`. A change to the rule on one side needs the same
+change on the other, or a game's offline ratings and its online ones quietly
+disagree.
+</Callout>
+
+<Details title="The reference figures">
+
+- 1500 ±200 (σ 0.06), beating 1400 ±30 and losing to 1550 ±100 and 1700 ±300,
+  gives **1464.0507 ±151.5165, σ 0.059996** — Glickman's own worked example.
+- A 2000 on a side with two 1000s, losing to three 1500s as expected, moves
+  about **6** points. The naive team extension moves about 20.
+
+</Details>
+
+### Teams
+
+Each player is rated against each other side as **one opponent** whose rating
+is that side's mean, **shifted by the gap between the player and their own
+side's mean**, with the RMS of that side's deviations.
+
+So every player on a side sees the expectation the two sides' means predict —
+a strong player carried by weak team-mates is not punished for a loss everybody
+expected — while how far each one moves still depends on their own deviation: a
+newcomer moves a lot, a veteran a little.
+
+A free-for-all is sides of one.
+
+### Participation and leavers
+
+<Params>
+  <Param name="participation">
+    0 to 1, and weights the player's result. Under **0.25** the player is not
+    rated at all and gains no game — joining for the last minute should not
+    count as a match played.
+  </Param>
+  <Param name="leaver">
+    Rated at **full weight with their own side placed last** — and only the
+    leaver's row is taken from that pass. Leaving is not free, and it does not
+    drag the team-mates who stayed down with it.
+  </Param>
+  <Param name="Absence">
+    A rating's deviation widens with inactivity — one rating period per 14 idle
+    days — before it is used. Somebody back after a year is uncertain again,
+    and moves like it.
+  </Param>
+</Params>
+
+## Declaring the queues
+
+<Endpoint method="POST" path="/api/integration/v1/rating/define" auth="Integration" scope="RATING_WRITE">
+The queues this app or server runs. Idempotent — send the whole list at boot.
+</Endpoint>
+
+```json
+{
+  "playlists": [
+    { "id": "ranked5", "name": "Ranked 5v5", "game": "arena", "teams": 2, "teamSize": 5, "ranked": true, "placementGames": 10 }
+  ],
+  "ts": 1790000000,
+  "nonce": "…"
+}
+```
+
+```json
+{ "ok": true, "created": 1, "updated": 0 }
+```
+
+Up to 25 per request and 50 per owner; past the owner's ceiling, `refused[]`
+names the ones not taken.
+
+An **unranked** queue is known and never rated: its results are accepted and
+change nothing. That lets a matchmaker file every match the same way and leave
+the decision to the playlist.
+
+## Filing a match
+
+<Endpoint method="POST" path="/api/integration/v1/rating/submit" auth="Integration" scope="RATING_WRITE">
+One finished match.
+</Endpoint>
+
+```json
+{
+  "playlist": "ranked5",
+  "matchId": "3f9c2a…",
+  "sides": [
+    [ { "player": "k7Qx…", "participation": 1.0, "leaver": false } ],
+    [ { "player": "Zp2m…", "participation": 0.6, "leaver": true } ]
+  ],
+  "placements": [1, 2],
+  "ts": 1790000000,
+  "nonce": "…"
+}
+```
+
+```json
+{ "ok": true, "ratings": { "k7Qx…": { "rating": 1662.3, "deviation": 290.3, "volatility": 0.06, "games": 1, "last_played": 1790000000 } } }
+```
+
+`ratings` holds everybody the match rated — a player under the participation
+floor is absent. The keys are `DotMmRating.to_dict`'s, `last_played` in Unix
+seconds included, so the addon stores the answer as it comes.
+
+`placements` has one entry per side; lower is better, and equal is a draw. At
+least two sides, at most 64 players per side and 128 in all, and a player may
+appear once.
+
+<Callout type="warning" title="Idempotent by matchId">
+The same match filed twice rates **once**: the second answer carries the
+players' ratings as they stand, with `"duplicate": true`. A matchmaker that
+never heard back re-sends — and rating a match twice would move everybody in it
+twice with nothing failing. Match ids are remembered for 90 days, so make them
+unique for longer than that.
+</Callout>
+
+| Refusal | When |
+| --- | --- |
+| `404` | The playlist was never defined |
+| `400` | A `player` shaped like a dot-auth **account** uid (`backbone:…`). The addon refuses it before it leaves the server, for the reason [dot-stats](/learn/godot/addons/dot-stats) does: an account id here would let every game correlate a player across the platform |
+
+## Reading ratings
+
+<Endpoint method="GET" path="/api/integration/v1/rating/players" auth="Integration" scope="RATING_READ">
+Current ratings for the players about to be queued. Up to 100, comma-separated.
+</Endpoint>
+
+```
+GET /api/integration/v1/rating/players?playlist=ranked5&players=k7Qx…,Zp2m…
+```
+
+```json
+{ "ok": true, "ratings": { "k7Qx…": { "rating": 1662.3, "deviation": 290.3, "volatility": 0.06, "games": 1, "last_played": 1790000000 } } }
+```
+
+This keeps the matchmaker's own store fresh before it forms a match.
+
+- **As stored, not aged.** `last_played` travels with each rating, and the
+  matchmaker ages on read, as it does for its own store — so the widening is
+  applied once, in one place.
+- **A player with no rating on the playlist is absent**, which a matchmaker
+  reads as "new".
+
+Read is a separate scope from write for the reason [every pair
+is](/learn/api/integration#scopes): a lobby that only queues players should not
+be able to file results.
+
+<Related>
+- [dot-matchmaking](/learn/godot/addons/dot-matchmaking)
+- [Statistics](/learn/api/integration/stats)
+- [Leaderboards](/learn/api/integration/leaderboards)
+- [Party matchmaking](/learn/parties/matchmaking) — finding a server, not an opponent
+</Related>

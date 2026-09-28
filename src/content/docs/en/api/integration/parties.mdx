@@ -1,9 +1,10 @@
 ---
 title: Parties
-description: The five party endpoints — state, sessions, matches, create, end — plus reading a roster, and the row budgets that bound them.
+description: The five party endpoints — state, sessions, matches, create, end — plus reading a roster, learning a server is booked, and the row budgets that bound them.
 order: 10
 source:
   - docs/api/integration-api.md
+  - src/app/api/integration/v1/party/reservation
 ---
 
 ## Reporting state
@@ -152,6 +153,7 @@ The party and its roster.
     "techType": "THIRD_PARTY_SUPPORTED",
     "maxUsers": 10,
     "users": 4,
+    "stage": "PLAYING",
     "startTime": "2026-07-29T20:00:00.000Z",
     "endTime": null,
     "mapName": "de_dust2",
@@ -177,15 +179,64 @@ The party and its roster.
 }
 ```
 
+`stage` is `LOBBY`, `SEARCHING`, `READY` (the connect-and-ready round) or
+`PLAYING` — the same field the [app API's party](/learn/api/app/social#the-party-object)
+reports. It was added after the rest of this shape, so an older reader that
+ignores unknown fields is unaffected.
+
 <Callout type="info" title="This is the one place anonymity is not applied">
 Your whole job is to reconcile our roster against the game's player list, and a
 member hidden from you could never be matched — so their play time and score
-would silently never be recorded.
+would silently never be recorded. [The booking feed](#learning-a-server-is-booked)
+is the other exception, for the same reason.
 
 Site *visitors* see the anonymised roster; the game server a member deliberately
 connected to sees who is there. It returns display names and ids and **nothing
 else** — no email, no profile.
 </Callout>
+
+## Learning a server is booked
+
+<Endpoint method="GET" path="/api/integration/v1/party/reservation" auth="Integration" scope="PARTY_READ">
+The booking this server is under **right now**, and who it is for. Server-scoped
+credentials only.
+</Endpoint>
+
+A party that books a server through the play centre — including a private,
+locked booking — reaches the game server through this and nothing else. It is
+how a server meant to hold its slots for a party learns *which* party.
+[dot-party](/learn/godot/addons/dot-party) polls it every 30 seconds.
+
+Nothing in the request names a server: it is the credential's own. An
+app-scoped credential is refused with a `400`, because a reservation belongs to
+one server.
+
+```json
+{
+  "ok": true,
+  "reservation": {
+    "id": "88", "partyId": "4471", "serverId": 4821, "status": "ACTIVE", "private": true,
+    "startsAt": "2026-09-23T20:00:00.000Z", "endsAt": "2026-09-23T22:00:00.000Z",
+    "releasedAt": null, "requestedById": "clx…", "note": null
+  },
+  "party": { "id": "4471", "name": "Scrim", "maxUsers": 10, "hostId": "clx…", "endTime": null },
+  "members": [ { "userId": "clx…", "displayName": "Ashley", "role": "HOST" } ]
+}
+```
+
+`{ "ok": true, "reservation": null }` when there is none.
+
+<Callout type="warning" title="Only a booking in effect now is reported">
+An `ACTIVE` booking whose window contains the present. One approved for later is
+not reported early, or the server would start turning its regulars away before
+the party's time.
+</Callout>
+
+`members` are the party's joined members, **un-anonymised**, because the
+server's job is to recognise them. Match on `userId` — a dot-server session's
+uid after dot-auth is `backbone:<userId>` — never on `displayName`, which is for
+the server's own messages: matching on names would let a stranger in by calling
+themselves the host.
 
 ## Looking up a player
 
@@ -239,4 +290,5 @@ time.
 - [Chat relay](/learn/api/integration/chat)
 - [Integrating a game](/learn/parties/integration)
 - [Parties, conceptually](/learn/parties)
+- [Parties on the App API](/learn/api/app/social) — the player's half
 </Related>
