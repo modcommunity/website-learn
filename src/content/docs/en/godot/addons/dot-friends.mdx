@@ -58,11 +58,13 @@ change is asked of a `DotFriendsBackend`:
 
 The hub carries the site's rules, read from its router rather than guessed:
 **asking somebody who already asked you accepts them**; after a decline only the
-declined sender waits seven days; only the addressee may answer. A refusal
+declined sender waits seven days; only the addressee may answer, and only the
+sender may withdraw (which leaves no cooldown). A refusal
 carries the site's key in `DotError.detail` — `friends.request.deny.pending`,
 `friends.request.deny.cooldown`, `presence.deny.detail` — from either backend.
 
-`DotFriendsClient` offers `send_request`, `accept`, `decline` and
+`DotFriendsClient` offers `send_request`, `accept`, `decline`,
+`cancel_request` (withdraw one you sent, by its `outgoing` id) and
 `remove_friend`, and emits `friend_added`, `friend_removed`, `friend_online`,
 `friend_offline`, `friend_presence_changed`, `request_received`,
 `requests_changed`, `friends_changed`, `presence_posted` and `request_failed`.
@@ -126,7 +128,7 @@ the first time it is seen — launch included.
 string sent back would be refused. Party ids, by contrast, are strings.
 </Callout>
 
-Not here: cancelling an outgoing request, blocking, friend search and
+Not here: blocking, friend search and
 suggestions, and any UI — [dot-ui](/learn/godot/addons/dot-ui) draws, this emits.
 A site without the friends routes is logged once at INFO, not as an outage.
 
