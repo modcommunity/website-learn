@@ -2,6 +2,7 @@
 title: dot-moderation
 description: Bans, kicks, chat gags, voice mutes and warnings as one durable record with pluggable storage — so a mute survives a reconnect and a community running several servers shares one list.
 navTitle: dot-moderation
+badge: updated
 order: 180
 keywords:
   - "moderation"
@@ -137,6 +138,57 @@ It knows nothing about your world: positions come from `position_fn` and moves
 go through `teleport_fn`, both yours. Positions are `Variant`, so **2D is a
 first-class user** rather than something to work around.
 
+### The live tools: the community admin set
+
+Noclip, god, buddha, freeze, slay, slap, respawn, health, speed, gravity, give,
+strip, rename, burn, blind and beacon — as a **table of handlers the game fills
+in**, one per ability:
+
+```gdscript
+tools.handlers[DotModTools.ACTION_GOD] = func(id: StringName, args: Dictionary) -> DotResult:
+    world.player(id).health.invulnerable = args["on"]
+    return DotResult.success(args["on"])
+tools.unsupported_reasons[DotModTools.ACTION_NOCLIP] = "A 2D arena has no walls to pass through."
+```
+
+Why a table: what "god" means is the game's business, but everything *around*
+it is the same everywhere, and that is what the addon owns — the immunity check,
+the audit record of what was done, who has which toggle on and who turned it on,
+switching noclip and freeze off on a respawn while god and buddha carry over
+(`persist_on_respawn`), forgetting all of it when the player leaves, and a timed
+release (`release_after`) that checks it is still the same grant before lifting
+it. An ability with no handler is refused with `CODE_UNSUPPORTED` and the game's
+reason, and `describe_lines()` lists what the game supports and what it refuses.
+
+`DotModToolCommands.install(host, tools, server)` puts all of it on a dot-server
+console — `noclip`, `god`, `buddha`, `freeze`, `unfreeze`, `slay`, `slap`,
+`respawn`, `rename`, `burn`, `blind`, `beacon`, `hp`, `speed`, `gravity`,
+`give`, `strip`, `bring`, `goto`, `send`, `return` and `modtools` — typable in
+chat as `!noclip`, with player completion. Targets resolve through the server's
+own `resolve_target`, plus `@me`, `@all`, `@others`, and `@alive`, `@dead` and
+`@team:<name>` where the game says who is alive and on which side. `freeze` and
+`blind` take a number of seconds — a blind is a spell, not a state, and without a
+duration it lasts "until somebody remembers to lift it". The permission flags
+are dot-server's standard `slay` (handling a person), `cheats` (changing the
+game) and `teleport` (moving people); `permissions` overrides any of them. It is
+duck-typed, so this addon still does not depend on dot-server —
+[dot-game](/learn/godot/addons/dot-game)'s services layer builds and binds it for
+you.
+
+**Live-tool records reach the store, against a person.** Each action is filed
+through the manager with its evidence set *before* the store write — set after,
+a SQL or REST store never saw what was done — and against the manager's own peer
+mapping rather than a session id that restarts every boot, so "an admin froze
+me" has an answer next week too.
+
+<Callout type="warning" title="Yourself is not a loophole">
+Acting on yourself skips the immunity check, which made `respawn`, `slap`,
+`send` and `return` on yourself a free advantage. On somebody else they are
+moderation; on yourself they need `cheats`. Numbers are bounded for the same
+reason: an infinite duration was a timer that never fired, and a big enough slap
+went past god.
+</Callout>
+
 ## Where a game plugs in
 
 | To change | Where |
@@ -144,6 +196,9 @@ first-class user** rather than something to work around.
 | Where punishments live | `DotPunishmentStore` subclass |
 | Which database | `DotSqlDriver` subclass, or `DotPunishmentStoreRest` |
 | Where a player is, and how to move them | `DotModTools.position_fn` / `teleport_fn` |
+| What noclip, god, slay and the rest mean in your game | `DotModTools.handlers`, one callable per ability; `unsupported_reasons` for the ones you refuse |
+| What the commands are called, and which flag each needs | `DotModToolCommands.names` / `prefix` / `permissions` / `skip` |
+| Who counts as alive, and who is on which team | `DotModToolCommands.alive_fn` / `team_fn` |
 | How a peer maps to a person | `DotModerationManager.key_for_peer` |
 | Which servers a punishment covers | `DotModerationManager.server_scope` |
 | Whether dot-server enforces these bans | `DotModerationManager.register_ban_source` |
@@ -165,8 +220,9 @@ the one that silently enforced nothing.
 
 ## What is deliberately not here
 
-Console commands (they belong to `dot-server`'s console, which already has
-permission checking and an audit trail), a second ban list to run alongside
+Console commands for punishments (`mute`, `gag` and `ban` belong to
+`dot-server`'s console, which already has permission checking and an audit
+trail; only the live tools bring commands of their own), a second ban list to run alongside
 `DotBanManager`, a connection limit per address (that is admission), kicking
 anybody (there is no socket here), and an appeals workflow — `evidence` holds a
 ticket number, and the workflow is a website.

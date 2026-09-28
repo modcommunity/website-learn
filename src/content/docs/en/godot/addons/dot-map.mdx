@@ -2,6 +2,7 @@
 title: dot-map
 description: Maps as content rather than as builds — a catalogue, a rotation with a cooldown, a map time limit with rock-the-vote, nominations and voting, and a loader that fetches through dot-cloud.
 navTitle: dot-map
+badge: updated
 order: 370
 keywords:
   - "maps"
@@ -83,6 +84,36 @@ The catalogue is deliberately **not** the rotation: what maps exist and what
 plays next are different questions, and a server that answers them with one list
 cannot have a map installed but out of rotation.
 
+## Commands on a server
+
+`DotMapCommands.install(self, session, sync_host)` puts `map`, `maps` and
+`mapinfo` on a [dot-server](/learn/godot/addons/dot-server) console, duck-typed
+so dot-map still installs without it. `map` changes the **map**; dot-server's
+game change is `changelevel`, because the two are different operations and the
+plain name belongs to the plain thing.
+
+**`map <id>` accepts a map that is on the content origin.** On a server whose
+maps are all on disk the catalogue *is* the set, and an unknown id is a typo. On
+a server whose maps arrive over the network, the catalogue holds only what has
+been fetched — a freshly booted one holds the boot map and nothing else — so
+refusing an unknown id refused a map sitting on the CDN, before the code
+written to fetch it was ever reached. Set `may_fetch_unknown` and an unknown id
+goes to the changer; a typo is still answered with "did you mean", one exchange
+later, once the fetch comes back empty. It is off by default, so a
+catalogue-backed server keeps its instant refusal.
+
+`map` can be typed in chat. Who may change the map is the `changemap` flag
+wherever the line was typed, and the host's `sv_chat_commands` has the last
+word; set `allow_chat_change = false` for a records server that wants a map
+change to cost a deliberate trip to the console.
+
+<Callout type="warning" title="There is no `nextmap` here, on purpose">
+[dot-vote](/learn/godot/addons/dot-vote) registers `nextmap` and `timeleft`
+over the same maps, and two commands of one name is the last one registered
+winning, silently. `mapinfo` answers both questions without taking a name
+somebody else has.
+</Callout>
+
 ## Where a game plugs in
 
 <Params>
@@ -108,7 +139,20 @@ cannot have a map installed but out of rotation.
     `on_timeout_fn` decides what to do about a straggler.
   </Param>
   <Param name="DotMapSyncClient.accept_unknown_maps">
-    What a client will load on a host's say-so. Off is the safe default.
+    What a client will load on a host's say-so. Off is the safe default. A host
+    may say *which* map, never what the map is: a map the client does not have
+    must be delivered content. A game whose maps are data read by one scene in
+    its own build lists that scene in `trusted_template_scenes`, and every
+    path-shaped string in the delivered map's `meta` (`template_path_keys`) is
+    confined to its pack.
+  </Param>
+  <Param name="What the first real transport settled">
+    Running map sync over dot-net in a real game settled the protocol's edges:
+    a peer that joins mid-map and reports ready is answered with a load, once
+    per peer per map; a change waits only on the peers registered when it
+    began, so a joiner cannot stall it; a refused load no longer adopts the map
+    it refused; a load that overtakes its own fetch waits for the fetch; and
+    progress reports are throttled by `progress_interval_sec`.
   </Param>
   <Param name="Signals">
     `changing`, `changed`, `change_failed`, `change_finished`,

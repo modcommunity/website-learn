@@ -3,6 +3,7 @@ title: dot-cloud
 description: Runtime content delivery for Godot — signed manifests, a content-addressed cache, resumable parallel downloads and version-namespaced mounting, in the browser as well as on desktop.
 navTitle: dot-cloud
 order: 130
+badge: updated
 keywords:
   - "CDN"
   - "download"
@@ -14,6 +15,11 @@ keywords:
   - "signature"
   - "DLC"
   - "patching"
+  - "requires.json"
+  - "api level"
+  - "namespace"
+  - "uid"
+  - "_imported"
 source:
   - ../game-dev/godot/dot-cloud/README.md
   - ../game-dev/godot/dot-cloud/CLAUDE.md
@@ -79,6 +85,41 @@ for a LAN or a first-party server; it warns every time.
 - **Quota awareness.** Browser storage estimates, mobile ceilings, and
   least-recently-used eviction that never evicts content currently in use.
 
+## What mounting checks
+
+Between download and mount, a pack is held to four rules that each came from a
+failure somebody measured:
+
+- **Its `requires.json` is read first.** A pack's scripts compile against the
+  host's addons, so one needing a newer addon used to fail to parse mid-load.
+  Now it is refused before a script loads, with *"This game needs dot-net API
+  level 3 or newer; this client has level 2."* — see
+  [addon API levels](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
+  `host_role` names the side.
+- **A content id may name its owner: `<owner>/<name>`.** `/` cannot occur in
+  either half, so a key scoped `alice/*` is exact — a flattened `alice_bob`
+  could not tell `alice` + `bob_x` from `alice_bob` + `x`. Each segment must be
+  a slug; a bare id, which every first-party pack is, still validates.
+- **One id cannot mean two things.** A second manifest for the same
+  `content_id@version` from a different publisher is refused with
+  `CODE_CONFLICT` rather than handed the first one's mount — a pack can contain
+  scripts, and "the first one's" is somebody else's code. An equal manifest
+  re-read off the wire is still a cheap no-op.
+- **A mounted pack registers its own uids, and may not take anybody else's.**
+  An imported asset (a `.glb`, a `.png`) refers to its siblings by UID, which
+  does not survive being mounted elsewhere; the mounter points each UID at the
+  mounted copy. A UID the host already holds is refused and reported, or every
+  `load("uid://…")` in the build could be re-pointed at downloaded content.
+
+<Callout type="warning" title="Imported outputs ship under `_imported/`, never `.godot/`">
+A published pack carries the engine's imported outputs, and they used to sit at
+their real path, `.godot/imported/`. Linux reads that back perfectly; **a web
+export cannot**, and the whole game refused to start in the browser. Outputs now
+ship under `_imported/`, with each `.import` marker rewritten to name where the
+output landed. Missing art in a mounted pack otherwise shows up only as
+warnings — the pack verifies, mounts and loads with its textures absent.
+</Callout>
+
 ## Where a game plugs in
 
 <Params>
@@ -127,6 +168,11 @@ name and call:
 ensure(content_id: String, version: String) -> DotResult
 is_mounted(content_id: String, version: String) -> bool
 ```
+
+Most addons reach them through `DotContent` in
+[`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent), the
+one shared caller — which is how avatar parts, props, NPCs, vehicles and items
+that name content now actually fetch it.
 
 <Callout type="warning" title="An absent cloud client is a legitimate configuration">
 Every call site treats "no `dot_cloud_client`" as "this deployment ships its

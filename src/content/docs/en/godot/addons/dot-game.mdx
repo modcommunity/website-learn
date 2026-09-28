@@ -66,7 +66,52 @@ func _game_load() -> DotResult:
 | --- | --- |
 | `DotGameModule` | The sequence, the tick, the teardown. Subclass it. |
 | `DotGameNetcode` | Builds a `DotNetManager` and attaches a game's bridge. Usable on its own. |
-| `DotGameRoster` | Who is in the game as opposed to who is connected, and everything that has to be told when that changes. |
+| `DotGameRoster` | Who is in the game as opposed to who is connected, and everything that has to be told when that changes — including telling followers to forget a player who leaves. |
+| `DotGameServices` | Chat, a relay, moderation and voice, built in the one order that works. Subclass it for a game's channels, rules and voice range. |
+
+## The services layer
+
+Five games had services layers of five to seven hundred lines each, differing in
+their channels, their rules and a voice range. The relay was identical in all
+five, comments included; so were the admission check, the peer fan-out, the
+punishment subject — and the **order**, which is the part with a bug behind it.
+`DotGameServices` builds chat, a relay, moderation and voice, and a subclass
+answers only what is its own.
+
+<Callout type="warning" title="Moderation is built before chat, or no gag is ever enforced">
+[dot-moderation](/learn/godot/addons/dot-moderation) publishes
+`dot_mute_source`, and both the chat and the voice router look that name up
+**when they start**. A chat router built first finds nothing, warns once, and
+then enforces no gag for the life of the server. That is why the order is
+written down once here rather than left to each game.
+</Callout>
+
+**It also builds dot-moderation's live tools** — noclip, freeze, slay, blind and
+the rest — and binds their commands to the server's console, so a game gets the
+community admin set by answering `_mod_abilities` with a table of callables.
+Reasons for what it refuses, the teleport verbs, and whether a target is alive or
+on a team are virtuals too. The commands are unbound when the layer leaves the
+tree, because the console outlives it.
+
+**dot-chat, dot-voice and dot-moderation are not dependencies**, and must not
+become them: a game with no chat is a legitimate game, and one with no voice is
+most of them. Each layer is loaded by path and driven through `set()` and
+`call()`, so a missing addon is a layer skipped with a log line rather than a
+server that will not boot. What a subclass hands back — channels, rules, a voice
+config — it may name freely, because a game that configures chat has dot-chat.
+
+### Hooks, each defaulting to the old behaviour
+
+Moving the first hand-written game onto both bases found five places the base
+had no question to ask:
+
+| Hook | What it is for |
+| --- | --- |
+| `DotGameServices.setup(null, …)` | Offline play. Only what is bound to a server is skipped — the tool commands, the relay telling clients, the admin and audit seams. |
+| `_can_hear(listener, speaker, listener_at, speaker_at)` | One rule for who hears whom, wired into both chat's and voice's `can_hear_fn`. Asked only of listeners already in a proximity channel's range. |
+| `_mod_configure_tools(tools)` | Adjust the live tools after their handlers are set, before they enter the tree or a command is bound. |
+| `_peer_can_receive(peer)` and `send_backlog(peer)` | Hold the chat backlog for a client that builds its scene *after* it is seated — a line sent before then is a "Node not found". |
+| `DotGameModule._can_tick()` | Skip the tick, asked before the tick counter moves — for instance while a game change has freed the world. |
 
 ## What is deliberately not in it
 
@@ -107,13 +152,18 @@ duck-typed `follow()` — and this addon does not know what a rotation is.
   </Param>
 </Params>
 
+**A client whose message schema this server cannot play with is kicked.**
+dot-net refuses the pair but owns no socket, so `DotGameNetcode` connects its
+`peer_schema_refused` to the server's refusal, and the client is kicked with
+dot-net's sentence rather than left to fail on the first message it misreads.
+
 Tick rate, snapshot rate and world extent have **no** default here, because
 there is no default that is right for two different games — and a game running
 at a rate it did not choose is the kind of wrong that nothing reports.
 
 <Callout type="info" title="Everything optional is reached without naming it">
-A map director, a vote and a services layer are duck-typed, and dot-platform's
-module is loaded by path. In GDScript a script that so much as mentions a
+A map director and a vote are duck-typed; dot-platform's module and the services
+layer's chat, voice and moderation are loaded by path. In GDScript a script that so much as mentions a
 `class_name` the project does not have fails to parse and takes down
 everything referencing it, so an addon that *named* an optional dependency
 would make it mandatory. See

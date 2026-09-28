@@ -43,6 +43,14 @@ client against a real server found seven more after that. The pattern holds
 every time.
 </Callout>
 
+Two addons are built for **every** game by
+[TMC's server tool](/learn/godot/tooling#tmcs-server-tool) rather than by any
+game: a [`dot-replay`](/learn/godot/addons/dot-replay) ring on every server
+(`replay save` at the console, and a clip's hash filed with every kick and ban),
+and a [`dot-friends`](/learn/godot/addons/dot-friends) client beside the party client in the exported client
+shell, which switches itself off until the site's friends routes are deployed.
+No game links either itself.
+
 ## game-arena
 
 **A 3D dev-textured arena deathmatch. The reference game.** It exists to prove
@@ -174,7 +182,10 @@ First- and third-person. Uses `dot-props` for everything the cannon throws,
 `dot-vehicle` for the chopper, `dot-combat` for health and hit registration,
 `dot-match` for the round and the sides, `dot-player-controller`, `dot-net`,
 `dot-game` for the server wiring, and `zee-dot-weapons` for the twenty-seven
-weapons the second half is fought with.
+weapons the second half is fought with. `dot-spectate`, `dot-audio`,
+`dot-stats` and `dot-achievements` came later — it is last-team-standing, and
+an eliminated player had had nothing to look at. It refuses `dot-settings` in
+writing: its client has no screen to put one on.
 
 ## mg-buses-from-hell
 
@@ -184,7 +195,9 @@ run the runners over; the runners have a hammer, and the hammer does not hurt
 anybody — it breaks crates and shoves them. That is the whole game.
 
 Uses `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
-`dot-player-controller`, `dot-net` and `dot-game`. It is also the project that
+`dot-player-controller`, `dot-net` and `dot-game`, plus `dot-spectate`,
+`dot-audio`, `dot-stats`, `dot-achievements` and `dot-settings`. It unlinked
+`dot-spawn`, `dot-team`, `dot-physics` and `dot-fx`, each named and never used. It is also the project that
 [dot-entity](/learn/godot/addons/dot-entity) found a leak in: a
 `_next_entity_id` counter with no `forget()` anywhere, which left a `DotHealth`
 per player who had ever joined, each pointing at a freed node.

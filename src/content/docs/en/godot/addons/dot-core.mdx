@@ -3,6 +3,7 @@ title: dot-core
 description: The shared foundation for every Dot addon — results, capability detection, node references, layered configuration, frame-budgeted jobs, swappable transports, HTTP and logging.
 navTitle: dot-core
 order: 10
+badge: updated
 keywords:
   - "DotResult"
   - "DotError"
@@ -21,6 +22,11 @@ keywords:
   - "loot table"
   - "pity"
   - "foundation"
+  - "DotAddonApi"
+  - "DotContent"
+  - "requires.json"
+  - "api level"
+  - "CODE_CONFLICT"
 source:
   - ../game-dev/godot/dot-core/README.md
   - ../game-dev/godot/dot-core/CLAUDE.md
@@ -54,6 +60,8 @@ godot --headless --path . res://examples/capability_report.tscn
 | `DotSemVer` | Version comparison, for content and engine minimums. |
 | `DotWeb` | The browser-only calls: filesystem sync, secure-context detection, storage estimates. |
 | `DotRandomStream` / `DotRandomTable` / `DotRandomSchedule` | Randomness a second machine can reproduce. See below. |
+| `DotContent` | The one place the family asks for downloadable content. See below. |
+| `DotAddonApi` | Each addon's API level, and a pack's `requires.json` checked against it. See below. |
 
 ## Where a game plugs in
 
@@ -98,6 +106,12 @@ var scene_path: String = res.value
 Branch on `DotError.CODE_*`; never on the message. `res.wrap(...)` adds context
 without discarding the cause, so a failure three layers down still says what it
 was doing at each level.
+
+`CODE_CONFLICT` means two different things claim one identity — a pack wanting
+a uid another pack already holds, say. It is neither `CODE_STATE` ("not
+downloaded yet") nor `CODE_INTEGRITY` (bytes that disagree with a hash), and it
+is not retryable: retrying produces the same conflict, so the caller has to
+change what it asks for.
 
 ## `DotScheduler` and the browser
 
@@ -198,6 +212,50 @@ which is what lets a client anticipate a server, a replay scrub, and a restarted
 server land on the schedule it was already running. A stateful countdown can do
 none of those, and its failure mode latches: a due event dropped while a cooldown
 runs, and nothing offered again.
+
+## Downloadable content: `DotContent`
+
+Every addon that lets a developer deliver something — an avatar part, a prop,
+an NPC, a vehicle, an item, a map — declares a `content_id`. `DotContent` is
+the one shared caller that fetches it: `client()`, `available()`, `ensure()`,
+`ensure_all()` and `resolve()`, duck-typed through `DotRegistry`, so no addon
+gains a dependency on [`dot-cloud`](/learn/godot/addons/dot-cloud) and a build
+that ships all its content still works.
+
+<Callout type="warning" title="Falling back is the designed behaviour, which is why nobody noticed">
+Before this, only `dot-map` ever fetched its content. The other addons declared
+the id, put it on the wire and resolved it against content nothing had
+downloaded — so they fell back forever, and falling back is exactly what
+content that has not arrived is *supposed* to do. Nothing errored, nothing
+warned, and no suite could see it.
+</Callout>
+
+## Addon API levels: `DotAddonApi`
+
+A delivered pack's scripts compile against the **host's** addons. A pack built
+against a newer `dot-net` than the client or server has does not fail with a
+sentence — it fails to parse, mid-load, with an identifier "not declared in the
+current scope". `DotAddonApi` turns that into *"This game needs dot-net API
+level 3 or newer; this server has level 2."*, asked before a single script in
+the pack loads (`dot-cloud` asks between download and mount).
+
+- **Every addon may carry `addons/<addon>/<addon>_api.gd`** with `const LEVEL`
+  and `const OLDEST`. Bump `LEVEL` when you **add** anything a game could call;
+  raise `OLDEST` to it when you **remove or change** something, because every
+  pack built before no longer compiles. An addon with no api file is level 1.
+- **A pack states what it needs in `requires.json`** at its root —
+  `{"format": 1, "addons": {"dot_net": 3}}` — and nobody writes it by hand:
+  `addons/dot_core/tools/dot_requires.gd` derives it from the game's own files
+  at the levels of the checkout that built it, and dot-ci writes it into the
+  pack. A game that commits its own has it audited instead.
+
+<Callout type="info" title="An API level, not the release version">
+A developer checkout's `plugin.cfg` says 0.1.0 whatever it holds, an export does
+not carry `plugin.cfg` at all, and a tag moves for fixes that change no API — so
+"needs 0.4.1" would refuse a 0.4.0 host that runs the pack perfectly. A level
+committed in the addon's own source is the same number everywhere, because it
+is code.
+</Callout>
 
 ## Transports
 

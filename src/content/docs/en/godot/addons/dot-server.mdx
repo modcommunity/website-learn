@@ -2,6 +2,7 @@
 title: dot-server
 description: A console-driven dedicated server for Godot — console variables and commands, RCON, admin permissions with immunity, bans, votes, hot-loadable modules, a hook for the query asset to fill, and switching games under live players.
 navTitle: dot-server
+badge: updated
 order: 150
 keywords:
   - "dedicated server"
@@ -75,7 +76,10 @@ the query port.
 **Permissions that fit real communities.** String flags rather than fixed roles,
 because nobody agrees what a "moderator" is. Numeric immunity so admins cannot
 kick each other in a loop. Admins from a JSON file, from dot-auth's site groups,
-or from your own source — all merged.
+or from your own source — all merged. `slay` and `teleport` are standard flags
+alongside `cheats`, because [dot-moderation](/learn/godot/addons/dot-moderation)'s
+live tools use them in every game, and a flag every game shares is one a group
+file has to be able to name without an "unknown flag" warning at boot.
 
 **Moderation with a paper trail.** Bans by account and by address, with
 durations (`30m`, `2h`, `7d`), mutes and gags, and an append-only JSONL audit
@@ -88,6 +92,19 @@ own permissions — same commands, same flags, same audit trail — because a
 moderator who has to alt-tab to a terminal moderates less. Name a player however
 you have them: `#12`, their name, part of their name, their username, their
 account id, `ip:203.0.113.9` for everybody at an address, or `@me`.
+
+**A console on the server's own terminal.** `DotStdinConsole` reads commands
+typed where the server was started — but only when stdin is a terminal or a
+file. A pipe is read only when `stdin_console_pipes` is set
+(`--sv-stdin-console-pipes`, `DOT_SERVER_STDIN_CONSOLE_PIPES`; off by default).
+
+<Callout type="warning" title="A pipe nobody closes hangs the server on its way out">
+A read blocked on stdin cannot be cancelled, and on a pipe whose writer never
+closes, Godot hangs inside its own exit. Every test suite that booted a server
+under a CI runner's pipe hung that way until the console learned to tell a pipe
+from a terminal — so turn `stdin_console_pipes` on only when something really
+writes to the pipe and will close it.
+</Callout>
 
 **A limit on how many clients one address may hold.**
 `sv_max_connections_per_ip`, off by default. Neither a ban nor a connect rate
@@ -109,6 +126,87 @@ Each stage has its own timeout, deliberately: a player stuck downloading has a
 *different* problem from one stuck authenticating, and an operator has to be
 able to tell which without guessing.
 
+## The wire: six RPCs, and everything else a kind
+
+`DotServer` and `DotClientLink` declare exactly six `@rpc` methods — one per
+lane each way (reliable control, unreliable control, reliable event) — and
+nothing else in the addon declares any. Each carries a named **kind** and a
+Dictionary. The handshake, content sync, loading, heartbeats, visibility,
+notices and chat are all kinds: `signon.challenge`, `content.sync`,
+`heartbeat`, `notice`, `chat.line` and so on.
+
+**Why frozen.** Godot checksums a node's RPC method *names* and refuses every RPC
+between two nodes that disagree — and it says so as "The rpc node checksum
+failed", after which the client sits in `AUTHENTICATING` until it times out.
+Nobody reads that as "version mismatch". So every feature that used to arrive as
+a new RPC pair locked every shipped client out of every server built after it.
+With the surface frozen, a server can run ahead of its clients: the goal is that
+mismatched versions of the dot addons play together as long as the API agrees.
+
+**Each end advertises what it knows, and the server decides.** The challenge
+carries the server's kinds and which of them are required; the credentials
+answer with the client's. A kind the peer does not know is simply not sent; one
+that arrives with no handler is dropped with a DEBUG line. Only the core kinds a
+join needs are required — notices, chat, ping, visibility and progress are all
+optional, so an older peer loses the feature and keeps the game. A required kind
+one end lacks refuses the join at the credentials, before the password is
+looked at, **with a sentence**: *"This server needs a newer game client."* or
+*"This server is older than this game client and cannot host it."* — as
+`CODE_VERSION`, so a shell can tell it from a kick.
+
+Adding a feature is `server.envelope.register(&"mything", handler, required)`
+plus `server.send_kind(peer, &"mything", {...}, lane)`, and the same on
+`link.envelope`. Payloads change only by adding a field, and handlers read
+through `DotEnvelope.number` / `text` / `flag`, which default what an older peer
+did not send. A change that cannot be an addition is a new kind.
+
+**`signon_revision` makes the freeze checkable.** `DotSignon.revision` hashes the
+sorted `@rpc` names — the same declaration the engine checksums — and the
+`signon_revision` self-test fails on the commit that adds a seventh RPC, naming
+it and saying "add a kind", rather than on the deployment.
+
+<Callout type="warning" title="Shells exported before the freeze must be rebuilt once">
+This was the last coordinated protocol break (`DotSignon.PROTOCOL` is 2). A web
+or native shell exported before it is sent kinds on RPCs it never declared and
+ends at its own signon watchdog. Re-export every shell alongside the servers
+once; after that, a new dot-server feature should not need it.
+</Callout>
+
+A related fix: a disconnect reason sent from outside an RPC handler — a module's
+kick, a game's netcode refusing a client — used to be lost, because the client
+read the data and the close in one poll. The close now waits a quarter of a
+second after a flush, and `kick` carries the `DotError` it is for, so a client
+dropped for a mismatch reads `CODE_VERSION`, not a moderator's kick.
+
+## Telling the HUD something that is not chat: `DotNotice`
+
+`DotServer.broadcast_notice(notice)` and `send_notice(session, notice)` put a
+line, a countdown and a sound on a playing client's HUD;
+`DotClientLink.notice_received` is where the client hears it. A `DotNotice` is a
+cue id (usually a [dot-audio](/learn/godot/addons/dot-audio) id), an optional
+line of text, an optional countdown the client runs itself, and an optional
+**topic** naming the HUD line it replaces — so "10… 9… 8…" is one line changing,
+not ten, and a notice carrying only a topic takes that line down.
+
+**Why it exists.** Something the *server* runs — a vote for the next game, a
+restart warning — outlives the game it is shown over and names none of its
+classes, so a game's own wire cannot carry it. Until `DotNotice`, such things
+reached players as chat scrollback only. It is generic on purpose: a cue,
+seconds, text and a topic cover all of those, where a vote-shaped message would
+just be the first of several.
+
+**The text is sanitised by chat's rules.** The same client draws both, so a
+notice refuses everything [dot-chat](/learn/godot/addons/dot-chat) refuses —
+control characters, zero-width and bidi-override characters — and `to_wire`
+bounds every field again, because the fields are public and a host that
+assigned text directly would otherwise send it raw. BBCode is deliberately *not*
+escaped on the wire: the shell draws a notice in a plain `Label`.
+`DotNotice.bbcode_text()` is the one-pass escape for a client drawing it as rich
+text.
+
+Notices reach playing sessions only, on the event lane — never queued behind a
+content sync. A countdown of zero is still a countdown; "no countdown" is -1.
+
 ## Where a game plugs in
 
 <Params>
@@ -121,7 +219,11 @@ able to tell which without guessing.
     for what the helpers did not cover: timers, files, sockets.
 
     A module that cannot work must fail in `_module_load` rather than load
-    broken.
+    broken. A module that does not even compile — one extending a class nobody
+    registered, say — comes back from `load_module` as a **failed result**, not
+    a script error: `load()` hands back a script whatever its parse said, and a
+    caller that awaited it used to read `.ok` off null and abort too, so a
+    health check printed "ok" over a module that never loaded.
   </Param>
   <Param name="DotEventBus.hook_pre / hook_post">
     React to, or **veto**, anything. `player_chat`, `player_command` and

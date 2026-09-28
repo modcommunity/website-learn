@@ -2,6 +2,7 @@
 title: dot-vote
 description: One configurable engine for voting on what plays next — games, maps or modes. Rock the vote, nominations, per-choice time limits, four counting methods, five tie-breaks, quorums and cooldowns.
 navTitle: dot-vote
+badge: updated
 order: 220
 keywords:
   - "vote"
@@ -78,7 +79,59 @@ client mirroring a server's ballot does.
 | **Counting** | Plurality, approval, instant runoff, or a majority runoff. Quorums, weighted ballots, and five tie-breaks — four of which a player watching can predict. |
 | **Cooldowns** | In plays or in wall-clock minutes, per choice, clamped against the pool so a long cooldown on a short rotation cannot exclude everything. |
 | **Applying** | Immediately, at the end of the round, or when the clock runs out — with a delay so players can read the result. |
-| **Commands** | `nominate`, `rtv`, `votefor`, `timeleft`, `nextmap`, `revote`, `extend`, `endvote`, on a console and in chat. Every name configurable. |
+| **Commands** | `nominate`, `rtv`, `votefor`, `timeleft`, `nextmap`, `revote`, `extend`, `endvote`, on a console and in chat, plus the admin set `setnextmap`, `nominate_addmap`, `forcertv` and `votereload`. Every name configurable; `DotVoteCommands.resolve_fn` turns what a player typed into a choice id, for a game whose ids carry a prefix. |
+
+## Parity with the community map-choosers
+
+Servers in this genre have run the same plugins for fifteen years: an end-of-map
+chooser, rock-the-vote, nominations, and a sounds layer over the first.
+**Everything those expose is here as a `DotVoteRules` setting** rather than as a
+second plugin, and the addon's `docs/parity.md` lists every old cvar, command,
+query and event row by row against what covers it — so a server owner who knows
+the old cvar can find the new setting, and a gap is a row that says so. The old
+names are only a lookup key; nothing reads them.
+
+What that brought in, in outline:
+
+- **`end_vote`, the switch.** Off, a limit still ends the map and the
+  rotation; an admin's `setnextmap` or a rock-the-vote decides what is next.
+- **More ways to open the ballot**: `vote_lead_fraction`, and a score limit the
+  host feeds through `note_score` (`score_limit`, `vote_lead_score`,
+  `extend_score`, `trigger: score_limit`) — frags, team wins, points, whatever
+  the game counts.
+- **A counted-down warning** before a ballot and before a runoff
+  (`vote_warning_sec`, `runoff_warning_sec`), with `countdown_started` and a
+  per-second `countdown_tick`.
+- **Ballot shape**: `on_no_votes` (keep, random or rotation), `early_vote_keep`
+  ("don't change" on a rock-the-vote ballot, resuming the clock rather than
+  restarting it), `include_abstain`, `pseudo_options_first`, `shuffle_ballot`,
+  and unofficial choices marked as such.
+- **Rock-the-vote and nomination rules**: `rtv_interval_sec`, `rtv_apply`,
+  `rtv_after_decided`, `nominations_forget_leavers`, and a reason on every
+  nomination removal.
+- **Sounds as cue ids** for the start, the end, the warnings and each second,
+  emitted through a signal — so there is still no dependency on dot-audio.
+
+Some rows are deliberately **different**, and they are the ones to read before
+migrating. `max_extends: 0` means *unlimited*, where the old `0` meant "no
+extends" — `include_extend: false` is none. Seconding a nomination is on by
+default, because `fill: most_nominated` needs it. Menus, hint boxes and
+translations are **not** here at all: dot-vote draws nothing, and the signals
+carry what a HUD needs.
+
+<Callout type="warning" title="Admin vote commands used to be root-only">
+`DotVoteCommands.admin_permission` was `"changelevel"` — a command's name, not a
+flag anybody holds — so every admin vote command silently needed root. It is
+dot-server's `changemap` flag now. A server that worked round it by handing out
+root can take that back.
+</Callout>
+
+**Every config layer reaches a running ballot.** The rules layer as a game's
+code defaults < the running game's metadata < a file < `DOT_VOTE_*` <
+`--vote-*` (`DotVoteRules.layer_over_defaults`), refused whole when the result
+does not validate. The self-test sets settings through each layer and asserts
+the *ballot* — not merely the parsed value — because a setting that parses and
+never reaches the vote is the failure a server owner would actually see.
 
 ## Where a game plugs in
 
@@ -88,10 +141,32 @@ client mirroring a server's ballot does.
     `DotVoteListSource` and hand it a `Callable`.
   </Param>
   <Param name="DotVoteRules">
-    Every policy decision, as one `DotConfig`. **Fifty-five settings**, layered
+    Every policy decision, as one `DotConfig`, layered
     `defaults < file < DOT_VOTE_* < --vote-*`, and enum settings written by name
     (`method: instant_runoff`). The self-test fails if any one of them is read
     by nothing.
+
+    **`trigger: round_end` waits for the round to end.** A time or score limit
+    reaching its lead is held (`is_waiting_for_round_end`) until the host's next
+    `note_round_end`; a round limit and a rock-the-vote do not wait.
+
+    **`drop_unfed()`** takes out what a host cannot drive. A round trigger needs
+    `note_round_end` and a score one `note_score`; a game that calls neither and
+    is handed `trigger: round_end` validates and then waits for ever.
+    `drop_unfed(feeds_rounds, feeds_score)` falls back to the time limit, zeroes
+    the limits nothing reports, moves end-of-round applies to immediate, and
+    returns what it took so the host can log it.
+  </Param>
+  <Param name="DotVoteClockView">
+    The time left as somebody who is *not* running the clock sees it — what a
+    client's HUD draws. `state_of(director)` on the server; `adopt` and
+    `formatted_at` on the client. Games used to draw time left from their own
+    map session, which on a client nothing extends, so an "extend" won and the
+    HUD kept counting down to the old end. `is_stale` tells a server when an
+    extend, a new map or a stopped clock has made clients' count wrong, and a
+    running clock is re-sent every thirty seconds even when it agrees, because a
+    server counts in simulated time and a client in wall time. There is no wire
+    format: the game encodes the dictionary.
   </Param>
   <Param name="DotVoteDirector callables">
     `player_count_fn`, `is_admin_fn`, `is_spectator_fn`, `voters_fn`,

@@ -167,11 +167,31 @@ special-cased, and every value is in `DotFpsTunables`.
 | | |
 | --- | --- |
 | Air-strafing, bunny-hopping | Airborne acceleration is capped at `max_air_wish_speed` (1 m/s) measured as a projection onto the wish direction, so turning while strafing adds speed. `0` disables it. |
-| Surfing | Steep slopes are walls. `_slide` keeps every plane touched during a move and picks a direction satisfying all of them, so a ramp junction taken at 20 m/s slides along the crease instead of stopping dead. |
-| Stair stepping | Up to `step_height`, refused when there is nothing to stand on behind the step. |
+| Surfing | Steep slopes are walls. `_slide` keeps every plane touched during a move and picks a direction satisfying all of them, so a ramp junction taken at 20 m/s slides along the crease instead of stopping dead — and a surfer pressed into a bank keeps sliding along it rather than hanging in mid-air at full speed. |
+| Walkable slopes | Anything under `max_slope` is ground: it can be walked up, a jump from it still leaves it, landing on it while moving uphill grounds you, and a ramp's crest does not throw you into the air. |
+| Stair stepping | `step_height` is a hard ceiling measured from the floor you are standing on, not from your feet: a kerb under it is stepped onto, walking or running, without launching you into the air, and a kerb one centimetre over it is a wall at every speed. Also refused when there is nothing to stand on behind the step. |
 | Crouching | Resizes the collider, keeps the feet planted on the ground and the head planted in mid-air, and refuses to stand up under a low ceiling. |
 | Coyote time, jump buffering | Both configurable, both off at zero. |
 | Ground snapping | So walking down slopes and stairs does not give air physics every other tick. |
+
+<Callout type="warning" title="Build level geometry against `step_height`, not around it">
+Until late September 2026 a fast enough runner could ride the capsule's rounded
+bottom up a kerb's corner and clear kerbs well over `step_height`, and even a
+low kerb popped a runner half a metre into the air. Both are fixed, so a map
+that relied on either — a "wall" that was only just over `step_height`, a ledge
+reachable only at a sprint — behaves differently now. If a barrier must stop
+players, make it taller than `step_height`; if they must climb it, make it
+lower.
+</Callout>
+
+**How far a jump goes is the addon's question.** `DotFpsTunables` answers it
+from its own numbers: `jump_apex()`, `climb_limit(margin)`,
+`jump_airtime(rise)` and `jump_reach(rise, speed)`, plus static `airtime_for`
+and `reach_for` for a map that holds constants rather than tunables. An
+unreachable rise answers `0.0` / `-1.0`. Four games had each carried the same
+arithmetic over their own copies of three of these numbers, with a check that
+their copy agreed — and one of them shipped a flat-jump airtime the motor did
+not actually achieve. Ask the tunables when laying out gaps and ledges.
 
 ### Where a game plugs in
 
@@ -193,6 +213,12 @@ simulation, so all three replicate and survive a prediction replay.
     and jump scales; `deny_jump`, `deny_crouch`, `deny_move`; and an `impulse`.
     Speed pads, slow fields, stuns, launchers. `duration_sec` and `refreshable`
     decide how it ends.
+
+    An administrator's **noclip, freeze, speed and gravity** are modifiers too —
+    `DotFpsAdminModifiers`, behind `DotFpsController.admin_abilities`, which is
+    what [dot-moderation](/learn/godot/addons/dot-moderation)'s live tools
+    drive. `forces_noclip` overrides the ability gate, and noclip flight honours
+    `deny_move`, so a frozen player stays frozen in noclip.
   </Param>
   <Param name="DotFpsMoveMode subclass">
     A whole new way to move — a ladder, water, a grapple — using the motor's own
@@ -226,6 +252,15 @@ when replayed, a command that packs to 49 bits, a state object with nothing left
 outside it, and `DotFpsNetSync`, which describes what to replicate **as data** —
 property and type names as strings, which a bridge resolves. Joining the two is
 about thirty lines in your game.
+
+<Callout type="warning" title="Admin powers must be modifiers, or they rubber-band">
+The obvious implementation of an admin noclip is a server setting
+`state.mode = NOCLIP`. The client never predicted that, so on every replayed
+tick its own noclip gate undoes it and the player snaps back and forth. The
+active modifier set is already in the replicated state and already restored by
+a rewind, so an admin power expressed as a modifier is predicted like any speed
+pad. The test suite keeps the naive version as a control that must fail.
+</Callout>
 
 <Callout type="warning" title="Wire up `DotFpsTunables.fingerprint()` on day one">
 A client whose movement config differs from the server's diverges every tick,
