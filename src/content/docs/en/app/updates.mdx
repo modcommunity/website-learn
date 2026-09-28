@@ -18,9 +18,10 @@ source:
   - ../tmc-app/README.md
 ---
 
-The app checks for a newer version of itself when it starts and installs it
-itself. Everything about that lives under **Settings → App → Updates**:
-the **channel**, a **Check for updates** button, and — for administrators — the
+The app checks for a newer version of itself when it starts (unless **Check for
+updates on launch** is off; it is on by default) and installs it itself.
+Everything about that lives under **Settings → App → Updates**: the
+**channel**, a **Check for updates** button, and — for administrators — the
 update source.
 
 ## Stable and beta
@@ -66,17 +67,20 @@ key is configured.
 
 ## The update source (administrators)
 
-**Update source (administrators)** takes a different manifest address and a
-different public key — for testing a staging bucket, a fork or a rotated key
-without rebuilding. Because the key decides what the app will install over
-itself:
+**Update source (administrators)** shows where updates come from and which key
+they must be signed with. It is read-only: the source cannot be changed from
+inside the app. To point the app at a staging bucket, a fork or a rotated key
+without rebuilding, an administrator sets `updaterEndpoint` (an HTTPS manifest
+address) and `updaterPubkey` (the key `tauri signer generate` printed) in the
+app's `settings.json` **while the app is closed**. Because the key decides what
+the app will install over itself:
 
 - only HTTPS addresses with no credentials in them are accepted, and the key has
-  to be a valid public key;
-- every change is written to the app's audit log at **Security** level, which
-  cannot be switched off;
-- while either is set, the section stays expanded and marked *overridden*, and
-  **Use the built-in source** clears both.
+  to be a valid public key; a value that fails either check is ignored;
+- an override in force is written to the app's audit log at **Security** level
+  at every start, and that cannot be switched off;
+- while either is set, the section stays expanded and marked *overridden*.
+  Removing both keys from `settings.json` returns to the built-in source.
 
 <Related>
 - [Releases and updating (App API)](/learn/api/app/releases)
