@@ -12,6 +12,13 @@ import type { LocaleT } from '../config'
  * truth for which links the footer shows, in which column and in what order;
  * this file only carries their text.
  *
+ * The ONE key that is deliberately not city's text is `copyright`: it names
+ * the operating entity, `TekWorks LLC`, with `The Modding Community` as its
+ * DBA — the same line website-processing carries, word for word in every
+ * locale. City's footer.json still has the older entity-less line and is
+ * expected to gain this wording; do not copy city's back over it.
+ * ~/stack/scripts/check-layout-sync.sh reports city as stale until it does.
+ *
  * City now translates every one of these keys itself, so nothing here is
  * English-only any more (most of the second, third and fourth columns used to
  * be, because city carried them in English alone). A key city ever carries in
@@ -35,7 +42,7 @@ export const shellFooter: FooterCatalog = {
     en: {
         slogan:
             'Taking modding to the next level — mods, game assets, and servers for everyone.',
-        copyright: '© {year} The Modding Community. All rights reserved.',
+        copyright: '© {year} The Modding Community, a DBA of TekWorks LLC. All rights reserved.',
         headings: {
             explore: 'Explore',
             community: 'Community',
@@ -55,11 +62,11 @@ export const shellFooter: FooterCatalog = {
             banners: 'Banners',
             discord: 'Discord',
             blog: 'Blog',
-            activity: 'Activity',
+            feed: 'Feed',
             discussions: 'Discussions',
             media: 'Media',
             contact: 'Contact Us',
-            docs: 'Documentation',
+            docs: 'Docs',
             changelog: 'Changelog',
             roadmap: 'Roadmap',
             feedback: 'Feedback',
@@ -74,7 +81,7 @@ export const shellFooter: FooterCatalog = {
         slogan:
             'Llevamos el modding al siguiente nivel: mods, recursos de juego y servidores para todos.',
         copyright:
-            '© {year} The Modding Community. Todos los derechos reservados.',
+            '© {year} The Modding Community, un nombre comercial de TekWorks LLC. Todos los derechos reservados.',
         headings: {
             explore: 'Explorar',
             community: 'Comunidad',
@@ -94,7 +101,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'Banners',
             discord: 'Discord',
             blog: 'Blog',
-            activity: 'Actividad',
+            feed: 'Feed',
             discussions: 'Debates',
             media: 'Multimedia',
             contact: 'Contacto',
@@ -112,7 +119,7 @@ export const shellFooter: FooterCatalog = {
     fr: {
         slogan:
             'Le modding passe à la vitesse supérieure — mods, ressources de jeu et serveurs pour tous.',
-        copyright: '© {year} The Modding Community. Tous droits réservés.',
+        copyright: '© {year} The Modding Community, nom commercial de TekWorks LLC. Tous droits réservés.',
         headings: {
             explore: 'Explorer',
             community: 'Communauté',
@@ -132,7 +139,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'Bannières',
             discord: 'Discord',
             blog: 'Blog',
-            activity: 'Activité',
+            feed: 'Flux',
             discussions: 'Discussions',
             media: 'Médias',
             contact: 'Nous contacter',
@@ -150,7 +157,7 @@ export const shellFooter: FooterCatalog = {
     de: {
         slogan:
             'Modding auf das nächste Level bringen — Mods, Game-Assets und Server für alle.',
-        copyright: '© {year} The Modding Community. Alle Rechte vorbehalten.',
+        copyright: '© {year} The Modding Community, ein Handelsname der TekWorks LLC. Alle Rechte vorbehalten.',
         headings: {
             explore: 'Entdecken',
             community: 'Community',
@@ -170,7 +177,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'Banner',
             discord: 'Discord',
             blog: 'Blog',
-            activity: 'Aktivität',
+            feed: 'Feed',
             discussions: 'Diskussionen',
             media: 'Medien',
             contact: 'Kontakt',
@@ -188,7 +195,7 @@ export const shellFooter: FooterCatalog = {
     ru: {
         slogan:
             'Моддинг на новом уровне — моды, игровые ресурсы и серверы для всех.',
-        copyright: '© {year} The Modding Community. Все права защищены.',
+        copyright: '© {year} The Modding Community — торговое наименование TekWorks LLC. Все права защищены.',
         headings: {
             explore: 'Обзор',
             community: 'Сообщество',
@@ -208,7 +215,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'Баннеры',
             discord: 'Discord',
             blog: 'Блог',
-            activity: 'Активность',
+            feed: 'Лента',
             discussions: 'Обсуждения',
             media: 'Медиа',
             contact: 'Связаться с нами',
@@ -226,7 +233,7 @@ export const shellFooter: FooterCatalog = {
     nl: {
         slogan:
             'Modding naar een hoger niveau — mods, game assets en servers voor iedereen.',
-        copyright: '© {year} The Modding Community. Alle rechten voorbehouden.',
+        copyright: '© {year} The Modding Community, een handelsnaam van TekWorks LLC. Alle rechten voorbehouden.',
         headings: {
             explore: 'Ontdekken',
             community: 'Community',
@@ -246,7 +253,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'Banners',
             discord: 'Discord',
             blog: 'Blog',
-            activity: 'Activiteit',
+            feed: 'Feed',
             discussions: 'Discussies',
             media: 'Media',
             contact: 'Contact',
@@ -263,7 +270,7 @@ export const shellFooter: FooterCatalog = {
     },
     ja: {
         slogan: 'モッディングを次のレベルへ — MOD、ゲームアセット、サーバーをすべての人に。',
-        copyright: '© {year} The Modding Community. 無断転載を禁じます。',
+        copyright: '© {year} The Modding Community（TekWorks LLC の屋号）。無断転載を禁じます。',
         headings: {
             explore: '探す',
             community: 'コミュニティ',
@@ -283,7 +290,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'バナー',
             discord: 'Discord',
             blog: 'ブログ',
-            activity: 'アクティビティ',
+            feed: 'フィード',
             discussions: 'ディスカッション',
             media: 'メディア',
             contact: 'お問い合わせ',
@@ -300,7 +307,7 @@ export const shellFooter: FooterCatalog = {
     },
     zh: {
         slogan: '让模组创作更进一步——面向所有人的模组、游戏资源与服务器。',
-        copyright: '© {year} The Modding Community. 保留所有权利。',
+        copyright: '© {year} The Modding Community，TekWorks LLC 的商号。保留所有权利。',
         headings: {
             explore: '探索',
             community: '社区',
@@ -320,7 +327,7 @@ export const shellFooter: FooterCatalog = {
             banners: '横幅',
             discord: 'Discord',
             blog: '博客',
-            activity: '动态',
+            feed: '动态',
             discussions: '讨论',
             media: '媒体',
             contact: '联系我们',
@@ -339,7 +346,7 @@ export const shellFooter: FooterCatalog = {
         slogan:
             'A levar o modding ao próximo nível — mods, recursos de jogo e servidores para todos.',
         copyright:
-            '© {year} The Modding Community. Todos os direitos reservados.',
+            '© {year} The Modding Community, um nome comercial da TekWorks LLC. Todos os direitos reservados.',
         headings: {
             explore: 'Explorar',
             community: 'Comunidade',
@@ -359,7 +366,7 @@ export const shellFooter: FooterCatalog = {
             banners: 'Banners',
             discord: 'Discord',
             blog: 'Blog',
-            activity: 'Atividade',
+            feed: 'Feed',
             discussions: 'Discussões',
             media: 'Multimédia',
             contact: 'Contacte-nos',

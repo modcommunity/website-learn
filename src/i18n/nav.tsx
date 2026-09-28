@@ -33,7 +33,15 @@ import {
 } from 'lucide-react'
 // lucide dropped brand marks, so Discord stays on react-icons — website-city
 // makes the same exception.
-import { FaDiscord } from 'react-icons/fa6'
+import {
+    FaDiscord,
+    FaFacebookF,
+    FaGithub,
+    FaInstagram,
+    FaSteam,
+    FaXTwitter,
+    FaYoutube,
+} from 'react-icons/fa6'
 import type { NavItem, NavLeaf, NavSection, FooterColumn } from '@modcommunity/shared'
 import type { TFunc } from './t'
 
@@ -345,8 +353,8 @@ export function buildFooterColumns(t: TFunc): FooterColumn[] {
                 // trailing slash. See the header entry above.
                 { label: t('footer.links.blog'), href: '/blog' },
                 {
-                    label: t('footer.links.activity'),
-                    href: '/community/activity',
+                    label: t('footer.links.feed'),
+                    href: '/feed',
                 },
                 {
                     label: t('footer.links.discussions'),
@@ -773,7 +781,7 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
         },
         {
             label: t('rail.sections.groups'),
-            icon: Users,
+            icon: Network,
             items: [
                 {
                     label: t('rail.items.overview'),
@@ -807,8 +815,8 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
                     icon: Compass,
                 },
                 {
-                    label: t('rail.items.activity'),
-                    href: '/community/activity',
+                    label: t('rail.items.feed'),
+                    href: '/feed',
                     icon: Activity,
                 },
                 {
@@ -882,3 +890,49 @@ export function buildSidebarSections(t: TFunc): SidebarSection[] {
         },
     ]
 }
+
+/**
+ * The footer's social row — website-city's `SOCIAL_LINKS` (`src/lib/site/
+ * links.ts`) in its order, with the hover styles of city's `shell/footer.tsx`.
+ * Passed explicitly because the shared <Footer/>'s defaults lag city (they had
+ * no YouTube or Instagram). ~/stack/scripts/check-layout-sync.sh compares this
+ * list against city's.
+ */
+export const SOCIALS = [
+    {
+        label: 'X (Twitter)',
+        href: 'https://x.com/modcommunity_',
+        icon: FaXTwitter,
+        hover: 'hover:text-accent hover:border-accent/50',
+    },
+    {
+        label: 'GitHub',
+        href: 'https://github.com/modcommunity',
+        icon: FaGithub,
+        hover: 'hover:text-foreground hover:border-foreground/40',
+    },
+    {
+        label: 'Steam',
+        href: 'https://steamcommunity.com/groups/moddingcommunity',
+        icon: FaSteam,
+        hover: 'hover:text-accent hover:border-accent/50',
+    },
+    {
+        label: 'YouTube',
+        href: 'https://www.youtube.com/@modcomm',
+        icon: FaYoutube,
+        hover: 'hover:text-accent hover:border-accent/50',
+    },
+    {
+        label: 'Instagram',
+        href: 'https://www.instagram.com/modcommunity_',
+        icon: FaInstagram,
+        hover: 'hover:text-accent hover:border-accent/50',
+    },
+    {
+        label: 'Facebook',
+        href: 'https://facebook.com/tmcmods',
+        icon: FaFacebookF,
+        hover: 'hover:text-accent hover:border-accent/50',
+    },
+]

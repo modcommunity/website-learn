@@ -347,13 +347,19 @@ would put a differently-coloured slab in the middle of every page.
 
 ## One deliberate divergence from city's nav
 
-`src/i18n/nav.tsx` adds a **Documentation** entry to the header's Resources menu
-and to the footer's Resources column, pointing at `/learn`. website-city and
-website-processing do not have it yet.
+City, website-processing and this site all carry the same **Docs** leaf (top
+of the header's Resources menu, the footer's Resources column, the rail's
+Resources section). City and processing point it at
+`https://docs.moddingcommunity.com`; `src/i18n/nav.tsx` points it at `/learn`,
+because a docs site should not leave its own origin to reach itself. That href
+is the one place the navs differ.
 
-A docs site whose own header offers no way back to the docs is absurd, so it is
-on purpose. When city adds it, the three configs match again. That is the one
-place the three navs differ.
+Everything else in the chrome — header, rail, footer columns, social row,
+copyright — must match website-city. `~/stack/scripts/check-layout-sync.sh`
+compares them in all nine locales (it treats `/learn` as the docs URL) and
+prints a diff on drift; the structure is also published as
+`tmc-global/shared/src/data/site-nav.json`. The copyright line is
+website-processing's (it names TekWorks LLC); city's is the stale one.
 
 ## Build / dev
 
