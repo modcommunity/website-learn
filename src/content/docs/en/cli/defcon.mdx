@@ -1,0 +1,106 @@
+---
+title: Network status from the terminal
+description: tmc defcon — the status page's monitors, nodes, incidents, latency and traceroutes in a terminal, with an exit-code check for scripts. No key needed.
+navTitle: tmc defcon
+order: 20
+badge: new
+keywords:
+  - "defcon"
+  - "status"
+  - "uptime"
+  - "latency"
+  - "monitor"
+  - "incident"
+  - "mtr"
+  - "traceroute"
+  - "health check"
+source:
+  - ../tmc-cli/src/tmc_cli/commands/defcon_cmd.py
+  - src/server/api/routers/defcon/public.ts
+  - docs/defcon.md
+---
+
+`tmc defcon` reads the public half of **Defcon**, the network monitor behind
+the site's [status page](/learn/start/status). What it shows is exactly what
+`/status` shows — the same data, from the same place — and it needs no
+credential.
+
+```bash
+tmc defcon status                # overall verdict, counts, open incidents
+tmc defcon status --check        # exit code only: see below
+tmc defcon monitors --status DOWN --status DEGRADED
+tmc defcon monitor homepage      # by id or (part of) its name
+tmc defcon nodes                 # the monitoring nodes, if published
+tmc defcon incidents             # open incidents
+tmc defcon latency 3 --range week --summary
+tmc defcon latency 3 --range day --node frankfurt -o csv
+tmc defcon mtr 5                 # latest traceroute of an MTR monitor
+```
+
+## Using it as a health check
+
+`status --check` prints nothing a script has to parse; the verdict is the exit
+code:
+
+| Exit | Overall status |
+| --- | --- |
+| `0` | `OK` |
+| `1` | `DEGRADED` |
+| `2` | `DOWN` |
+| `3` | `UNKNOWN` |
+
+```bash
+tmc defcon status --check || echo "the site is not OK right now"
+```
+
+## Commands
+
+<Params>
+  <Param name="status">
+    The overall verdict (the worst of every public monitor), counts per status,
+    and the open incidents.
+  </Param>
+  <Param name="monitors">
+    Every public monitor with its kind, target, current status, 24-hour average
+    latency and uptime over 24 hours, 7 days and 30 days. Filter with
+    `--status` (repeatable: `DOWN`, `DEGRADED`, `UNKNOWN`, `OK`) and `--kind`
+    (`WEB`, `TCP`, `ICMP`, `MTR`, `BROWSER`).
+  </Param>
+  <Param name="monitor <ref>">
+    One monitor, by id or by (part of) its name: its status now, per node.
+  </Param>
+  <Param name="nodes">
+    The monitoring nodes and their state.
+  </Param>
+  <Param name="incidents">
+    The incidents open right now.
+  </Param>
+  <Param name="latency <ref>">
+    The latency series for one monitor, one row per sample per node.
+    `--range day|week|month|year|all` (default `day`), `--node` for one node,
+    `--summary` for latest, mean and peak per node instead of the series.
+  </Param>
+  <Param name="mtr <ref>">
+    The latest traceroute of an `MTR` monitor, hop by hop, with the loss and
+    latency flags the node computed.
+  </Param>
+</Params>
+
+<Callout type="info" title="It shows what the status page shows, and no more">
+The site decides what is public, and the CLI honours it: when the status page
+hides nodes or incidents, so does `tmc defcon`, and a monitor that is not
+public is not listed. Resolved incidents are not public, so there is no
+incident history here — only what is open now.
+</Callout>
+
+<Callout type="warning" title="Ask the website, not the API">
+These reads are served by the **website** origin, not by
+`api.moddingcommunity.com`. With a custom `--base-url`, set `--site-url` (or
+`TMC_SITE_URL`) as well — see
+[Opening things in the browser](/learn/cli#opening-things-in-the-browser).
+</Callout>
+
+<Related>
+- [Site status](/learn/start/status)
+- [Command line](/learn/cli)
+</Related>

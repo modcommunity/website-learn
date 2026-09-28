@@ -7,6 +7,8 @@ import {
     Gamepad2,
     Blocks,
     Terminal,
+    MonitorDown,
+    SquareTerminal,
     type LucideIcon,
 } from 'lucide-react'
 
@@ -40,7 +42,9 @@ export const SECTION_META: Record<string, SectionMeta> = {
     servers: { icon: Server, order: 50 },
     parties: { icon: Gamepad2, order: 60 },
     godot: { icon: Blocks, order: 65 },
+    app: { icon: MonitorDown, order: 67 },
     api: { icon: Terminal, order: 70 },
+    cli: { icon: SquareTerminal, order: 75 },
 }
 
 export function sectionMeta(slug: string): SectionMeta | undefined {

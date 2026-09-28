@@ -1,0 +1,80 @@
+---
+title: Updates
+description: How the desktop app updates itself — where it looks, the stable and beta channels, the signature check every update must pass, and the administrator override for the update source.
+navTitle: Updates
+order: 30
+badge: new
+keywords:
+  - "update"
+  - "auto update"
+  - "updater"
+  - "beta"
+  - "channel"
+  - "signature"
+  - "latest.json"
+  - "minisign"
+source:
+  - ../tmc-app/docs/RELEASING.md
+  - ../tmc-app/README.md
+---
+
+The app checks for a newer version of itself when it starts and installs it
+itself. Everything about that lives under **Settings → App → Updates**:
+the **channel**, a **Check for updates** button, and — for administrators — the
+update source.
+
+## Stable and beta
+
+| Channel | Gets |
+| --- | --- |
+| **Stable** | Releases. The default. |
+| **Beta** | Pre-releases as well as releases — whichever is newest. |
+
+Switching back from beta to stable does not downgrade you: you stay on the
+build you have until a stable release newer than it exists.
+
+## Every update is signature-checked
+
+Each release is signed when it is built, and the **public half of the signing
+key is compiled into the app**. An update whose signature does not verify
+against that key is refused before anything on disk is replaced — so a
+compromised download host, or a manifest pointing somewhere else, can at worst
+fail to update you.
+
+<Callout type="warning" title="A build with no key can tell you, but cannot install">
+If a build has no signing key at all (a fork that has not set one up, say), the
+app does not guess: it still shows the "newer version" banner, and the banner
+offers the download page instead of installing. Settings says "No update
+signing key is configured".
+</Callout>
+
+## Where it looks
+
+1. The **update manifest** in TMC's downloads bucket — `latest.json` for
+   stable, `latest-beta.json` for beta — which the release pipeline writes last,
+   after every file it names has been uploaded.
+2. If that cannot be reached, the site's own update route
+   ([`/api/app/v1/update/…`](/learn/api/app/releases#give-me-the-newer-app)),
+   and for the banner alone, [`/version`](/learn/api/app/releases#is-there-a-newer-app).
+
+So the banner works on every build, and the install button works whenever a
+key is configured.
+
+## The update source (administrators)
+
+**Update source (administrators)** takes a different manifest address and a
+different public key — for testing a staging bucket, a fork or a rotated key
+without rebuilding. Because the key decides what the app will install over
+itself:
+
+- only HTTPS addresses with no credentials in them are accepted, and the key has
+  to be a valid public key;
+- every change is written to the app's audit log at **Security** level, which
+  cannot be switched off;
+- while either is set, the section stays expanded and marked *overridden*, and
+  **Use the built-in source** clears both.
+
+<Related>
+- [Releases and updating (App API)](/learn/api/app/releases)
+- [Desktop app](/learn/app)
+</Related>

@@ -1,0 +1,169 @@
+---
+title: Command line
+description: tmc, the command-line client for the site — create and edit your items, upload files and cut releases, browse the public catalogue and check network status, from a shell or a CI job.
+navTitle: Command line
+order: 0
+index: true
+badge: new
+keywords:
+  - "cli"
+  - "tmc"
+  - "tmc-cli"
+  - "terminal"
+  - "shell"
+  - "pip"
+  - "ci"
+  - "console"
+  - "exit code"
+source:
+  - ../tmc-cli/README.md
+  - ../tmc-cli/src/tmc_cli/cli.py
+  - docs/api/cli-contract.md
+---
+
+`tmc` is the command-line client for the site. It speaks the
+[content API](/learn/api/content) — create, edit and delete your own mods,
+assets, servers, articles, communities, collections and groups, upload files and
+cut releases in one command — and two public surfaces that need no key at all:
+the [catalogue](/learn/cli/catalog) and [network status](/learn/cli/defcon).
+
+<Cards>
+  <Card title="The public catalogue" href="/learn/cli/catalog">
+    `tmc catalog` — browse, filter and inspect what any visitor sees, with no
+    credential.
+  </Card>
+  <Card title="Network status" href="/learn/cli/defcon">
+    `tmc defcon` — the status page's data in a terminal, with exit codes a
+    script can branch on.
+  </Card>
+</Cards>
+
+## Install
+
+Python 3.10 or newer and nothing else — the tool uses only the standard
+library. From a checkout of
+[`modcommunity/tmc-cli`](https://github.com/modcommunity/tmc-cli):
+
+```bash
+pip install .                 # gives you `tmc` on PATH
+pip install '.[fast]'         # …plus `cryptography` for faster JWT signing
+./tmc --help                  # or run it from the checkout, nothing to build
+```
+
+Shell completion: `tmc completion bash|zsh|fish`.
+
+## Log in
+
+Keys are made under **Account → API Keys** — see
+[Keys and integrations](/learn/account/credentials). Both kinds the API
+accepts work:
+
+```bash
+# Bearer key. Omit --token to be prompted without echo.
+tmc auth login --token tmc_xxxxxxxxxxxx
+
+# JWT key: you hold the Ed25519 private key, the site holds only the public half.
+tmc auth login --jwt --key-id tmcak_xxxxxxxx --private-key ~/keys/tmc.pem
+
+tmc auth whoami       # which key, and what the server lets it do
+tmc auth doctor       # crypto backend, config permissions, connectivity
+```
+
+Credentials are stored in `~/.config/tmc/config.json`, created at mode `0600`.
+`--profile` keeps several sites or keys apart; in CI, the `TMC_TOKEN`,
+`TMC_KEY_ID`, `TMC_PRIVATE_KEY_FILE`, `TMC_BASE_URL` and `TMC_PROFILE`
+environment variables are usually what you want. A signed assertion is made
+fresh for every attempt, because the API refuses a replayed one — see
+[Authentication](/learn/api/authentication).
+
+## Everyday use
+
+```bash
+tmc mod list --mine --all                       # every page of your own mods
+tmc mod get 42
+tmc mod update 42 --set description="Now with fewer bugs"
+tmc mod create --set name="My Mod" --set appId=1 \
+  --content-file README.md --icon assets/icon.png --tag tooling
+tmc open mod 42 --browser                       # its page on the site
+```
+
+`--set` coerces a value to the field's real type — the API's schemas are strict
+and do not coerce, so `appId=1` has to go out as a number — and an unknown field
+name is caught before any request is spent, with the near-miss it probably
+meant. `tmc schema mod` lists the fields.
+
+Reading a completely public item works without a key: add `--anon`. That is a
+different, smaller endpoint that returns a summary rather than the record — see
+[Reading without a key](/learn/api/content/reading).
+
+### Opening things in the browser
+
+`tmc open <type> <id>` prints the item's address on the site, and with
+`--browser` opens it. Comments, reviews, media and releases open through the
+site's `/i/<type>/<id>` permalink.
+
+<Callout type="warning" title="The API and the website are different origins">
+The API lives on `api.moddingcommunity.com`; pages live on
+`moddingcommunity.com`. `open` resolves a page against the **website** origin:
+`--site-url`, then `TMC_SITE_URL`, then a profile's `site_url`, and failing
+all of those the base URL with a leading `api.` removed. Point `--base-url` at
+a dev checkout or a container and you will want to set `--site-url` too — the
+same applies to [`tmc defcon`](/learn/cli/defcon), which reads from the
+website.
+</Callout>
+
+## Output and exit codes
+
+`-o table` (the default), `json`, `jsonl`, `csv`, `tsv`, `yaml` or `ids`;
+`--field id,name` keeps only the columns you name. Data goes to **stdout** and
+progress and errors to **stderr**, so pipes stay clean.
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | ok |
+| `2` | usage |
+| `3` | auth (401/403) — and, for `tmc contract drift`, "the site and this CLI disagree" |
+| `4` | not found |
+| `5` | validation (400/413) |
+| `6` | rate limited |
+| `7` | server error |
+| `8` | network |
+
+Rate limits are waited out using the server's own `retry-after` (up to
+`--retry-wait-max`); server errors are retried with backoff **only on
+idempotent methods**, so a `POST` is never silently repeated. Bulk writes, bulk
+deletes, relation edits and upload parts are batched to the server's caps for
+you.
+
+## Staying in step with the site
+
+The CLI keeps a local copy of each type's field list so it can catch a typo
+without a request — which means it can be one deploy behind. The site publishes
+what it actually accepts at `GET /api/content/spec`, with no credential:
+
+```bash
+tmc contract sync          # fetch it and cache it
+tmc contract drift         # what the site has that this CLI does not (exit 3)
+```
+
+After a sync, coercion, the unknown-field check, `tmc schema` and completion all
+answer from the **site's** list. A cached contract is only used against the site
+it came from, and only for 30 days.
+
+Nothing is ever blocked by a stale list: `--allow-unknown-fields` sends a field
+anyway, and `tmc raw PUT /api/content/…` reaches any route by hand.
+
+## The web console
+
+There is a second implementation of the same command grammar on the site
+itself: the **console** at `/console`, also reachable from the corner of every
+page. It runs as your signed-in session rather than as a key, so there is
+nothing to log into — and `/api/content/spec` is the contract both of them are
+kept in step with, which is why a command that works in one works in the other.
+
+<Related>
+- [Content API](/learn/api/content)
+- [Keys and integrations](/learn/account/credentials)
+- [Rate limits](/learn/api/rate-limits)
+- [Errors](/learn/api/errors)
+</Related>

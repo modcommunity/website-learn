@@ -3,7 +3,7 @@ title: Releases and updating
 description: How the desktop app learns there is a newer version of itself, how it resolves an installable build for the machine it is on, and how CI publishes a release.
 navTitle: Releases and updating
 order: 50
-badge: new
+badge: updated
 keywords:
   - "updater"
   - "update"
@@ -52,6 +52,16 @@ The app updates itself, and this is the route that lets it. The path segments
 are the placeholders `tauri-plugin-updater` substitutes — `{{target}}`,
 `{{arch}}` and `{{current_version}}` — and the body is the manifest that plugin
 parses.
+
+<Callout type="info" title="Current builds ask the downloads bucket first">
+Release builds of the app are compiled with an updater endpoint pointing at a
+signed `latest.json` (or, on the beta channel, `latest-beta.json`) in the
+downloads bucket, which CI writes last, after every artifact it names. This
+route is the **fallback** — for a build with no endpoint compiled in, or when
+the bucket cannot be reached — and it answers the same Tauri shape, so either
+source installs through the same signature check. What a reader sees of this
+is described in [Updates](/learn/app/updates).
+</Callout>
 
 <Callout type="info" title="The shape is Tauri's, not ours">
 Inventing a shape here would mean writing the client half by hand, and the
@@ -133,8 +143,10 @@ clients.**
 
 The step that used to be a person running a script per platform and then
 remembering to promote. The release workflow calls this once, after it has
-uploaded the artifacts to GitHub, and the app can install the release from the
-moment it returns.
+uploaded the artifacts to the downloads bucket and GitHub, with the bucket's
+URLs, and the site's own update route can offer the release from the moment it
+returns. The step is optional — a release the site was never told about still
+reaches every app that reads the bucket's manifest.
 
 <Params>
   <Param name="version" type="string" required>

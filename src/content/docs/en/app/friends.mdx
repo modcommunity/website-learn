@@ -1,0 +1,73 @@
+---
+title: Friends and parties
+description: The desktop app's Friends page — who is online and on which server, friend requests, party invites and the party you are in — and how it relates to the same features on the website and inside games.
+navTitle: Friends and parties
+order: 20
+badge: new
+keywords:
+  - "friends"
+  - "friend request"
+  - "add friend"
+  - "presence"
+  - "online"
+  - "party"
+  - "invite"
+  - "join friend"
+source:
+  - ../tmc-app/src/routes/friends.tsx
+  - ../tmc-app/src/components/add-friend-button.tsx
+  - docs/api/app-social.md
+---
+
+The app's **Friends** page is the same friends and parties you have on the
+website and inside the games that support them — there is one friend list and
+one party per account, and all three show it.
+
+## Your friends
+
+Friends are sorted by what they are doing: **in a game**, **online**,
+**away**, then **offline**. For a friend in a game the row names the game and,
+where they are on a listed server, the server:
+
+- **Join** appears when their game has said they can be joined — one click
+  takes you to their server;
+- **Server** appears when they are on a server but have not said they are
+  joinable — it opens the server's page instead.
+
+**Remove friend** is on each row.
+
+<Callout type="info" title="Offline is sometimes a privacy setting">
+A friend whose [privacy settings](/learn/account/privacy) hide their activity
+reads as offline to everybody, friends included, and a friend who is only on the
+website shows as online or away rather than in a game. Presence a game reports
+also expires on its own a short while after the game stops sending it, so a
+crash shows as offline rather than as "in game" forever.
+</Callout>
+
+## Requests
+
+- **Add friend** is on every member's page in the app.
+- **Requests** lists what you have been sent — **Accept** or **Decline**.
+- **Sent** lists what you have asked — **Withdraw** takes a request back.
+
+The rules are the website's: asking somebody who has already asked you accepts
+them; after a decline only the person declined waits before asking again; and
+a member can turn friend requests off entirely.
+
+## Party invites and your party
+
+**Party invites** lists invitations to a [party](/learn/parties) with
+**Join** and **Decline**. Accepting still goes through the party's own rules,
+so a party that has filled since you were invited turns you away and the invite
+stays usable.
+
+**Your party** shows the party you are in, if any, with its roster and
+**Leave**. Being in a party from the app is the same as being in it from the
+website or from a game — see [Joining and visibility](/learn/parties/joining)
+and [Lifecycle](/learn/parties/lifecycle).
+
+<Related>
+- [Parties](/learn/parties)
+- [Parties, friends and presence (App API)](/learn/api/app/social)
+- [dot-friends](/learn/godot/addons/dot-friends) — the same thing inside a Dot game
+</Related>

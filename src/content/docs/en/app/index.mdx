@@ -1,0 +1,87 @@
+---
+title: Desktop app
+description: The TMC app — install mods in one click, browse servers with real latency, install and play TMC's own games, and keep up with your friends and parties, on Linux, Windows and macOS.
+navTitle: Desktop app
+order: 0
+index: true
+badge: new
+keywords:
+  - "tmc-app"
+  - "app"
+  - "desktop"
+  - "client"
+  - "launcher"
+  - "install"
+  - "download"
+  - "tauri"
+  - "tmc://"
+source:
+  - ../tmc-app/README.md
+  - ../tmc-app/CLAUDE.md
+---
+
+The **TMC app** is the site's desktop client. It does what the website cannot
+do from inside a browser: put files into a game's folder, measure latency to a
+server from *your* machine, and start a game as a real program.
+
+<Cards>
+  <Card title="Games and playing" href="/learn/app/games">
+    A page per game, installing and launching TMC's own games, and joining a
+    server from a link.
+  </Card>
+  <Card title="Friends and parties" href="/learn/app/friends">
+    Who is online and where, friend requests, party invites and the party you
+    are in.
+  </Card>
+  <Card title="Updates" href="/learn/app/updates">
+    How the app updates itself, the stable and beta channels, and why every
+    update is signature-checked.
+  </Card>
+</Cards>
+
+## Installing
+
+Downloads are on the [app's page](/tmc-app) and on the
+[GitHub releases](https://github.com/modcommunity/tmc-app/releases).
+
+- **Linux** — one line, no root:
+  `curl -fsSL https://raw.githubusercontent.com/modcommunity/tmc-app/main/scripts/install.sh | sh`.
+  It checks the download against the release's checksums, installs into
+  `~/.local`, and registers the launcher entry and the `tmc://` link scheme.
+  `… | sh -s -- --uninstall` removes it. AppImage and `.deb` builds are also
+  published.
+- **Windows** — the `setup.exe` or `.msi` installer. The portable `.exe` runs
+  without installing, and so does **not** register the `tmc://` scheme: links
+  from the website will not open it.
+- **macOS** — the `.dmg`.
+
+## Signing in
+
+The app signs in with a **device code**: it shows a short code, you approve it
+on the website while signed in, and the app receives its own token. It never
+sees your password, and you can revoke it under **Account → Sessions** — see [Keys and integrations](/learn/account/credentials) and, for the
+protocol, [App API authentication](/learn/api/app/auth).
+
+## What it does
+
+- **Mods.** One-click install and uninstall for games that support it, and
+  **sandboxes** — named mod profiles per game, each with its own load order and
+  deployment method. Switching sandboxes does not re-download anything.
+- **Servers.** A server browser with **real-time latency** measured from your
+  machine, status and latency charts, RCON with history, and one-click connect
+  where the game supports it.
+- **Games.** Every game has its own page, and TMC's own games are installed,
+  updated and launched by the app — see [Games and playing](/learn/app/games).
+- **Friends and parties.** The same friends and parties the website and the
+  games themselves show — see [Friends and parties](/learn/app/friends).
+
+<Callout type="info" title="The app and the website are one account">
+Subscriptions, friends, parties and statistics live on the site, not in the
+app. Anything you do in one shows up in the other, and uninstalling the app
+loses nothing but its local files and sandboxes.
+</Callout>
+
+<Related>
+- [App API](/learn/api/app) — the HTTP surface the app speaks
+- [Parties](/learn/parties)
+</Related>

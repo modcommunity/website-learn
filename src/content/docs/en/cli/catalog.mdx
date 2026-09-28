@@ -1,0 +1,110 @@
+---
+title: The public catalogue
+description: tmc catalog — browse, filter and inspect what any visitor to the site sees, including counts, categories, dependencies and reviews, with no API key.
+navTitle: tmc catalog
+order: 10
+badge: new
+keywords:
+  - "catalog"
+  - "browse"
+  - "facets"
+  - "reviews"
+  - "games"
+  - "lookup"
+  - "anonymous"
+  - "no key"
+source:
+  - ../tmc-cli/src/tmc_cli/commands/catalog_cmd.py
+  - ../tmc-cli/src/tmc_cli/cli.py
+  - src/app/api/app/v1
+  - src/types/app-api/contract.ts
+---
+
+`tmc catalog` reads the site the way a visitor sees it. It sends **no
+credential**, so it works before `tmc auth login`, and it covers what the
+content API does not hand out: category and tag names, owners, download and
+rating counts, dependencies, reviews and the list of games.
+
+It is the public half of the [App API](/learn/api/app) (`/api/app/v1`) — the
+same one-row-for-every-kind shape described in
+[Browsing](/learn/api/app/browse).
+
+```bash
+tmc catalog browse mod --app 3 --category 7 --tag 1 --tag 2 --sort downloads
+tmc catalog show mod 42                          # summary + counts
+tmc catalog show mod 42 --part dependencies      # or releases, media, links
+tmc catalog facets mod                           # ids to filter by
+tmc catalog reviews mod 42 --sort helpful
+tmc catalog games --search seed
+tmc catalog lookup play.example.com --port 27015 # listed servers at an address
+```
+
+<Callout type="info" title="Two different reads, on purpose">
+`tmc mod get 42 --anon` and `tmc catalog show mod 42` both work without a key,
+and they are different endpoints. The first is the content API's anonymous
+summary, which an item's team can switch off (`apiPublic`) and which answers
+for seven types. The second is what the site's own pages are built from, and
+is the one to reach for when you want what a visitor sees.
+</Callout>
+
+## Kinds
+
+`asset`, `mod`, `server`, `serverMap`, `article`, `community`, `collection`,
+`user`. Ids on this surface are **strings** — the app API's convention — even
+where they look like numbers.
+
+## Commands
+
+<Params>
+  <Param name="browse <kind>">
+    A page of rows. Filters: `--search`, `--app` (repeatable), `--category`
+    (repeatable), `--tag` (repeatable; all must match, or any with
+    `--any-tag`), `--community`, `--owner`, `--official`, `--nsfw`. Order with
+    `--sort` (`createdAt`, `lastEdit`, `name`, `views`, `downloads`, `rating`,
+    `reviews`, `favorites`, and for servers `curUsers`, `maxUsers`, `avgUsers`),
+    `--dir asc|desc` and `--time-range all|24h|7d|30d`. Kind-specific filters go
+    through `--filter key=value` — for example
+    `--filter onlineOnly=true --filter os=LINUX` on servers.
+  </Param>
+  <Param name="show <kind> <id>">
+    One item's summary and counts. `--part releases|media|links|dependencies`
+    fetches that part instead.
+  </Param>
+  <Param name="facets <kind>">
+    The games, categories and tags that kind can be filtered by, with their
+    ids — the numbers `browse` wants.
+  </Param>
+  <Param name="reviews <kind> <id>">
+    An item's reviews, `--sort recent|helpful|rating`.
+  </Param>
+  <Param name="games">
+    The games list. `--search`, `--type` (`GAME`, `GAME_SINGLEPLAYER`,
+    `GAME_ENGINE`, `VOIP`, `OTHER`), `--playable` for games playable on the
+    site, `--ids` / `--slug` (repeatable) to fetch specific ones.
+  </Param>
+  <Param name="lookup <host>">
+    The listed servers at a hostname or IP, optionally narrowed by `--port`.
+    Useful for "is my server listed yet?" — see
+    [Getting listed](/learn/servers/listing).
+  </Param>
+</Params>
+
+## Paging
+
+Every list takes `--limit`, `--cursor`, `--all` (follow the cursor to the end)
+and `--max` (stop after this many rows with `--all`). Output formats are the
+usual ones — see [Output and exit codes](/learn/cli#output-and-exit-codes).
+
+<Callout type="warning" title="Anonymous means the anonymous quota">
+With no key, requests are counted per source address, and the budget is
+deliberately small. A script that walks a whole kind with `--all` should
+expect to meet a `429`; the CLI waits out the server's own `retry-after`, but
+a key is free and has a much larger budget. See
+[Rate limits](/learn/api/rate-limits).
+</Callout>
+
+<Related>
+- [Browsing (App API)](/learn/api/app/browse)
+- [Reading without a key](/learn/api/content/reading)
+- [Command line](/learn/cli)
+</Related>

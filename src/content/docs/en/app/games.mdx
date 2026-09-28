@@ -1,0 +1,84 @@
+---
+title: Games and playing
+description: A page per game in the desktop app — play it, see its busiest servers and its leaderboards — plus how the app installs, updates and launches TMC's own games and joins a server from a tmc:// link.
+navTitle: Games and playing
+order: 10
+badge: new
+keywords:
+  - "play"
+  - "launch"
+  - "leaderboard"
+  - "stats"
+  - "native build"
+  - "TMC Games"
+  - "tmc://"
+  - "join link"
+  - "godot"
+source:
+  - ../tmc-app/src/routes/game.tsx
+  - ../tmc-app/README.md
+  - ../tmc-app/CLAUDE.md
+---
+
+## A page per game
+
+Every game in the app's **Apps** list opens to a page of its own (`/apps/<id>`
+inside the app) with three things the card has no room for:
+
+- **Play** — for a game the site can launch or the app can install. It opens
+  the same play dialog as everywhere else, so you choose how to join rather than
+  being dropped into something.
+- **Its busiest servers** — the same rows, filters and live query as the server
+  browser, cut to a short list with a link to the full one.
+- **Leaderboards and your figures**, when you are signed in — any statistic the
+  game's servers record, ranked by the site, with **your own rank and value**
+  beside the board even when you are not on it.
+
+<Callout type="info" title="Why the stat picker only shows some stats">
+There is no "list every stat this game has" route, so the page learns which
+stats exist from the ones **you** hold values for, and offers those. For any
+other, type its key (for example `kills`). A game you have never played shows
+none until you do. See [Statistics](/learn/api/integration/stats) for where the
+numbers come from.
+</Callout>
+
+## TMC's own games
+
+Games TMC publishes — the [Dot](/learn/godot/games) games among them — are
+installed by the app **as real programs**, not run in a browser:
+
+- the app picks the build for the machine it is on (operating system and
+  architecture), downloads it, verifies it and unpacks it;
+- installed games appear under **Library → TMC Games**, separate from what you
+  have subscribed to, and each can be removed from there;
+- each is **kept up to date automatically**, and automatic updates can be
+  switched off per game;
+- a build that is no longer published for your machine still runs — it is
+  marked as such, and you can still remove it.
+
+When the app launches a game onto a server, the server's address is passed on
+the command line. For a Godot game the app keeps the `--` separator in front of
+the game's own arguments: Godot reads everything after a bare `--` as the
+game's, and everything before it as the engine's.
+
+The builds and how the app finds the right one are described in
+[Where is this game's build?](/learn/api/app/releases#where-is-this-games-build).
+
+## Joining from a link
+
+A `tmc://play/<host>:<port>` link on the website opens the app on that server.
+It shows which game is running there and the latency **measured from your
+machine**, then the ways you can actually join it.
+
+<Callout type="warning" title="A link never joins on its own">
+Opening a `tmc://` link only ever shows you the server. Joining is always a
+click you make — a link on a web page is not allowed to start a game and
+connect it somewhere without you. The portable Windows build does not register
+the `tmc://` scheme, so links will not open it.
+</Callout>
+
+<Related>
+- [Resolving a launch](/learn/api/app/play#resolving-a-launch)
+- [Finding a server from a link](/learn/api/app/play#finding-a-server-from-a-link)
+- [Friends and parties](/learn/app/friends)
+</Related>

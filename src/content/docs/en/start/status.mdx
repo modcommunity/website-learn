@@ -1,0 +1,95 @@
+---
+title: Site status
+description: What the status page at /status tells you — published incidents and maintenance, the network monitor's view of the site from several places, and the site's own health checks — and how to read each.
+navTitle: Site status
+order: 50
+badge: new
+keywords:
+  - "status"
+  - "outage"
+  - "down"
+  - "uptime"
+  - "incident"
+  - "maintenance"
+  - "defcon"
+  - "latency"
+  - "monitor"
+source:
+  - src/app/[locale]/status/page.tsx
+  - src/app/_components/lib/status/defcon.tsx
+  - docs/defcon.md
+---
+
+[`/status`](/status) is the place to look when something on the site seems
+broken. It has three parts, and they come from three different places — which
+is the thing worth knowing, because they can disagree for good reasons.
+
+## Incidents and maintenance
+
+The top of the page is written by **people**: incidents and maintenance
+windows staff have published, each with an impact level, the parts of the site
+it touches, and a timeline of updates. The overall banner is the worst impact
+among what is open:
+
+| Level | Means |
+| --- | --- |
+| Operational | Nothing is currently reported as broken. |
+| Maintenance | Planned work; some things may be briefly unavailable. |
+| Minor | Something is degraded; most of the site is unaffected. |
+| Major | Something is badly degraded and being worked on. |
+| Critical | A part of the site is unusable. |
+
+Each event has its own link, so it can be shared while it is running.
+
+## The network monitor (Defcon)
+
+The middle of the page is **measured**. Defcon is a small fleet of monitoring
+nodes, run from different networks and locations, that load the site's pages,
+API routes and hosts the way a visitor would and report what they saw:
+
+- a status per **monitor** — `OK`, `DEGRADED`, `DOWN` or `UNKNOWN` — with a dot
+  for each node that measures it;
+- **uptime** over 24 hours, 7 days and 30 days, and the 24-hour average latency;
+- a **latency chart** per monitor with one line per node, because the point of
+  a fleet is the same route seen from everywhere. A browser monitor charts page
+  load time, with its paint milestones (FCP, LCP) and stability (blocking time
+  and layout shift) under it;
+- for a traceroute monitor, the latest route hop by hop.
+
+<Callout type="info" title="One slow request does not turn a monitor red">
+A status only gets worse after several consecutive bad samples and only
+recovers after several good ones, per node. That is deliberate — a single slow
+response from one place is noise — but it means a problem you are seeing right
+now can take a few minutes to show here, and a fix a few minutes to clear it.
+</Callout>
+
+<Callout type="warning" title="Green here does not mean it works for you">
+Defcon measures from *its* nodes. A problem between your network and the site
+— your ISP, a regional route, a filter — is invisible to it. If `/status` is
+green and the site is not loading for you, the traceroute and per-node charts
+are the place to look for where the path differs.
+</Callout>
+
+Staff decide how much of this is public: the whole section can be switched off,
+a monitor can be kept private, and the node list, open incidents and
+traceroutes each have their own switch. Nothing public names a node's address
+or a monitor's full URL.
+
+The same data is available from a terminal with
+[`tmc defcon`](/learn/cli/defcon) — including `tmc defcon status --check`,
+which answers with an exit code a script or another monitor can use.
+
+## Health checks
+
+The bottom of the page is what the site **says about itself**, measured
+automatically and refreshed about once a minute: how much of the game-server
+fleet is being [scanned](/learn/servers/scanning) as often as its policy asks,
+how far behind the scan queue is, servers shown online that have missed several
+scans, how far behind analytics are, failed scheduled jobs and new errors. These
+are the checks behind "why is this server's player count stale?" more often than
+an incident is.
+
+<Related>
+- [Network status from the terminal](/learn/cli/defcon)
+- [How scanning works](/learn/servers/scanning)
+</Related>
