@@ -57,9 +57,10 @@ parses.
 Release builds of the app are compiled with an updater endpoint pointing at a
 signed `latest.json` (or, on the beta channel, `latest-beta.json`) in the
 downloads bucket, which CI writes last, after every artifact it names. This
-route is the **fallback** — for a build with no endpoint compiled in, or when
-the bucket cannot be reached — and it answers the same Tauri shape, so either
-source installs through the same signature check. What a reader sees of this
+route is the **fallback** for a build with no endpoint compiled in (a build
+whose bucket cannot be reached falls back to [`/version`](#is-there-a-newer-app)
+for its banner, not to this route), and it answers the same Tauri shape, so
+either source installs through the same signature check. What a reader sees of this
 is described in [Updates](/learn/app/updates).
 </Callout>
 

@@ -53,9 +53,13 @@ signing key is configured".
 1. The **update manifest** in TMC's downloads bucket — `latest.json` for
    stable, `latest-beta.json` for beta — which the release pipeline writes last,
    after every file it names has been uploaded.
-2. If that cannot be reached, the site's own update route
-   ([`/api/app/v1/update/…`](/learn/api/app/releases#give-me-the-newer-app)),
-   and for the banner alone, [`/version`](/learn/api/app/releases#is-there-a-newer-app).
+   A build made without that address uses the site's own update route
+   ([`/api/app/v1/update/…`](/learn/api/app/releases#give-me-the-newer-app))
+   instead.
+2. If the manifest cannot be reached — or the build has no signing key — the
+   "newer version" banner asks the site's
+   [`/version`](/learn/api/app/releases#is-there-a-newer-app), which answers
+   with a download page rather than something to install.
 
 So the banner works on every build, and the install button works whenever a
 key is configured.

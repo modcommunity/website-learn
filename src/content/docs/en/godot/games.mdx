@@ -196,8 +196,9 @@ anybody — it breaks crates and shoves them. That is the whole game.
 
 Uses `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
 `dot-player-controller`, `dot-net` and `dot-game`, plus `dot-spectate`,
-`dot-audio`, `dot-stats`, `dot-achievements` and `dot-settings`. It unlinked
-`dot-spawn`, `dot-team`, `dot-physics` and `dot-fx`, each named and never used. It is also the project that
+`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings` and `dot-fx` (for the
+exploding barrels). It unlinked `dot-spawn`, `dot-team` and `dot-physics`, each
+named and never used. It is also the project that
 [dot-entity](/learn/godot/addons/dot-entity) found a leak in: a
 `_next_entity_id` counter with no `forget()` anywhere, which left a `DotHealth`
 per player who had ever joined, each pointing at a freed node.

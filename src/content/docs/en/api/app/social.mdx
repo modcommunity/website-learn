@@ -84,7 +84,7 @@ what the stages and roles mean, see [the party lifecycle](/learn/parties/lifecyc
 | `POST party/join` | `{ id, password?, token? }` | `{ partyId, role, leftPartyId }` |
 | `POST party/leave` | `{ id, silent? }` | `{ left, ended }` |
 | `POST party/heartbeat` | `{ id }` | `null` |
-| `POST party/kick` | `{ id, userId, ban }` | `null` |
+| `POST party/kick` | `{ id, userId, ban? }` | `null` |
 | `POST party/role` | `{ id, userId, role }` — `CO_HOST` or `MEMBER` | `null` |
 | `POST party/transfer` | `{ id, userId }` | `null` |
 | `POST party/invite` | `{ id, userIds[1..25], message? }` | the invite ids made |
@@ -92,7 +92,7 @@ what the stages and roles mean, see [the party lifecycle](/learn/parties/lifecyc
 | `POST party/invite/respond` | `{ inviteId, accept }` | `null`, or as `join` when accepted |
 | `POST party/start` | `{ id, serverId? }` | the ready view |
 | `GET party/{id}/ready` | — | the ready view |
-| `POST party/ready` | `{ id, ready }` | the ready view |
+| `POST party/ready` | `{ id, ready? }` — `ready` defaults to `true` | the ready view |
 | `POST party/connected` | `{ id }` | `null` |
 | `POST party/force-start` | `{ id }` | `null` |
 | `POST party/cancel` | `{ id }` | `null` |

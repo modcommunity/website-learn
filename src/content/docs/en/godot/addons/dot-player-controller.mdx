@@ -119,7 +119,7 @@ incoming controller's `_on_activated`, because that is where a controller resets
 its motor.
 
 `set_input_enabled(false)` freezes every controller, not only the active one,
-and a frozen controller still ticks: `drive()` applies an empty intent rather
+and a frozen controller still ticks: `simulate()` applies an empty intent rather
 than skipping, so a frozen player keeps falling and keeps sliding to a stop
 instead of hanging in mid-air.
 
@@ -168,7 +168,7 @@ special-cased, and every value is in `DotFpsTunables`.
 | --- | --- |
 | Air-strafing, bunny-hopping | Airborne acceleration is capped at `max_air_wish_speed` (1 m/s) measured as a projection onto the wish direction, so turning while strafing adds speed. `0` disables it. |
 | Surfing | Steep slopes are walls. `_slide` keeps every plane touched during a move and picks a direction satisfying all of them, so a ramp junction taken at 20 m/s slides along the crease instead of stopping dead — and a surfer pressed into a bank keeps sliding along it rather than hanging in mid-air at full speed. |
-| Walkable slopes | Anything under `max_slope` is ground: it can be walked up, a jump from it still leaves it, landing on it while moving uphill grounds you, and a ramp's crest does not throw you into the air. |
+| Walkable slopes | Anything under `max_slope_angle` is ground: it can be walked up, a jump from it still leaves it, landing on it while moving uphill grounds you, and a ramp's crest does not throw you into the air. |
 | Stair stepping | `step_height` is a hard ceiling measured from the floor you are standing on, not from your feet: a kerb under it is stepped onto, walking or running, without launching you into the air, and a kerb one centimetre over it is a wall at every speed. Also refused when there is nothing to stand on behind the step. |
 | Crouching | Resizes the collider, keeps the feet planted on the ground and the head planted in mid-air, and refuses to stand up under a low ceiling. |
 | Coyote time, jump buffering | Both configurable, both off at zero. |

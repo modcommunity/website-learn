@@ -205,7 +205,7 @@ went past god.
 | The longest punishment allowed | `DotModerationManager.max_duration_sec` |
 | Whether equals may act on equals | `DotModerationManager.equal_immunity_may_act` |
 
-Signals: `punished`, `revoked`, `expired`, `refused`, `acted`.
+Signals: `punished`, `revoked`, `expired` on the manager; `acted`, `refused`, `toggled` on `DotModTools`.
 
 <Callout type="warning" title="Zero immunity means &quot;no immunity to respect&quot;, not &quot;the highest rank&quot;">
 A revoke path that required strictly greater immunity unconditionally meant 0
