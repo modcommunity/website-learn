@@ -1,6 +1,6 @@
 ---
 title: The addons
-description: All fifty-six Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
+description: All fifty-eight Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
 order: 40
 badge: updated
 keywords:
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-Fifty-six addons that work together and, apart from `dot-core`, work independently.
+Fifty-eight addons that work together and, apart from `dot-core`, work independently.
 Each is its own repository under
 [`modcommunity`](https://github.com/modcommunity), each ships one
 `addons/<name>/` folder, and each has its own headless test suite.
@@ -81,8 +81,12 @@ are. Every game in the collection uses these.
 | [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | Sessions players host for each other: join codes, readiness, a host election that is a pure function of the member list, and an honest account of NAT. |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Bans, kicks, gags, voice mutes and warnings as one durable record. Publishes the mute and ban sources the others consult. |
 | [dot-chat](/learn/godot/addons/dot-chat) | dot-core, *optionally* dot-moderation | Server-authoritative text chat: channels with an audience rule, sanitisation, rate limits, scrollback, commands. |
+| [dot-friends](/learn/godot/addons/dot-friends) | dot-core | The player's friends and their presence from the site — online, in which game, on which server, in which party — and a `join()` that hands off to the party or the server. |
+| [dot-party](/learn/godot/addons/dot-party) | dot-core | Parties from both ends of the site's party system: a client that follows the ready round to its server, the server's claim and reporting, and bookings that actually keep a reserved server private. |
+| [dot-matchmaking](/learn/godot/addons/dot-matchmaking) | dot-core | Who plays whom: Glicko-2 ratings per queue, playlists that start strict and widen with waiting, parties placed whole, balanced sides. On TMC the site keeps the ratings. |
 | [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Voice chat: capture, a pluggable codec, a jitter buffer per speaker, and server-side routing to everybody, a team or a radius. |
 | [dot-spectate](/learn/godot/addons/dot-spectate) | dot-core | Who is watching whom and what the server lets them see: seven observer modes, a force-camera policy, the death-cam chain, a broadcast delay. |
+| [dot-replay](/learn/godot/addons/dot-replay) | dot-core | Match demos for spectating, review and moderation evidence: tick-stamped channels in a chunked, hash-chained file that seeks by keyframe and survives a crash, plus a ring for "save that clip". |
 | [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optionally* dot-server + dot-map | Voting for what plays next, as one configurable engine: rtv, nominations, four counting methods, five tie-breaks. |
 
 ## The fight
@@ -126,6 +130,7 @@ are. Every game in the collection uses these.
 | --- | --- | --- |
 | [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Screens, HUD and menus with no art assets. A screen stack, a settings panel generated from any `DotConfig`, a rebinder with conflict detection. |
 | [dot-settings](/learn/godot/addons/dot-settings) | dot-core | Settings as a bounded document with three scopes — including the few a server may clamp and may never read. |
+| [dot-locale](/learn/godot/addons/dot-locale) | dot-core | Localisation that reads the website's own locale files, so a refusal key means the same thing on the site and in a game. ICU messages, CLDR plurals, pseudo-localisation. |
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *optionally* dot-server | The player's console: a physical key, a line, history, completion, a bounded scrollback — and command *sources* rather than a second command system. |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | Game audio that ships no audio: a catalogue of ids, pooled voices with priority stealing, concurrency caps, a distance cull, music and ducking. |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | Visual effects as documents: pooled, budgeted, quality-tiered, distance-culled. An effect never changes the simulation. |

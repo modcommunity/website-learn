@@ -1,0 +1,162 @@
+---
+title: dot-matchmaking
+description: Who plays whom — Glicko-2 ratings per queue, playlists whose tolerances start strict and widen with waiting, parties placed whole, balanced sides, an accept step that keeps everybody's place, and ratings the website computes.
+navTitle: dot-matchmaking
+order: 196
+badge: new
+keywords:
+  - "matchmaking"
+  - "matchmaker"
+  - "queue"
+  - "playlist"
+  - "skill rating"
+  - "mmr"
+  - "elo"
+  - "glicko"
+  - "glicko-2"
+  - "ranked"
+  - "team balance"
+source:
+  - ../game-dev/godot/dot-matchmaking/README.md
+  - ../game-dev/godot/dot-matchmaking/CLAUDE.md
+  - ../game-dev/godot/dot-matchmaking/docs/backbone-contract.md
+  - ../website-city/docs/api/integration-api.md
+---
+
+The website's [matchmaking](/learn/parties/matchmaking) finds a **server** for a
+party. There is no player queue in it and no skill rating anywhere, so
+`dot-matchmaking` is the whole player-queue half: who plays whom, on which
+server, and how the result moves everybody's rating.
+
+Requires `dot-core`. [dot-party](/learn/godot/addons/dot-party) is not a
+dependency — a party is simply a ticket with several ids on it — and dot-auth's
+backbone client is reached by duck typing.
+
+```gdscript
+var fives := DotMmPlaylist.of(&"ranked5", 2, 5)     # two sides of five
+fives.max_party_size = 3                             # no full five-stacks against strangers
+
+var mm := DotMatchmaker.new()
+mm.playlists = [DotMmPlaylist.of(&"duel", 2, 1), fives]
+mm.allocator = my_servers                            # anything with allocate(match)
+add_child(mm)
+
+mm.enqueue("t-81", &"ranked5", PackedStringArray(["ada", "bo"]),
+        [{"eu": 31, "na": 110}, {"eu": 44}], party_id)
+mm.match_found.connect(func(m, deadline): show_accept_prompt(m, deadline))
+mm.match_ready.connect(func(m): send_everyone_to(m.allocation["address"]))
+```
+
+`DotMatchmaker` holds no socket, so it can run in a lobby server, a hub process
+or anything else that can hear clients.
+
+## Ratings: Glicko-2, per queue
+
+One number says a newcomer and a thousand-game veteran on that number are the
+same player. Glicko-2 keeps three — a **rating**, a **deviation** (how sure we
+are) and a **volatility** — and the deviation shrinks with every game and grows
+back with absence, so newcomers and returning players move fast and regulars
+slowly.
+
+- **The published algorithm, step for step**, checked against the worked example
+  in Glickman's paper to four places.
+- **A rating belongs to one queue.** Skill at two-a-side and at a twelve-player
+  free-for-all are different facts.
+- **A board shows the rating minus two deviations** (`DotMmRating.conservative()`),
+  so two lucky wins do not top it.
+- **Team games shift the opponent, not the player.** Each player is rated against
+  `other_mean - (own_mean - player)`: everyone on a side sees the expectation the
+  two means predict and moves by their own deviation. A 2000 on a side of 1000s
+  loses about 6 points to an expected defeat, not the naive 20.
+- **A leaver is rated as having lost**, fully. Otherwise leaving a losing match
+  is free. A player there for under a quarter of the match is not rated at all.
+
+## The queue widens with waiting
+
+<Params>
+  <Param name="Oldest ticket first">
+    Each pass builds a match around whoever has waited longest — the only order
+    that cannot starve anybody. Their skill window (`skill_window`,
+    `skill_window_growth`, `skill_window_max`) and quality floor (`min_quality`,
+    `min_quality_decay`) are the relaxed ones.
+  </Param>
+  <Param name="Each ticket's own latency">
+    A candidate is judged against **its own** latency ceiling (`max_latency_ms`,
+    growing to `max_latency_cap_ms`). A long wait makes the waiter accept a worse
+    match; it does not hand a newcomer eighty extra milliseconds.
+  </Param>
+  <Param name="Parties are never split">
+    A party is one ticket. Its latency to a region is its worst member's, and its
+    matching rating leans from its mean towards its best player
+    (`party_skill_blend`, `premade_bonus`), because a strong player carries.
+  </Param>
+  <Param name="Balanced sides">
+    `DotMmBalance` tries every split for two sides up to sixteen tickets, and
+    greedy-plus-swaps beyond, always moving whole parties. Deterministic.
+  </Param>
+  <Param name="The accept step">
+    A decline or a timeout cools down only the person responsible
+    (`decline_cooldown_sec`) and drops their ticket — the whole party, since
+    requeueing the rest would split it. **Everybody else goes back in at the time
+    they first queued.** A match with no free server falls through with nobody
+    cooled down.
+  </Param>
+</Params>
+
+## The website rates
+
+Ratings decide who other people are made to play against, so on TMC **the
+website computes them, not the game server**. `DotMmBackbone` sends the
+[skill-rating routes](/learn/api/integration/ratings) the *result* — sides,
+places, participation, leavers — and stores the ratings that come back:
+
+```gdscript
+var bb := DotMmBackbone.new()
+bb.client = backbone     # dot-auth's DotBackboneClient: get_integration / post_integration
+bb.store = mm.store
+await bb.define(mm.playlists, mm.config)               # POST rating/define, once at boot
+await bb.submit(&"ranked5", match_id, sides, placements)  # POST rating/submit, per match
+```
+
+The algorithm is duplicated in the site on purpose, as dot-stats' merge rule is,
+and both halves test the same two figures. Without the routes — and permanently,
+for a self-hosted server — the matchmaker rates locally into
+`user://matchmaking/ratings.json`.
+
+<Callout type="warning" title="Ratings come from the store, never from a client">
+`enqueue` takes player ids, not ratings. A client that could send its own rating
+could send any rating. For the same reason a player id sent to the site is a
+per-scope pseudonym: an id shaped like `backbone:…` is refused before it leaves
+the server.
+</Callout>
+
+<Callout type="warning" title="A result the site would refuse is lost, so it is refused here">
+A body the site rejects comes back as a `400`, and a `400` is not retried — the
+match is simply gone. So `DotMmPlaylist.validate()` applies the site's id rule
+(1-64 of `A-Za-z0-9._:-`, starting alphanumeric) before a match is ever played in
+that queue, and `submit` checks the site's bounds (2-64 sides, one placement per
+side, no player twice, at most 128 players) and fails with the reason.
+`define` sends queues 25 at a time and `refresh` reads 100 players at a time,
+because one too many refuses the whole request.
+</Callout>
+
+<Callout type="warning" title="The site does not follow every setting yet">
+The site hard-codes τ, the 14-day inactivity period, the 0.25 participation
+floor and leaver-takes-loss; `rating/define` has no field for them. Change one in
+`DotMatchmakingConfig` and a ranked queue is rated by one rule offline and
+another online. `define(playlists, config)` warns when that is so.
+</Callout>
+
+<Callout type="info" title="Not here yet">
+Backfill into a running match, short-handed matches after a long wait, role
+queues, and an orchestrator that starts servers on demand. `allocator` is one
+method; `DotMmAllocatorList` is the fixed server list a small deployment has.
+</Callout>
+
+<Related>
+- [Matchmaking on the website](/learn/parties/matchmaking)
+- [Integration API: ratings](/learn/api/integration/ratings)
+- [`dot-party`](/learn/godot/addons/dot-party)
+- [`dot-stats`](/learn/godot/addons/dot-stats)
+- [`dot-leaderboard`](/learn/godot/addons/dot-leaderboard)
+</Related>

@@ -1,0 +1,173 @@
+---
+title: dot-party
+description: Parties from both ends of the TMC website's party system — the player's client that follows a ready round to its server, the game server's tracking, and a booked server that actually keeps its booking.
+navTitle: dot-party
+order: 194
+badge: new
+keywords:
+  - "party"
+  - "parties"
+  - "group"
+  - "ready round"
+  - "ready check"
+  - "join together"
+  - "reservation"
+  - "booking"
+  - "private server"
+  - "seat hold"
+source:
+  - ../game-dev/godot/dot-party/README.md
+  - ../game-dev/godot/dot-party/CLAUDE.md
+  - ../game-dev/godot/dot-party/docs/backbone-contract.md
+  - ../website-city/docs/api/app-social.md
+  - ../website-city/docs/api/integration-api.md
+---
+
+The website has a complete [party system](/learn/parties) — invites, a ready
+round, reservations with owner terms — and until this addon no `dot-*` addon
+spoke a word of it. `dot-party` is both halves: the **player's** client, and the
+**game server's** tracking and booking enforcement.
+
+Requires `dot-core`. dot-auth's clients and dot-server's admission check are
+reached by duck typing and never named.
+
+```gdscript
+var party := DotPartyClient.new()
+var app := DotPartyBackendApp.new()
+app.client = auth          # dot-auth's DotAuthClient: it holds the token and refreshes it
+party.backend = app
+party.user_id = auth.identity().uid.trim_prefix("backbone:")
+party.connect_fn = func(url: String, _info: Dictionary) -> DotResult:
+    return await game.connect_to(url)
+add_child(party)
+
+party.member_joined.connect(func(m): hud.toast("%s joined" % m.display_name))
+```
+
+## The website owns the party
+
+Every client and every server holds a **snapshot**, only as fresh as its last
+poll. Nothing here decides anything by editing one: every change is asked of a
+`DotPartyBackend`, and the answer is a new snapshot. A game holds one of two
+backends without knowing which:
+
+| | |
+| --- | --- |
+| `DotPartyBackendApp` | The website, as the signed-in player, over the [app party routes](/learn/api/app/social). |
+| `DotPartyBackendLocal` | The website's rules run in-process, on a `DotPartyLocalHub` — for a LAN, an offline build and the test suite. |
+
+A refusal carries the **website's own i18n key** in `DotError.detail`
+(`party.join.deny.full`, `party.reserve.deny.window`), from either backend. The
+keys were checked against the site's locale files, not guessed — the first draft
+guessed `party.join.deny.private` where the site says `needInvite`. The site
+translates them into nine languages, and [dot-locale](/learn/godot/addons/dot-locale)
+can show them in the player's.
+
+## The pieces
+
+<Params>
+  <Param name="DotPartyClient">
+    The player's node. Polls the party (22.5 s in a lobby, 1.5 s during a ready
+    round — the site pushes nothing), heartbeats every 45 s against the site's
+    150 s staleness, and diffs each snapshot into `joined_party`, `left_party`,
+    `member_joined`, `member_left`, `role_changed`, `stage_changed` and
+    `ready_changed`. When a ready round opens it emits `connect_requested`, calls
+    `connect_fn`, and reports the arrival. Actions: `create`, `join`, `leave`,
+    `kick`, `invite`, `start`, `set_ready`, `reserve`.
+  </Param>
+  <Param name="DotPartyServer">
+    The game server's node, on [integration routes](/learn/api/integration/parties)
+    the site has long served. `claim(uid, party_id)` checks the player is on
+    that party's roster before tracking anything, so claiming a party you are
+    not in does nothing. It sends the absolute roster every 15 s, exact joins and
+    leaves, and round results with places. `party_of(uid)` and `groups(uids)`
+    are for a team balancer that should keep parties together.
+  </Param>
+  <Param name="DotPartyReservations">
+    The server's half of a booking. Learns it from the website
+    (`use_backbone(client)`, polling `GET /party/reservation` every 30 s), a
+    local hub (`use_hub`) or the owner at the console (`book`), and answers the
+    admission question [dot-server](/learn/godot/addons/dot-server) already asks
+    on every join.
+  </Param>
+  <Param name="DotPartyReservePolicy">
+    An owner's booking terms, the site's `ServerReservationOffer` ported line
+    for line: hours in UTC (a window may cross midnight), a maximum length that
+    is clamped rather than refused, only-when-empty, a cooldown, public or
+    private.
+  </Param>
+</Params>
+
+## A booked server keeps its promise
+
+Before this, a **private** booking was only a promise on the website: nothing
+told the game server, so anybody with the address got in. Now:
+
+- A **private** booking admits the party and nobody else, apart from whoever
+  `bypass_fn` lets through (usually admins).
+- A **public** booking leaves the server open but **holds a seat for every
+  member who has not arrived yet**, for `seat_hold_sec` (three minutes by
+  default). Otherwise eight friends who booked a server lose it to whoever
+  connects while they load the map.
+- Members are recognised by `backbone:<userId>`, **never by display name** — a
+  stranger could otherwise get in by calling themselves the host. That is why
+  the reservation route sends its members un-anonymised.
+
+## Joining a server together
+
+A party's **ready round** is how it moves: the host picks a server, everybody is
+told where to connect, and the round starts when everybody is ready, or when a
+threshold is met and a countdown runs out. `connect_requested` fires **once per
+round**; going back to the lobby resets it, so a second round on the same server
+is followed again. See [how a party joins](/learn/parties/joining).
+
+Party chat is [dot-chat](/learn/godot/addons/dot-chat)'s grouped channel —
+`DotChatChannel.group(&"party", "Party")` with the router's `group_fn` answering
+`DotPartyServer.party_of(uid)`. dot-party draws no UI and routes no chat or voice.
+
+<Callout type="warning" title="A booking replaces nobody's bans">
+`DotPartyReservations` registers as `dot_ban_source`, the seam
+[dot-moderation](/learn/godot/addons/dot-moderation) and dot-server-security
+already share. It **captures the previous holder before registering** and asks
+it too, so a banned member is still banned on a booked server — and it hands the
+seam back on exit. Capture it after registering and the node finds itself, and
+every admission recurses until the stack gives out.
+</Callout>
+
+<Callout type="warning" title="An outage keeps the booking">
+If `sync()` fails, the booking stays in force. The alternative opens a private
+server every time the website hiccups.
+</Callout>
+
+<Callout type="warning" title="The connect address is not in the snapshot">
+The party snapshot (`party/mine`, `party/{id}`) carries no address; only
+`GET party/{id}/ready` does, for a joined member. A client that read the address
+off the snapshot alone never followed a ready round against the real site —
+`DotPartyClient.refresh()` now asks the ready view when a `READY` snapshot has
+none.
+</Callout>
+
+<Callout type="info" title="Why a kick reads as a kick">
+Once the player is in no party, `party/mine` answers `null`, which says nothing
+about why. So `refresh()` fetches the party it was in once and reads its own
+row — `KICKED`, `BANNED` or `LEFT`. The site keeps the caller's own row in that
+response for exactly this.
+</Callout>
+
+<Callout type="info" title="Party ids are strings">
+A party id is a decimal **string**: JSON rounds numbers past 2^53, and a rounded
+id names somebody else's party.
+</Callout>
+
+The website routes both halves use are merged into the site's main branch;
+whether a given site is deployed with them is the operator's to know. Against a
+site without them, the app backend fails each call with a message that says so.
+
+<Related>
+- [Parties](/learn/parties)
+- [Integrating a game](/learn/parties/integration)
+- [Integration API: parties](/learn/api/integration/parties)
+- [App API: friends, presence and parties](/learn/api/app/social)
+- [`dot-friends`](/learn/godot/addons/dot-friends)
+- [`dot-matchmaking`](/learn/godot/addons/dot-matchmaking)
+</Related>

@@ -1,0 +1,134 @@
+---
+title: dot-replay
+description: Match demos for spectating, review and moderation evidence. Tick-stamped records on named channels, in a chunked, compressed, hash-chained file that seeks by keyframe, survives a crash and refuses an edit.
+navTitle: dot-replay
+order: 215
+badge: new
+keywords:
+  - "replay"
+  - "demo"
+  - "recording"
+  - "playback"
+  - "seek"
+  - "keyframe"
+  - "evidence"
+  - "clip"
+  - "save that"
+  - "hmac"
+source:
+  - ../game-dev/godot/dot-replay/README.md
+  - ../game-dev/godot/dot-replay/CLAUDE.md
+  - ../game-dev/godot/dot-server-deploy/host/tmc_replay.gd
+---
+
+Records what a dedicated server decided during a match — snapshots, events,
+chat, commands — so the match can be played back later: to watch it, to review
+it, or as **evidence when somebody is reported**.
+
+Requires `dot-core`. Nothing else; the bridges to `dot-server` and `dot-net` are
+duck-typed.
+
+```gdscript
+var rec := DotReplayRecorder.new()
+rec.configure(DotReplayConfig.new(), 64)                  # 64 ticks per second
+rec.keyframe_fn = func(_tick: int) -> Variant: return game.capture_state()
+var header := DotReplayHeader.make("arena", "dm_box", 64, players)
+rec.start(header, "user://replays/match.dreplay")
+
+# every server tick, before anything of that tick is recorded:
+rec.advance(tick)
+rec.record_value(tick, &"events", {"kill": [attacker, victim]})
+rec.record(tick, &"snapshot", snapshot_bytes)
+
+var evidence: Dictionary = rec.stop().value               # path, final hash, tick range
+```
+
+## The one idea
+
+**A record is a tick, a channel and a payload, and the payload is yours.** Raw
+bytes or any plain value; dot-replay never interprets it. That is why the same
+format holds a shooter, a racing timer and a lobby — and why
+`DotReplayPlayer` *emits* records rather than applying them. The only party
+that can fold a record into state is the game that wrote it.
+
+`dot-timer`'s run replays stay separate on purpose: a record run wants
+quantised movement for one body in a file a browser fetches before the map
+loads; a match demo wants opaque channels.
+
+## What it does
+
+| | |
+| --- | --- |
+| **Keyframes** | Every few seconds the recorder asks `keyframe_fn` for the game's whole state. A keyframe always starts a chunk, so a seek is one walk over the index and one decompression. |
+| **Playback** | `DotReplayPlayer` is a node with `state_reset`, `record_played`, `seeked` and `finished`. 0.25x to 8x, pause, `step_ticks`, and `set_channels([...])` to play only some channels. |
+| **Seeking** | `seek(tick)` jumps to the nearest keyframe at or before `tick` and fast-forwards. It reaches exactly the state playing from the start would have — checked at dozens of ticks, every keyframe boundary included. |
+| **Crashes** | Written in chunks (one second by default), each flushed as it completes — and synced to IndexedDB on the web. A server that dies mid-match leaves a file that plays up to its last whole chunk. |
+| **Integrity** | Each chunk's hash covers the one before it, so a chunk transplanted from another recording is refused, not just an edited one. Give the recorder a key and every hash becomes an HMAC. |
+| **Size** | zstd per chunk — a repetitive snapshot stream shrinks more than tenfold — stored raw when compression would grow it. Caps per record and per file; a file at its cap is finished cleanly. |
+| **"Save that"** | A `DotReplayRing` keeps the last N seconds in memory. `rec.save_clip(path, 30.0)` writes them as an ordinary replay that plays, seeks and verifies like any other. |
+
+## Where a game plugs in
+
+<Params>
+  <Param name="keyframe_fn">
+    Returns the game's whole state. Called from `advance(tick)`, at the top of
+    the tick, because that is the one moment the live state and the stream
+    agree. A keyframe taken halfway through a tick would be applied twice on a
+    seek.
+  </Param>
+  <Param name="DotReplayHeader">
+    Game, map, tick rate, start time, the players present at the start, free
+    `meta`. A streaming file cannot rewrite its header, so joins and leaves are
+    records on a channel the game chooses.
+  </Param>
+  <Param name="DotReplayEventTap">
+    Records a `dot-server` event bus's `event_fired` — cancelled events
+    included, objects replaced by their `describe()`.
+  </Param>
+  <Param name="DotReplayNetTap">
+    Wraps a `dot-net` manager's `send_fn` and records **one** peer's outgoing
+    stream. Those payloads are deltas, so a demo made from them seeks only as
+    well as the keyframes the game provides.
+  </Param>
+  <Param name="DotReplayConfig">
+    Directory, chunk seconds and KiB, keyframe seconds, compression, caps, ring
+    seconds and MiB. Layered, so `--replay-ring-seconds 300` works.
+  </Param>
+  <Param name="evidence()">
+    A Dictionary shaped for a `dot-moderation` punishment record: path, final
+    hash, tick range.
+  </Param>
+</Params>
+
+## On every TMC server
+
+[TMC's server tool](/learn/godot/tooling#tmcs-server-tool) keeps a ring on
+every server it runs, configured from `cfg/replay.yml` and never fatal. It
+records the server's event bus — connects, spawns, chat, commands, kicks, game
+changes, votes, admin actions — plus a roster keyframe: who was there and what
+they did, which is what a moderator reviewing a report asks. `replay save` at
+the console writes a clip, and **every kick and ban has a clip's final hash
+filed with it**. A game's snapshots are deliberately not recorded there: which
+peer's view to keep is the game's choice.
+
+<Callout type="warning" title="An unkeyed chain is tamper-evident, not tamper-proof">
+A SHA-256 chain catches an accident or a careless edit, not somebody who
+recomputes it. The answers are a key, or the final hash from `evidence()`
+stored somewhere the file's holder cannot write — which is exactly what a
+punishment's evidence field is. Neither can tell a file cut short and stripped
+of its footer from a crash; the hash stored elsewhere is what tells them apart.
+</Callout>
+
+<Callout type="info" title="Not yet run against a real netcode stream">
+The event tap runs on real `dot-server` buses in the server tool. The net tap
+has only been checked against a stand-in of the right shape — that proves the
+duck typing and the recording, not that `dot-net`'s payloads replay into
+anything useful.
+</Callout>
+
+<Related>
+- [`dot-spectate`](/learn/godot/addons/dot-spectate)
+- [`dot-moderation`](/learn/godot/addons/dot-moderation)
+- [`dot-timer`](/learn/godot/addons/dot-timer)
+- [`dot-server`](/learn/godot/addons/dot-server)
+</Related>

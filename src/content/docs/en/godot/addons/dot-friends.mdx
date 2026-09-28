@@ -1,0 +1,138 @@
+---
+title: dot-friends
+description: The player's friends list and presence from the TMC website — who is online, in which game, on which server and in which party — and a "join my friend" that hands off to the game's party or connect code without naming either.
+navTitle: dot-friends
+order: 192
+badge: new
+keywords:
+  - "friends"
+  - "friends list"
+  - "friend request"
+  - "presence"
+  - "online status"
+  - "rich presence"
+  - "join friend"
+  - "join game"
+  - "heartbeat"
+source:
+  - ../game-dev/godot/dot-friends/README.md
+  - ../game-dev/godot/dot-friends/CLAUDE.md
+  - ../game-dev/godot/dot-friends/docs/backbone-contract.md
+  - ../website-city/docs/api/app-social.md
+---
+
+The website has had friends for a long time, but only behind its session cookie,
+which a game client does not hold — and it had **no presence** in the sense a
+game needs: which server somebody is on, and whether they can be joined.
+`dot-friends` is the game's side of both, over the website's
+[app routes](/learn/api/app/social).
+
+Requires `dot-core`. dot-auth's client, [dot-party](/learn/godot/addons/dot-party)'s
+client and the game's connect code are reached by duck typing and never named.
+
+```gdscript
+var friends := DotFriendsClient.new()
+var app := DotFriendsBackendApp.new()
+app.client = auth          # dot-auth's DotAuthClient: it holds the token and refreshes it
+friends.backend = app
+friends.join_party_fn = func(party_id: String, _friend: DotFriend) -> DotResult:
+    return await party.join(party_id)          # a DotPartyClient, if the game has parties
+friends.connect_fn = func(server_id: int, _friend: DotFriend) -> DotResult:
+    return await game.connect_to_server(server_id)
+add_child(friends)
+
+friends.friend_online.connect(func(f: DotFriend): hud.toast("%s is online" % f.display_name))
+party.joined_party.connect(func(p): friends.set_party(p.id))
+```
+
+## The website owns the list
+
+Friendships are made, answered and ended on the website; the game holds a
+snapshot as fresh as its last poll (every 30 s — the site pushes nothing). Every
+change is asked of a `DotFriendsBackend`:
+
+| | |
+| --- | --- |
+| `DotFriendsBackendApp` | The website, as the signed-in player. |
+| `DotFriendsBackendLocal` | The website's rules run in-process on a `DotFriendsLocalHub` — for a LAN, an offline build and the test suite. |
+
+The hub carries the site's rules, read from its router rather than guessed:
+**asking somebody who already asked you accepts them**; after a decline only the
+declined sender waits seven days; only the addressee may answer. A refusal
+carries the site's key in `DotError.detail` — `friends.request.deny.pending`,
+`friends.request.deny.cooldown`, `presence.deny.detail` — from either backend.
+
+`DotFriendsClient` offers `send_request`, `accept`, `decline` and
+`remove_friend`, and emits `friend_added`, `friend_removed`, `friend_online`,
+`friend_offline`, `friend_presence_changed`, `request_received`,
+`requests_changed`, `friends_changed`, `presence_posted` and `request_failed`.
+
+## Presence
+
+A presence is what friends see: a status (`offline`, `online`, `in_game`,
+`away`), which game, which server, which party, whether they can be joined, and
+one line the game writes ("Round 3 of 5"). The game sets the pieces —
+`set_status`, `set_server`, `set_party`, `set_joinable`, `set_detail` — and the
+client posts them:
+
+- **On a heartbeat**, every 45 s against the site's 120 s lifetime, so two posts
+  can be lost before a player blinks offline. If the site answers with a
+  shorter `ttlSec`, the heartbeat shortens to 40% of it.
+- **At once on a change, debounced** from the first change of a burst. Joining a
+  server sets the server, then the party, then "joinable" — that is one post,
+  and a burst that ends where it began is none.
+- **`go_offline()`** posts immediately and stops the heartbeat. Call it on quit,
+  or friends see the player online — and try to join them — for up to two more
+  minutes.
+
+## Joining a friend
+
+`join(friend_user_id)` spends one fresh `GET presence` on that friend first,
+because the list can be half a minute old, and then:
+
+1. joins their **party** through `join_party_fn`, if it is joinable, or
+2. connects to their **server** through `connect_fn` — also when the party
+   refuses, because the player asked to be where their friend is (the party's
+   refusal is kept in the result as `partyRefused`), or
+3. refuses with `friends.join.deny.notFriend`, `.offline`, `.notJoinable` or
+   `.unsupported` — the last when the game supplied neither function.
+
+A presence carries the site's server **id**; turning it into an address is
+`connect_fn`'s job, usually through [dot-browser](/learn/godot/addons/dot-browser).
+
+<Callout type="warning" title="Offline is a blank, whatever the reason">
+An expired presence, a posted `offline` and a player who hides their activity on
+the website all read the same: every field null, not joinable, no timestamp. The
+alternative — "offline, last on server 12" — shows a hidden player's server to
+everybody. `DotPresence.has_destination()` is false for all three, so nothing
+downstream can follow one.
+</Callout>
+
+<Callout type="warning" title="Each post replaces the whole presence">
+A field left out of a post is cleared on the site, not kept. And only a **game**
+token places its player: a device token's post keeps `status` and `detail` but
+drops the server, the party and `joinable`.
+</Callout>
+
+<Callout type="info" title="The first poll is quiet; requests are not">
+A game that toasted "came online" for every friend already playing at launch
+would open on a wall of toasts, so the first list emits only `friends_changed`.
+A pending request is an inbox, not a status, so `request_received` fires for each
+the first time it is seen — launch included.
+</Callout>
+
+<Callout type="info" title="Request ids are integers">
+`DotFriendRequest.id` is an `int`, because the site's friendship id is one and a
+string sent back would be refused. Party ids, by contrast, are strings.
+</Callout>
+
+Not here: cancelling an outgoing request, blocking, friend search and
+suggestions, and any UI — [dot-ui](/learn/godot/addons/dot-ui) draws, this emits.
+A site without the friends routes is logged once at INFO, not as an outage.
+
+<Related>
+- [App API: friends, presence and parties](/learn/api/app/social)
+- [`dot-party`](/learn/godot/addons/dot-party)
+- [`dot-chat`](/learn/godot/addons/dot-chat)
+- [`dot-auth`](/learn/godot/addons/dot-auth)
+</Related>

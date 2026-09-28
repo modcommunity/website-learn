@@ -1,0 +1,112 @@
+---
+title: dot-locale
+description: Localisation that reads the website's own locale files. ICU MessageFormat, CLDR plural rules, per-language number grouping, a fallback chain that ends in the key, and pseudo-localisation.
+navTitle: dot-locale
+order: 435
+badge: new
+keywords:
+  - "locale"
+  - "localisation"
+  - "localization"
+  - "i18n"
+  - "translation"
+  - "icu"
+  - "messageformat"
+  - "plural"
+  - "cldr"
+  - "pseudo-localisation"
+source:
+  - ../game-dev/godot/dot-locale/README.md
+  - ../game-dev/godot/dot-locale/CLAUDE.md
+---
+
+**Nothing in the family localised anything** before this: no addon or game
+called `TranslationServer`, and every string on every screen was an English
+literal. Meanwhile the website is translated into nine languages and refuses
+API requests with **keys** — `party.join.deny.full` — rather than prose.
+dot-locale turns one of those keys into a sentence in the player's language,
+without a second table.
+
+Requires `dot-core`. Nothing else.
+
+```gdscript
+var loc: DotLocale = DotLocaleConfig.new().make().value   # reads res://locales
+label.text = loc.t("party.ready.count", {"count": 3})
+status.text = loc.explain(result.error)                    # a website refusal, in the player's language
+```
+
+## The website's layout, read as it is
+
+One folder per language, one JSON file per area, nested objects inside:
+
+```
+locales/
+  en/party.json    { "join": { "deny": { "full": "This party is full." } } }
+  de/party.json    { "join": { "deny": { "full": "Diese Party ist voll." } } }
+```
+
+A message's key is the file name plus its path, so `party.join.deny.full` is
+the same key on the site's API, in its locale files and in a game. `explain()`
+renders a `DotError` whose detail carries such a key, and falls back to the
+error's own English message where the catalogue lacks it.
+
+The site's files are not copied into the addon — they change on the site's
+schedule. A game ships the ones it uses, or fetches them:
+[`dot-cloud`](/learn/godot/addons/dot-cloud) delivers a locale pack like any
+other content.
+
+## What it does
+
+| | |
+| --- | --- |
+| **ICU messages** | `{user} joined.`, `{n, number}`, `select`, and `plural` with `=N` and `#`, nested to any depth — the subset next-intl renders on the site. A pattern that does not parse is shown raw. |
+| **Plural rules** | CLDR's, per language: Russian picks among four forms by the last one and two digits, French puts zero with one, Japanese has one form. The rules follow the **pattern's** language, so an English fallback for a Russian player is pluralised as English. |
+| **Numbers** | Grouped as the reader expects: `12,500` in English, `12.500` in German, `12 500` in French. |
+| **Fallback** | `pt-BR → pt → en → the key itself`. Never a blank label. `missing_keys()` lists every key asked for that no language had. |
+| **Pseudo-localisation** | `--locale-pseudo true` shows every message accented, bracketed and about a third longer: `[Ŝáɱ ĵóíñéð. ~·~·]`. Plain English on that screen is a hard-coded string; a missing closing bracket is a label that clips in German. |
+| **Checks** | `catalogue.missing_in("de")` lists the keys a language lacks; `catalogue.argument_mismatches("de")` finds a translation whose placeholder differs from the English one. |
+
+## Where a game plugs in
+
+<Params>
+  <Param name="DotLocaleConfig">
+    `language`, `default_language`, `directory`, `pseudo` — layered, so
+    `--locale-language de` works without a settings screen. `make()` loads the
+    catalogue and returns the translator.
+  </Param>
+  <Param name="DotLocale">
+    The translator: `t`, `explain`, `set_locale`, `chain`, `missing_keys`, and
+    the `locale_changed` signal. **Not an autoload and not a Node** — a server
+    rendering messages for players in four languages needs four translators.
+    `register()` puts one in `DotRegistry` for code that wants to find it
+    without naming it.
+  </Param>
+  <Param name="DotLocaleCatalogue">
+    locale → key → pattern. `load_dir` reads the site's layout; one bad file
+    refuses itself only, with file, line and message in the result.
+  </Param>
+  <Param name="to_translation(tag)">
+    An engine `Translation` holding only the **argument-free** messages, so a
+    `Control` with auto-translate shows static text from the same catalogue.
+    `tr()` knows nothing of ICU; a plural handed to it would show its braces.
+  </Param>
+</Params>
+
+<Callout type="warning" title="The English plural rule is wrong in most of the site's languages">
+"1 is singular, everything else plural" passes every English check and is wrong
+in Russian, Polish, French and Portuguese. The self-test's first section exists
+to prove it: every English check passes against a rule that fails the others.
+</Callout>
+
+<Callout type="info" title="Not here yet">
+Right-to-left layout (the site ships no RTL language), date and time formatting
+(`{d, date}` renders the raw value), ordinals (`selectordinal` is parsed as a
+plural, which is wrong for "1st, 2nd"), and CJK font fallback, which is a theme
+decision rather than a string one.
+</Callout>
+
+<Related>
+- [`dot-ui`](/learn/godot/addons/dot-ui)
+- [`dot-settings`](/learn/godot/addons/dot-settings)
+- [`dot-cloud`](/learn/godot/addons/dot-cloud)
+</Related>
