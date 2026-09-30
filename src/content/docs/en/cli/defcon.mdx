@@ -32,6 +32,7 @@ tmc defcon monitors --status DOWN --status DEGRADED
 tmc defcon monitor homepage      # by id or (part of) its name
 tmc defcon nodes                 # the monitoring nodes, if published
 tmc defcon incidents             # open incidents
+tmc defcon incidents --all       # the last 90 days, open and resolved
 tmc defcon latency 3 --range week --summary
 tmc defcon latency 3 --range day --node frankfurt -o csv
 tmc defcon mtr 5                 # latest traceroute of an MTR monitor
@@ -73,7 +74,8 @@ tmc defcon status --check || echo "the site is not OK right now"
     The monitoring nodes and their state.
   </Param>
   <Param name="incidents">
-    The incidents open right now.
+    The incidents open right now. `--all` pages through the last 90 days,
+    open and resolved.
   </Param>
   <Param name="latency <ref>">
     The latency series for one monitor, one row per sample per node.
@@ -89,14 +91,15 @@ tmc defcon status --check || echo "the site is not OK right now"
 <Callout type="info" title="It shows what the status page shows, and no more">
 The site decides what is public, and the CLI honours it: when the status page
 hides nodes or incidents, so does `tmc defcon`, and a monitor that is not
-public is not listed. Resolved incidents are not public, so there is no
-incident history here — only what is open now.
+public is not listed. Incident history (`--all`) goes back 90 days and needs a
+site from 2026-09-30 or later (one with `/api/status/defcon/incidents`).
 </Callout>
 
-<Callout type="warning" title="Ask the website, not the API">
-These reads are served by the **website** origin, not by
-`api.moddingcommunity.com`. With a custom `--base-url`, set `--site-url` (or
-`TMC_SITE_URL`) as well — see
+<Callout type="info" title="Where it reads from">
+The reads go to the API origin's REST mirrors (`/api/status/defcon`, `/series`,
+`/mtr`, `/incidents`), so `--base-url` is all it needs. Against a site from
+before those mirrors (a 404), or when `--site-url` (or `TMC_SITE_URL`) is given,
+it asks the **website** origin instead — see
 [Opening things in the browser](/learn/cli#opening-things-in-the-browser).
 </Callout>
 
