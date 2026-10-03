@@ -391,9 +391,9 @@ export function buildFooterColumns(t: TFunc): FooterColumn[] {
         {
             heading: t('footer.headings.legal'),
             links: [
-                { label: t('footer.links.tos'), href: '/tos' },
-                { label: t('footer.links.privacy'), href: '/privacy-policy' },
-                { label: t('footer.links.licenses'), href: '/licenses' },
+                { label: t('footer.links.tos'), href: '/tos/' },
+                { label: t('footer.links.privacy'), href: '/privacy-policy/' },
+                { label: t('footer.links.licenses'), href: '/licenses/' },
             ],
         },
     ]
