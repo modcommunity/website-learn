@@ -41,9 +41,11 @@ p2p.signaller = DotP2PSignallerHttp.new(url, my_id, http)
 add_child(p2p)
 p2p.setup()
 
-var code = p2p.host("Ada").value      # show this to a friend
-p2p.join("K7M4PX", "Bob")             # or type theirs
+var code = (await p2p.host("Ada")).value   # show this to a friend
+await p2p.join("K7M4PX", "Bob")            # or type theirs
 ```
+
+`host()` and `join()` await the signaller, so they are coroutines and must be awaited: an HTTP signaller answers a frame later, and an un-awaited call to one is a script error that leaves the session idle. The loopback signaller answers at once, which is why only the HTTP one ever showed it.
 
 `DotP2PSignaller` is four verbs. A loopback one ships for suites and split
 screen, and an HTTP one for anything with a URL and four routes; a backbone, a

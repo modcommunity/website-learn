@@ -149,12 +149,14 @@ warnings — the pack verifies, mounts and loads with its textures absent.
   <Param name="DotCloudConfig">
     `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
     `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
-    `max_attempts_per_file`, `throttle_bytes_per_sec`, `cache_dir`,
-    `verify_before_mount`, `resume_downloads`. Layered like every `DotConfig`.
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `file_timeout_sec`, `cache_dir`,
+    `verify_before_mount`, `verify_cache_on_start`, `resume_downloads`, `enforce_mount_prefix`. Layered like every `DotConfig`.
+  </Param>
+  <Param name="manifest_url_template / manifest_url_fallbacks" type="DotCloudClient">
+    Where a manifest is asked for, from a base URL, an id and a version. The default is `{base}/{id}/{version}/manifest.json`, which is what the site publishes; `manifest_url_fallbacks` lists other shapes tried after it, per base, because one origin can hold packs published under two layouts and re-publishing all of them is not a precondition for starting.
   </Param>
   <Param name="Signals">
-    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
-    `content_ready`, `content_released`, `failed`.
+    On `DotCloudClient`: `phase_changed`, `progress_changed`, `content_ready`, `content_released`, `failed`. Per-file detail is on the downloader: `file_finished`, `sync_finished`.
   </Param>
 </Params>
 
@@ -176,8 +178,8 @@ that name content now actually fetch it.
 
 <Callout type="warning" title="An absent cloud client is a legitimate configuration">
 Every call site treats "no `dot_cloud_client`" as "this deployment ships its
-content inside the build" — which is true for most of them, and is therefore
-indistinguishable from a client that failed to register. When a delivered map or
+content inside the build" — which is a legitimate choice for your own game, and is therefore
+indistinguishable from a client that failed to register. TMC's own deployment ships no content in its build at all: every game, every imported map and the lobby is a pack this addon fetches. When a delivered map or
 a delivered game silently does nothing, check the registry first.
 </Callout>
 

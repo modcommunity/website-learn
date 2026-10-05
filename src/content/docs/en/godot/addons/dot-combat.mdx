@@ -1,6 +1,6 @@
 ---
 title: dot-combat
-description: Health, damage and weapons for a Godot shooter — analytic hitboxes, deterministic spread, lag-compensated hit registration, and an arsenal that simulates from commands so a client can predict its own fire.
+description: Health, damage and hit registration for a Godot shooter — analytic hitboxes, deterministic spread, lag-compensated hit registration, and a resolver that turns any shot into damage under one set of rules.
 navTitle: dot-combat
 order: 230
 keywords:
@@ -24,30 +24,32 @@ source:
 spread and lag compensation, under one set of rules, once. A weapon decides that
 a shot *happened*; this decides what it hit.
 
-Requires `dot-core`.
+Requires `dot-core`. **It no longer knows what a weapon is**: what a player holds and uses moved to [`dot-weapon`](/learn/godot/addons/dot-weapon), and a `DotShot` describes its own damage, range and splash, so a bow, a thrown charge, a trap, a turret or an environmental hazard produces one the same way a rifle does.
 
 ```gdscript
+# Once, on the server.
 var combat := DotCombatManager.new()
 combat.trace = DotTracePhysics.for_world(get_world_3d())
 combat.rules = DotDamageRules.strict()
 add_child(combat)
 
+# Per shootable entity.
 hitbox_set.register_with(combat, player_id)
 combat.register_health(player_id, health)
 
-# Per simulated tick, on client and server alike.
-arsenal.movement = velocity.length() / max_speed
-arsenal.airborne = not grounded
-for shot in arsenal.simulate_tick(tick, delta, command):
-    if is_server:
-        combat.resolve_shot(shot, client_view_tick)
+# Per shot. Anything can build one; dot-weapon is what usually does.
+var shot := DotShot.make(&"rifle", player_id, tick, index)
+shot.origin = eye_position
+shot.direction = aim
+shot.damage = 25.0
+shot.max_range = 200.0
+shot.scatter()
+
+if is_server:
+    combat.resolve_shot(shot, client_view_tick)
 ```
 
-`DotArsenal.simulate_tick()` is a pure function of the command it is given and
-its own state — no device, no clock, no other node, no damage. The owning client
-runs it optimistically and the server runs it authoritatively, and both reach
-the same shot from the same command, because the spread is a **hash of the
-shot** rather than a draw from a random stream.
+Whatever produced the shot runs on the owning client and on the server alike, and both reach the same shot from the same inputs, because the spread is a **hash of the shot** rather than a draw from a random stream.
 
 `DotCombatManager.resolve_shot()` traces those shots and applies the damage, and
 runs only where the game is authoritative. A client that resolved its own shots
@@ -72,9 +74,11 @@ the past, and the symptom is that shots quietly start missing for everyone.
 ## Where a game plugs in
 
 <Params>
-  <Param name="DotWeapon">
-    The definition: rate, spread, recoil, magazine, reload, splash. Seconds in,
-    **ticks out**, so everything replays.
+  <Param name="DotShot">
+    One thing that was fired, describing its own damage, range and splash. Built by [`dot-weapon`](/learn/godot/addons/dot-weapon) usually, and by anything else that hurts.
+  </Param>
+  <Param name="DotHealth">
+    Health, armour, regeneration and spawn protection, counted in ticks so it replays. `cannot_die` hurts without killing, for an administrator's buddha mode.
   </Param>
   <Param name="DotDamageType">
     Falloff, armour share, self and friendly scales. A game adds its own.
@@ -114,10 +118,8 @@ the past, and the symptom is that shots quietly start missing for everyone.
     What to replicate, without naming a `dot-net` type.
   </Param>
   <Param name="Signals">
-    `fired`, `dry_fired`, `switched`, `reload_started`, `reload_finished`,
-    `ammo_changed`, `inventory_changed`, `shot_resolved`, `shot_refused`,
-    `damaged`, `damage_applied`, `healed`, `armour_changed`, `died`, `revived`,
-    `entity_killed`.
+    `shot_resolved`, `shot_refused`, `damaged`, `damage_applied`, `healed`,
+    `armour_changed`, `died`, `revived`, `entity_killed`. Firing, reloading and ammunition signals are [`dot-weapon`'s](/learn/godot/addons/dot-weapon).
   </Param>
 </Params>
 
@@ -132,6 +134,7 @@ pellet in one corner of the world. If you write a scatter test, check
 </Callout>
 
 <Related>
+- [`dot-weapon`](/learn/godot/addons/dot-weapon) — what fires the shots
 - [`dot-loadout`](/learn/godot/addons/dot-loadout) — what a player brings in
 - [`dot-match`](/learn/godot/addons/dot-match) — what a kill is worth
 - [`dot-net`](/learn/godot/addons/dot-net) — where `rewind_fn` comes from

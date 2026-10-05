@@ -68,14 +68,15 @@ than buried.
 
 | | |
 | --- | --- |
-| **Foundation** | `dot-core`. The only hard dependency. |
+| **Foundation** | `dot-core`, the only hard dependency. `dot-log`, where a record goes after it is emitted. `dot-entity`, the id space every world object shares. |
 | **The player** | `dot-player`, `dot-player-controller`, `dot-player-char`, `dot-player-class`, `dot-physics`, `dot-spawn`, `dot-team`. Who is in the session, what drives them, how big they are, which side they are on. |
 | **Identity and content** | `dot-auth`, `dot-user`, `dot-user-avatar`, `dot-platform`, `dot-cloud`. Who a player is, what they look like, and how they get content. |
-| **Servers and the wire** | `dot-net`, `dot-server`, `dot-server-query`, `dot-server-security`, `dot-browser`, `dot-peer-to-peer`, `dot-moderation`, `dot-chat`, `dot-voice`, `dot-spectate`, `dot-vote`. |
+| **Servers and the wire** | `dot-net`, `dot-server`, `dot-game`, `dot-server-query`, `dot-server-security`, `dot-browser`, `dot-peer-to-peer`, `dot-moderation`, `dot-chat`, `dot-voice`, `dot-spectate`, `dot-vote`, `dot-replay`. |
+| **Playing together** | `dot-party`, `dot-matchmaking`, `dot-friends`. Parties, queues and ratings, and who is online where. |
 | **The fight** | `dot-combat`, `dot-weapon`, `dot-effects`, `dot-loadout`, `dot-inventory`, `dot-economy`, `dot-match`, `dot-objective`, `dot-2d`. |
 | **The world** | `dot-npc`, `dot-npc-ai`, `dot-npc-ai-director`, `dot-vehicle`, `dot-map`, `dot-props`, `dot-procedural-generation`. |
 | **Progression** | `dot-timer`, `dot-leaderboard`, `dot-stats`, `dot-achievements`. |
-| **The person at the keyboard** | `dot-ui`, `dot-settings`, `dot-console`, `dot-audio`, `dot-fx`, `dot-lighting`. |
+| **The person at the keyboard** | `dot-ui`, `dot-settings`, `dot-console`, `dot-audio`, `dot-fx`, `dot-lighting`, `dot-locale`. |
 
 ## Only `dot-core` is ever a hard dependency
 
@@ -100,9 +101,9 @@ game:
 - `dot-team` reaches `dot-spectate`, and `dot-weapon` reaches `dot-loadout` and
   `dot-inventory`, entirely by duck typing.
 
-Four addons are the exception and each says so: `dot-npc-ai` and
-`dot-npc-ai-director` need `dot-npc`, and `dot-player-controller`,
-`dot-player-char` and `dot-player-class` need `dot-player`.
+Six addons are the exception and each says so: `dot-npc-ai` and
+`dot-npc-ai-director` need `dot-npc`; `dot-player-controller`,
+`dot-player-char` and `dot-player-class` need `dot-player`; and `dot-game`, which is the server wiring every game repeats, needs `dot-server` and `dot-net`.
 
 <Callout type="info" title="Duplication here is deliberate">
 Where two addons hold the same twenty lines, that is the rule above being paid

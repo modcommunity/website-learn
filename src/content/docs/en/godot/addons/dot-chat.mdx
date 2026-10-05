@@ -90,13 +90,25 @@ repetition limits, escaping, scrollback and a backlog for whoever joins next.
 ## Channels are an audience rule
 
 `EVERYONE`, `TEAM`, `RADIUS` (proximity), `DIRECT` (whispers) and `MEMBERS` (a
-party, a clan, the dead, the admins — the host answers `membership_fn`).
+clan, the dead, the admins — the host answers `membership_fn`).
 
 ```gdscript
 var proximity := DotChatChannel.make(&"near", "Nearby", DotChatChannel.Scope.RADIUS)
 proximity.radius = 20.0
 router.add_channel(proximity)
 ```
+
+A radius channel can also ask the host whether a listener inside the radius can actually hear: `router.can_hear_fn(listener, speaker, listener_at, speaker_at)` is consulted after the distance test, so the router still knows nothing about walls and the level decides. Unset, the radius is the whole answer.
+
+**Party chat is a grouped members channel**, not a plain one. `membership_fn` is never told who is speaking, so a party channel built on it reaches every party member on the server. A grouped channel is one channel id with one conversation per party, and a line reaches only the people in the *sender's* party:
+
+```gdscript
+router.add_channel(DotChatChannel.group(&"party", "Party"))
+router.group_fn = func(peer: int, _channel: StringName) -> StringName:
+    return StringName(parties.party_of(uid_of(peer)))   # "" for nobody's party
+```
+
+Somebody in no party reaches nobody but themselves, and a grouped channel with no `group_fn` reaches nobody.
 
 Membership is asked, never stored: which team a peer is on is a fact your game
 owns and changes every round, and a second copy of it is the copy that goes

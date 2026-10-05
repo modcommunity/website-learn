@@ -66,6 +66,7 @@ exploit, and making them wait for a second death is confusing.
 | `DotPlayerClassCatalogue` | The set. Three presets: `single`, `team_shooter` (six classes tuned as relations) and `asymmetric`. |
 | `DotPlayerClassRules` | When a choice may be made and when it lands. Four presets, and a `DotConfig`. |
 | `DotPlayerClassManager` | Current class, pending class, limits, entitlements, and a mirror for clients. |
+| `DotPlayerClassApply` | Writes a class's numbers onto what uses them — `to_health(def, health)`, `to_movement(def, tunables)`, `knockback_scale(def)` — duck-typed, so neither dot-combat nor dot-player-controller is named. Before it, the manager decided who was what and the numbers on the document reached nothing. |
 
 `single()` exists so a game with no classes still has one: modelling it as *no
 catalogue* makes every consumer branch on whether classes exist.

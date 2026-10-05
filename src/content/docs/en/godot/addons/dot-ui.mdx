@@ -57,9 +57,12 @@ takes rows of dictionaries.
 | `DotCrosshair` | Opens by the actual spread angle through the actual camera projection. |
 | `DotStarfield` | A parallax starfield drawn into any `CanvasItem`. Hashed, so nothing is stored. |
 | `DotFeedView` | A bounded, self-expiring list of coloured fragments. Kill feed and chat. |
+| `DotChatWindow` | A chat box: a log that fades, a line to type in, and a key that opens it. |
 | `DotTableView` | Rows and columns. Scoreboard, server browser, ban list. |
 | `DotSettingsPanel` | Builds itself from a `DotConfig`. Never shows a secret. |
 | `DotBindingsPanel` | Rebinding, conflict detection, and a file that survives a restart. |
+| `DotInputBinding` | One binding as a short string — `"Y"`, `"Shift+A"`, `"Mouse 1"` — and back. |
+| `DotBallotPanel` | A vote on the HUD: numbered options picked with a number key or a click, a countdown, and each voter's avatar sliding to the row they chose. Takes the dictionary [`dot-vote`](/learn/godot/addons/dot-vote)'s `DotVoteBallotView` builds and emits `chosen`; it names no dot-vote class. |
 
 ## `DotSettingsPanel` reads the config you already wrote
 

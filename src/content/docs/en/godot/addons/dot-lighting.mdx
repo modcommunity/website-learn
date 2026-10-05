@@ -74,6 +74,8 @@ scales with how much geometry is in frame, which on a large level is all of it;
 glow is a fixed cost in screen pixels that a phone-class GPU handles. Dropping
 glow first is the mistake the profiles exist to prevent.
 
+A profile also says whether the sky continues **below the horizon**. `sky_below_horizon` is off by default, because an enclosed level has geometry under its horizon and a bright band there reads as a hole; turn it on for a world that floats inside its skybox — the platforms-in-the-sky shape of every ride-the-ramp and jump-the-gap map — or every glance down between two platforms looks at a dark floor that is not there.
+
 **Tone mapping survives every tier**, including the lowest. Godot's default is
 `LINEAR`, which is not a tone map — it clips. A filmic shoulder is why a bright
 sky and a dark wall can both be readable in one frame instead of one being white

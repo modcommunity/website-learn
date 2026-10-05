@@ -102,6 +102,12 @@ anywhere.
   <Param name="DotAvatarSync">
     The bit-packed wire format and the backbone endpoints.
   </Param>
+  <Param name="DotAvatarManager.default_avatar_fn" type="Callable">
+    `func(user_key)`: the game's stock look for a player with nothing stored, asked with the scoped key so two first-time players are not identical. Validated like a stored avatar; `null` means no opinion and falls back to the schema's default quietly.
+  </Param>
+  <Param name="DotAvatarManager.translate_fn" type="Callable">
+    Turns a document for another schema — the website's `builtin` one — into this game's, **before** conform and validate, so it is held to this schema and its entitlements like anything stored. Without it every site avatar is a different schema, refused by `conform`, and drawn as stock. A member who never opened the site's editor comes back with `saved: false` and is treated as having no avatar, so they get the per-player stock look rather than one shared default person.
+  </Param>
   <Param name="DotAvatarConfig.enforce_entitlements">
     Off for a creator sandbox. Warns loudly at startup, because a server running
     with it off has no entitlement system at all.

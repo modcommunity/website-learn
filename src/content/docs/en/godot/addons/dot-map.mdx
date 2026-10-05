@@ -152,7 +152,7 @@ somebody else has.
     per peer per map; a change waits only on the peers registered when it
     began, so a joiner cannot stall it; a refused load no longer adopts the map
     it refused; a load that overtakes its own fetch waits for the fetch; and
-    progress reports are throttled by `progress_interval_sec`.
+    progress reports are throttled by `progress_interval_sec`. A delivered map the client remembers is compared by its pack's `content_version` as well as its own `version`, because a republished map keeps the second and changes the first — compared on `version` alone, a client that had the old pack played the old geometry.
   </Param>
   <Param name="Signals">
     `changing`, `changed`, `change_failed`, `change_finished`,

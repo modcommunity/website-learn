@@ -35,6 +35,8 @@ They live under [`gamemann`](https://github.com/gamemann) rather than under the
 organisation the addons are in; see [the overview](/learn/godot)
 for why the split is a rule.
 
+**Every one of them is delivered, not built in.** Each game, the lobby included, is published as a signed [`dot-cloud`](/learn/godot/addons/dot-cloud) pack; a server installs the ones it is told to offer, and a player's client downloads the pack when it joins. The client shell contains no game at all, so it is the same build whatever it connects to, and a new game reaches players without a new client. That is also why every game here references its own scripts by path rather than by `class_name`: a mounted pack's `class_name` globals are never registered, so a game written the other way mounts, loads its scenes, and runs none of its code.
+
 <Callout type="info" title="This is where the bugs are">
 Putting the gameplay addons through one process found seven bugs, six of them in
 *other* repositories and not one reachable from that repository's own suite.
@@ -96,7 +98,7 @@ together.
 
 Uses `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
 `dot-user-avatar`, `dot-loadout`, `dot-platform`, `dot-cloud` — everything
-except `dot-player-controller` and `dot-combat`.
+except `dot-player-controller` and `dot-combat`. One pack carries five modes — classic, frenzy, gauntlet, warrens and reef — each a `game.yml` of its own over the same content.
 
 It is also **the shortest path to the browser column**: small, needs no threads,
 and it exercises every browser constraint with nothing else in the way. Its
@@ -123,7 +125,7 @@ Uses `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`,
 Not by `class_name`. A mounted `dot-cloud` pack cannot register `class_name`
 globals — measured — so every cross-file type reference inside a pack fails to
 compile while the pack mounts and its scenes load. **A path is the only shape a
-delivered entity can take**, and this game is written that way on purpose.
+delivered entity can take**, and this was the first game written that way; every game is now.
 </Callout>
 
 It is the only place `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`,
@@ -133,9 +135,7 @@ more.
 
 ## game-g2gfast
 
-**The bunny-hop and surf timer server, in the Counter-Strike shape.** Source
-units and cvars, Source's field of view, first and third person, and every
-player drawn as an avatar — theirs from the platform, or a stock one.
+**The bunny-hop and surf timer server, in the shape of the round-based competitive shooters' movement servers.** Their units, cvars and field of view, first and third person, and every player drawn as an avatar — theirs from the platform, or a stock one. Each imported map is its own pack, fetched when the server changes to it, so the game pack stays small and a new map needs no new game.
 
 Uses `dot-player-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
 `dot-server`, `dot-user-avatar`, `dot-ui`.
@@ -168,7 +168,7 @@ still exercises admission, membership, replication, prediction and chat.
 A server with no game loaded is a legitimate thing to run and `dot-server` has
 always supported it; what it did not have was anything to look at, and a player
 who connects and sees nothing cannot tell that from a broken server. It is also
-the game a generic browser client shell downloads first.
+the game a generic browser client shell downloads first — as a pack, like every other, because a lobby built into the client is a lobby that needs a new client to change.
 
 ## mg-smash-copter
 
@@ -214,6 +214,10 @@ First-person view models, third-person world models, procedural animation, and
 the replication that makes another player's weapon look right on your screen.
 The art is Kenney's Blaster Kit with melee from the Weapon Pack and Survival
 Kit — all CC0, all vendored, nothing to download.
+
+## dot-game-template
+
+**Where a new game starts.** Not one of the eight: it lives with the addons, under [`modcommunity`](https://github.com/modcommunity/dot-game-template), because it is what a third-party developer copies. It is **Coin Grab**, a small networked 2D game on [`dot-game`](/learn/godot/addons/dot-game) — predicted, server-authoritative, and written without `class_name` so it works as a delivered pack from the first commit. `tools/rename.sh` makes it yours. On a `v*` tag its release workflow attaches the game as a `-pack.zip`, and the site signs and publishes that as `<your site username>/<repository>`, which is the name a server installs it by. The server tool mounts its packaged release on every check, so the template is verified the way a stranger's game would be.
 
 ## Lessons for your own bridges
 

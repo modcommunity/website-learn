@@ -29,8 +29,7 @@ source:
 fifty-eight addons, a launcher, a server tool and seven games that exist to run
 the addons together. Everything on
 [the play center](https://moddingcommunity.com/play) is built out of it, and all
-of it is MIT licensed under
-[`modcommunity`](https://github.com/modcommunity).
+of it is MIT licensed: the addons under [`modcommunity`](https://github.com/modcommunity), the games under [`gamemann`](https://github.com/gamemann).
 
 This page takes you from an empty directory to a game running locally, and then
 to a server other people can join.
@@ -183,7 +182,7 @@ it.
 
 [`dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy) boots a
 `dot-server`, reads YAML out of `cfg/`, loads games out of `content/` and serves
-a browser client.
+a browser client. The games are not in it: each is a signed pack that the server installs and every client downloads when it joins, so `setup.sh` publishes the games beside it as packs on a developer machine, and a production box fetches them from the content origin instead.
 
 ```bash
 ./setup.sh              # find a runtime, wire the addons, write ./server

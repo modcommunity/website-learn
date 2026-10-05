@@ -53,7 +53,7 @@ godot --headless --path . res://examples/capability_report.tscn
 | `DotScheduler` / `DotJob` | Long work in slices. Worker threads where available, a per-frame time budget where not. |
 | `DotTransport` | Swappable multiplayer transport. `DotTransportAuto` picks between WebSocket and ENet, and logs why. |
 | `DotHttp` | An `HTTPRequest`-based client with retries, jittered backoff, `Retry-After`, range-resumed downloads and connection pooling. |
-| `DotLog` / `DotLogBus` / `DotLogSink` | Levelled, channelled logging with structured fields, rotating files and UDP forwarding. |
+| `DotLog` / `DotLogBus` / `DotLogSink` | Levelled, channelled logging with structured fields, rotating files and UDP forwarding. [`dot-log`](/learn/godot/addons/dot-log) is the sink layer for everything beyond a file. |
 | `DotPaths` | Path sanitisation that *refuses* traversal rather than cleaning it, atomic writes, and web filesystem flushing. |
 | `DotHash` / `DotHashJob` | SHA-256, HMAC, constant-time comparison, base64url, CSPRNG tokens. |
 | `DotRateLimiter` | A token bucket, used on every path a client can drive. |

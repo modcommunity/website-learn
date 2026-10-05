@@ -107,9 +107,9 @@ somebody anyway. The alternative is a player who is dead until a point frees up,
 which on a busy map with a short round is the rest of the match.
 </Callout>
 
-<Callout type="warning" title="`player_spawned` only ever fires on the authority">
-It comes out of the respawn queue, which runs on the server. A mirroring client
-waiting for it to find its own player waits for ever — and the symptom is
+<Callout type="warning" title="`respawn_due` only ever fires on the authority">
+It comes out of the respawn queue, which runs on the server — and so does any `player_spawned` a game emits from it. A mirroring client
+waiting for one to find its own player waits for ever — and the symptom is
 misleading: the HUD binds by id and works, the scoreboard works, the connection
 is live, and there is no camera and no world at all. Use the game's own
 `player_added` on a client.

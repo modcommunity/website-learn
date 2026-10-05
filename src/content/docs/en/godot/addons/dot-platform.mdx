@@ -48,6 +48,26 @@ the result on `session.data["platform"]`, applies the profile's name, releases
 the state when they leave, and adds `platform_status` and `platform_name` to the
 console.
 
+Admission finishes **after** the game has seated the player, so a game that reads the name and avatar at seating reads a guest's. The module therefore declares two server events: `player_admitted`, once the profile and avatar are resolved, and `player_renamed`, when an operator's `platform_name` changes a connected player's name (it sets the session's display name too).
+
+## The identity layer: `DotPlatformIdentity`
+
+Every game used to carry its own copy of the chain that builds content delivery, backbone reporting, profiles, avatars and the hub in the order they depend on each other — two of them, 262 and 215 lines, differed in one line. `DotPlatformIdentity` is that chain once. A game hands it an avatar schema and a stock-avatar function:
+
+```gdscript
+var identity := DotPlatformIdentity.new()
+identity.avatar_schema = MyAvatars.schema()
+identity.stock_avatar_fn = MyAvatars.stock_avatar      # what a first-time player wears
+identity.avatar_translate_fn = MyAvatars.from_site      # optional: the site's avatar, in this game's schema
+add_child(identity)
+await identity.setup()
+await server.modules.load_module("res://addons/dot_platform/dot_platform_module.gd")
+```
+
+A [dot-game](/learn/godot/addons/dot-game) module returns one from `_make_identity()` and skips the last line — `DotGameModule` loads the platform module itself. Authentication is not in it: proving who somebody is happens in dot-server's handshake.
+
+With a `dot_backbone_client` registered (dot-server-deploy registers one from its listing credential), the avatar store is the **site's** avatar route, read only, instead of a local file the site never sees; `avatar_translate_fn` maps the site's `builtin` schema into the game's, and unset, a member wears the game's stock look.
+
 ## The translation it exists to do
 
 ```

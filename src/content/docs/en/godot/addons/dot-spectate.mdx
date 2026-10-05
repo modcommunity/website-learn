@@ -70,6 +70,8 @@ timers handing over to each other. The last hand-over is the one a game that
 writes this itself usually misses, leaving the player looking at their killer
 until they respawn.
 
+Call it where the timers run — the authority. A mirroring client runs no timers, so `on_death` there is refused; the client is told the chain through the view's wire form instead, which carries the death position so a death camera is not drawn from the world origin.
+
 <Related>
 - [dot-team](/learn/godot/addons/dot-team) — the side-aware policy layered over this
 - [dot-player](/learn/godot/addons/dot-player) — a spectator is a participant with no body

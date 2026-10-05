@@ -83,6 +83,8 @@ server-authoritative and not predicted — a correction on something a player is
 steering reads far worse than latency. A driver's client interpolates the
 replicated transform, which hides the snapshot rate without inventing physics.
 
+The rotation crosses as **one** property, `net_orientation`, of dot-net's quaternion type — slerped between snapshots and packed smallest-three. It used to be four integer components, which an interpolator treats as discrete and switches at the midpoint, so every watcher saw a vehicle's body snap round at the snapshot rate while its position slid. A game's own vehicle net script declares `var net_orientation: Quaternion`; the property is named by a string, so dot-vehicle still mentions no dot-net class.
+
 ## Three chassis kinds, and your own
 
 | | |

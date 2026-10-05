@@ -74,7 +74,7 @@ client mirroring a server's ballot does.
 | --- | --- |
 | **Rock the vote** | A fraction of the players, a minimum player count, a delay at the start of every map, idempotent per player, and votes withdrawn when their owner disconnects. |
 | **Nominations** | Per-player caps, a total cap, seconding, admin bypass, and reserved ballot places so three organised players cannot decide every map. |
-| **Time limits** | In seconds, in rounds, or both — **per choice**, so a forty-minute surf map and a ten-minute bhop map are not forced under one number. |
+| **Time limits** | In seconds, in rounds, or both — **per choice**, so a forty-minute surf map and a ten-minute bhop map are not forced under one number. `duration_sec` defaults to forty-five minutes, and `0` is around the clock: with rock-the-vote on, only a rock-the-vote ever changes anything. |
 | **The ballot** | Up to N options, filled five ways, with "extend" and "none of these" as options a server turns on or off. Opens a configurable lead time *before* the map ends, so the change happens on time. |
 | **Counting** | Plurality, approval, instant runoff, or a majority runoff. Quorums, weighted ballots, and five tie-breaks — four of which a player watching can predict. |
 | **Cooldowns** | In plays or in wall-clock minutes, per choice, clamped against the pool so a long cooldown on a short rotation cannot exclude everything. |
@@ -132,6 +132,14 @@ code defaults < the running game's metadata < a file < `DOT_VOTE_*` <
 does not validate. The self-test sets settings through each layer and asserts
 the *ballot* — not merely the parsed value — because a setting that parses and
 never reaches the vote is the failure a server owner would actually see.
+
+## When the time is up
+
+A map's clock, a round limit and how long one round lasts are three different settings, and the last is the game's own rule — dot-match's — which this addon never sees. When the map's clock runs out, `time_up` decides what happens to the round in progress: `change_now` (the default) or `finish_round`, which holds the change until the host's next `note_round_end`, for at most `finish_round_max_sec`. It only waits on a host that sets `DotVoteDirector.round_based` — one that reports every round end — because a deathmatch has no round to finish and would otherwise sit out the whole cap; and only a time or score limit waits, since a rock-the-vote or an admin's command is somebody asking for now.
+
+## A ballot a client can draw
+
+`DotVoteBallotView.state_of(director, people_fn)` is the ballot as a screen draws it: the options in the order a typed number indexes them (option `i` is `!votefor i+1` on every screen), the counts, who chose what so each voter's avatar can sit on their choice, and how to choose (`ballot_input`: numbers, pointer or both — a rule, because what the ballot says to press has to be true on every screen at once). `ballot_show_voters: false` sends counts without names, for a secret ballot. `DotVoteBallotFeed` sends that state through a `send_fn` only when it has changed, and is **polled** rather than signal-driven, because a voter who leaves is withdrawn without a signal. There is still no wire format and no UI here: the dictionary rides whatever the host has, and [dot-ui](/learn/godot/addons/dot-ui)'s `DotBallotPanel` draws it.
 
 ## Where a game plugs in
 

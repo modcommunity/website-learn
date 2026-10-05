@@ -99,6 +99,8 @@ ask for a million challenges from a million forged addresses and the server
 holds them all. This holds one 32-byte secret regardless, on the same reasoning
 as a SYN cookie.
 
+The same reasoning covers the rate limit in front of the challenge, which can only key on an address nobody has proved. `DotQueryLimiter` drops a bucket once it has refilled and, past `max_tracked` addresses, puts every unknown one in a single shared overflow bucket — so a spoofed flood from a million addresses cannot grow its table without bound, which a plain per-address token bucket let it do.
+
 ## What a query can ask for
 
 Sections, by name, à la carte:

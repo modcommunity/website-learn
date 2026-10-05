@@ -61,6 +61,7 @@ put anything anywhere.
   <Param name="DotItemCatalogue + resolver" type="Callable">
     Every item by id, plus the **optional, client-side** resolver that turns one
     into an asset. A server never calls it.
+    A delivered item carries a `content_id`, and `ensure_content()` fetches the packs the catalogue's items live in through `DotContent` — called by a **client**, because a server deciding yes or no needs only the ids, and a download on the join path would decide nothing it cannot already decide.
   </Param>
   <Param name="DotLoadoutSlot">
     A position and what fits in it: kinds, required tags, forbidden tags.
@@ -102,7 +103,7 @@ one, the only publish they would ever make is refused.
 </Callout>
 
 <Related>
-- [`dot-combat`](/learn/godot/addons/dot-combat)
+- [`dot-weapon`](/learn/godot/addons/dot-weapon) — what most loadout items become; its `DotWeaponLoadoutBridge` hands a loadout to an arsenal
 - [`dot-user-avatar`](/learn/godot/addons/dot-user-avatar)
 - [`dot-match`](/learn/godot/addons/dot-match)
 </Related>

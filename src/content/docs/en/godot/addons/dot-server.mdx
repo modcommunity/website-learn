@@ -116,6 +116,10 @@ it cannot lock you out of your own server.
 the new content, swap, re-spawn. A failed change restores the previous game
 rather than leaving the server empty.
 
+A game's id may name its owner — `gamemann/game-arena` — so a fork and its original, or two people's games that share a name, sit side by side; a bare name still works wherever it is unambiguous. A game can also list other packs it depends on (a map, a shared asset set), and the server fetches them before the change and sends every client the whole set in the same sync.
+
+**Cross-play, with an owner's opt-out.** Every client speaks the same WebSocket protocol, so browser, desktop and mobile players share a server by default. `sv_allow_web`, `sv_allow_desktop` and `sv_allow_mobile` close a platform: the client is refused before the password and authentication, with a sentence saying where to join from instead. The three are replicated into the A2S rules, which is how the site knows to hide a closed Play mode.
+
 ## The signon state machine
 
 ```
@@ -309,7 +313,7 @@ per call.
 | | |
 | --- | --- |
 | [dot-auth](/learn/godot/addons/dot-auth) | Real player identity, so bans mean something and site groups can grant permissions. Without it, everyone is a `DotGuestIdentity`. |
-| [dot-cloud](/learn/godot/addons/dot-cloud) | Downloadable game content. Without it, games ship inside the build. |
+| [dot-cloud](/learn/godot/addons/dot-cloud) | Downloadable game content: the server sends each client the pack for the game it is changing to, plus any packs that game depends on, in one `content.sync`. Without it, your games ship inside the build. TMC's server tool uses it for every game. |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | Bans, mutes and gags as durable records in a store shared between your servers. Registered as `dot_ban_source`, its bans are enforced at connect. |
 | [dot-server-query](/learn/godot/addons/dot-server-query) | Answers A2S and DQP through the `attach_query_host` hook. Without it the server is unlistable — nothing can ask it anything. |
 | [dot-server-security](/learn/godot/addons/dot-server-security) | Rules over chat, connections, authentication and RCON that escalate on their own, anti-cheat detectors, and external ban feeds chained onto `dot_ban_source`. Ships in dry run. |

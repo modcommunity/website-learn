@@ -24,7 +24,7 @@ source:
 ---
 
 The website's [matchmaking](/learn/parties/matchmaking) finds a **server** for a
-party. There is no player queue in it and no skill rating anywhere, so
+party. There is no player queue in it, and it had no skill rating at all until its rating routes were added for this addon, so
 `dot-matchmaking` is the whole player-queue half: who plays whom, on which
 server, and how the result moves everybody's rating.
 
@@ -140,12 +140,11 @@ side, no player twice, at most 128 players) and fails with the reason.
 because one too many refuses the whole request.
 </Callout>
 
-<Callout type="warning" title="The site does not follow every setting yet">
-The site hard-codes τ, the 14-day inactivity period, the 0.25 participation
-floor and leaver-takes-loss; `rating/define` has no field for them. Change one in
-`DotMatchmakingConfig` and a ranked queue is rated by one rule offline and
-another online. `define(playlists, config)` warns when that is so.
+<Callout type="info" title="The site rates by the same rules you set">
+`define(playlists, config)` sends each queue's τ, inactivity period, participation floor and leaver-takes-loss (`tau`, `ratingPeriodDays`, `minParticipation`, `leaverTakesLoss`), and refuses a `DotMatchmakingConfig` outside the site's bounds before sending — so a ranked queue is rated by one rule offline and online. A site from before that change ignores the four keys.
 </Callout>
+
+A result for a queue the site has not heard of — its `404` "No playlist" — re-declares that one queue and files the result once more. A result the site refuses for its shape is **not kept**: `flush` lets it go with a warning, counts it in `refused`, and carries on, so one bad result cannot sit at the head of the queue holding every result behind it. A missing credential or route still stops the flush and keeps everything.
 
 <Callout type="info" title="Not here yet">
 Backfill into a running match, short-handed matches after a long wait, role

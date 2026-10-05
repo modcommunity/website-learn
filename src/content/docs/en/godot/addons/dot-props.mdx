@@ -83,12 +83,19 @@ The physics gun holds with a **spring**, not a transform: setting a transform on
 a rigid body fights the solver and produces a prop that jitters and shoves
 everything it touches.
 
+## Breaking a prop, and standing on one
+
+`DotPropDamage` holds hit points for props and applies damage to nobody. The numbers live on `DotPropDef` — `max_health` and `break_impact_speed` — so a definition stays checkable without loading its scene; the state is keyed by instance id, so a breakable prop is still a plain scene with a `RigidBody3D` at its root. `break_impact_speed` is a speed rather than damage, because a crate has to survive being walked into and must not survive a bus. `max_health = 0` is indestructible, since every prop written before the field decodes to zero. When something explodes it describes the blast and shoves other props; what that does to a person is [dot-combat](/learn/godot/addons/dot-combat)'s. Signals: `damaged`, `broken`, `exploded`.
+
+`DotPropCarry` is what makes a crate an object rather than scenery: a character motor sweeps a shape and slides, so without it a crate is exactly as solid and as immovable as the floor. `stand()` presses a player's weight into the prop under them, `ride()` carries them with it — angular velocity included, or a player on a spinning crate drifts toward the middle — and `push()` shoves one. It reads the motor's `ground_id`, which is a local handle and deliberately not part of the simulation.
+
 ## Where a game plugs in
 
 <Params>
   <Param name="DotPropCatalogue / DotPropDef">
-    What can be spawned. Id, name, category, scene, mass, cost, `can_grab`, and
-    a `meta` dictionary.
+    What can be spawned. Id, name, category, scene, mass, cost, `can_grab`,
+    health, and a `meta` dictionary. A delivered prop carries a `content_id`,
+    and `ensure_content()` fetches the packs the catalogue's props live in.
   </Param>
   <Param name="DotPropDef.meta.script" type="a PATH">
     A prop that has code. **A path, not a `class_name`** — a mounted `.pck`
@@ -106,7 +113,8 @@ everything it touches.
     `DotPhysGun` and `DotGravGun` are the shipped ones.
   </Param>
   <Param name="Signals">
-    `spawned`, `removed`, `refused`.
+    `spawned`, `removed`, `refused` on the spawner; `grabbed`, `released`,
+    `freeze_changed` on `DotPhysGun`.
   </Param>
 </Params>
 

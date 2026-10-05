@@ -81,8 +81,9 @@ standing near each other and never finishes an attack against either.
 
 ## Navigation
 
-Every map in this family is built in code from constants, so there is no
-authored geometry to bake a `NavigationMesh` from. `DotNpcNavBuilder` generates
+The maps this was written for — the ones the NPC-carrying games play on — are
+built in code from constants, so there is no authored geometry to bake a
+`NavigationMesh` from. `DotNpcNavBuilder` generates
 a point graph from the same constants the geometry was built from, and
 `DotNpcNavData.source_digest` is what a suite compares to catch a map that moved
 and a graph that did not.

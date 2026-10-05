@@ -33,6 +33,18 @@ catalogue that `preload`s cannot describe delivered content at all.
 `missing_files()` is a separate question, asked by the client about to need
 them.
 
+It ships no audio, and a game with no files can still make a noise. `DotAudioSynth` bakes short sounds out of a sine sweep, a deterministic hash and an attack-decay envelope, and `DotAudioSinkGodot.bank` holds them **behind** the filesystem — the moment a real file exists at the path a def already names, that file wins and nobody edits a line:
+
+```gdscript
+var bank := DotAudioSynth.bank(catalogue, {
+    &"fire_rifle": DotAudioSynth.Voice.SHOT,
+    &"hit_marker": DotAudioSynth.Voice.BLIP,
+})
+(audio.sink as DotAudioSinkGodot).bank = bank
+```
+
+The grit comes from a hash rather than `randf()`, so the bank is byte-identical on every machine and every run, which makes it something a test can assert about rather than listen to.
+
 ## Usage
 
 ```gdscript

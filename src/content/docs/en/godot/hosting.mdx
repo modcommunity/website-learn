@@ -32,8 +32,7 @@ operate.
 
 <Cards>
   <Card title="dot-server-deploy" href="https://github.com/modcommunity/dot-server-deploy">
-    TMC's server tool. YAML configuration, games loaded out of a directory,
-    roles, moderation, votes, a browser client and a site listing. **This page.**
+    TMC's server tool. YAML configuration, games downloaded as signed packs, roles, moderation, votes, a browser client and a site listing. **This page.**
   </Card>
   <Card title="dotserve" href="/learn/godot/tooling#dotserve">
     A shell script that starts *your own* game's `dot-server` with sensible
@@ -66,16 +65,22 @@ again after an update is safe: your edits are the server's configuration.
 | `./server check` | Boot, load the game, shut down. Exit 0 if it worked. |
 | `./server config` | The resolved configuration. |
 | `./server games` | What is in `content/`. |
+| `./server install-games` | Fetch the games named by `--games` (or `TMC_GAMES`) from the content origin. `./server` does this for you at startup. |
 | `./server pack <id>` | Publish `content/<id>` as a signed dot-cloud pack. `--all` does every one. |
 | `./server verify <id>` | Check a published pack's manifest against `keys/content.pub`. |
+| `./server index` | Write `dist/games.json` and the descriptors a server installs from. Run it after `pack --all`. |
 | `./server export-web` | Build the browser client, plus the loader the site uploads. |
 | `./server export-native` | Build the native client the desktop app installs — one archive per platform. |
+| `./server stamp-loader` | Point an existing web loader at a new `--base` without rebuilding. |
 | `./server --help` | Every option. |
 
 ```bash
 ./server --port 27015 --name "My server"
+./server --games g2gfast,playground        # install and offer only these
 ./server -- +sv_cheats 1 +changelevel lobby
 ```
+
+A game is not part of this build. Each is a signed [dot-cloud](/learn/godot/addons/dot-cloud) pack on a content origin, and `--games` (or `TMC_GAMES`) names the ones this server installs and offers — `g2gfast`, `gamemann/game-arena@1.2.0`, or `someone/their-game@latest`. At startup the server fetches each game's `game.yml` out of its pack, checks it against the pack's signature, and downloads the pack; every player's client downloads the same pack when it joins. Adding a game needs no new server build and no new client build. With no list, the server offers whatever is already in `content/`, which is what a hand-run server wants.
 
 Exit codes are meaningful, so a supervisor can tell a misconfiguration from a
 crash: `2` usage, `3` no runtime, `4` no project, `5` bad config, `6` port in
@@ -95,11 +100,7 @@ wrong *and* I have been telling people to connect for ten minutes".
 ./play.sh down
 ```
 
-It prints a link. `play.sh` rebuilds the web export when the game is newer, puts
-the page that reads `?server=` in place of Godot's generated one, and warns when
-the vendored `game/` directory is older than the repositories it was copied
-from — the one part of the tree that goes stale, and a stale copy exports
-cleanly, runs, and is last week's game.
+It prints a link. `play.sh` rebuilds the web export when it is out of date, puts the page that reads `?server=` in place of Godot's generated one, and warns when a published pack in `dist/` is older than the game repository it was built from — the one part of the tree that goes stale, and a stale pack mounts cleanly, runs, and is last week's game. Re-run `./server pack <id>` when it says so.
 
 <Callout type="warning" title="Loopback HTTP only">
 An HTTPS page may not open a `ws://` socket. `play.sh` works on `127.0.0.1` and
@@ -110,16 +111,16 @@ nowhere else; a public deployment needs TLS in front of it.
 
 ```
 cfg/                 what an operator edits
-content/             what the server serves
-data/                what the server writes
+content/             the games this server offers: a game.yml each, the game itself is a pack
+data/                what the server writes, including the downloaded packs
+dist/                packs you published yourself, and the index servers install from
+keys/                the signing key, if this box publishes. Never copied anywhere else
 host/                the boot: YAML -> DotServer
-client/              the client shell. Knows nothing about any game
+client/              the client shell. Contains no game; it mounts what the server names
 web/                 the browser build, and the page that takes ?server= from the URL
 ```
 
-`cfg/` and `content/` are read; `data/` is written. A container mounts the first
-two read-only and the third read-write, and a systemd unit points
-`ReadWritePaths` at exactly one directory.
+`cfg/` is read and `data/` is written. `content/` is written too when the server installs games, because each game's `game.yml` is pulled out of its signed pack and written there; a deployment that carries its own content and sets no `--games` can mount it read-only.
 
 <Details title="What each file in cfg/ and data/ is">
 
@@ -132,19 +133,22 @@ cfg/
   groups.yml           groups, as sets of permissions
   vote.yml             voting for the next game: rtv, nominations, time limits
   permissions.yml      who is in which group
+  security.yml         abuse rules and anti-cheat, from dot-server-security. Dry run by default
+  log.yml              log level, channels and destinations
+  content.json         the content origins, and the public keys a pack must be signed with
   content/<id>/        per-game configuration
 
 content/
   global/              loaded by every game
-  lobby/game.yml       the lobby. The default
+  lobby/game.yml       the lobby. The default, and a pack like every other game
+  <id>/game.yml        one per game: which pack, which scene, how many players
 
 data/
   from_yaml.cfg        what your YAML became
   admins.json  bans.json  audit.jsonl  listing.json
 ```
 
-A directory under `content/` with a `game.yml` in it is a game, and
-`changelevel` switches between them with players still connected.
+A directory under `content/` with a `game.yml` in it is a game, and `changelevel` switches between them with players still connected. Each `game.yml` says `kind: pack` and names its content id; the build itself contains no game, not even the lobby.
 
 </Details>
 
@@ -238,8 +242,10 @@ is correct, and it looks exactly like the file being ignored.
 `content/`:
 
 ```
-!nominate   !rtv   !votefor   !timeleft   !nextmap
+!game_nominate   !game_rtv   !game_vote   !game_timeleft   !game_next
 ```
+
+The prefix is deliberate. A game can run a vote of its own — the timer game votes for its next map — and that game keeps the bare `!rtv` and `!nominate` players already know. `!rtv` is always about the game in front of you; `!game_rtv` is always about which game is next.
 
 Each game gets its own time limit in its own `game.yml`, because forty minutes
 of surf and ten minutes of a lobby deathmatch are not the same number.
@@ -271,8 +277,8 @@ docker compose logs -f
 The build context is the **parent** directory: every addon is its own repository
 and there is no way to clone the tree at once, so they are siblings rather than
 subdirectories. `cfg/` and `data/` are bind mounts, so the first run writes a
-configuration you can edit and an RCON password that survives a rebuild;
-`content/` is mounted read-only. The container runs as your own uid
+configuration you can edit and an RCON password that survives a rebuild.
+`content/` is mounted read-write, because installing a game writes its `game.yml` there; put `:ro` back on a deployment that ships its own content and sets no `TMC_GAMES`. The container runs as your own uid
 (`UID=$(id -u) GID=$(id -g) docker compose up -d`) and drops every capability.
 
 ## Getting it onto the site
@@ -364,7 +370,7 @@ run.
 - **No TLS of its own.** A page on HTTPS cannot open `ws://`. Certificates and a
   reverse proxy are deployment, not code.
 - **`cfg/permissions.yml` does nothing without authentication** — see above.
-- **No game has been delivered as a pack yet.** The games ship inside the build.
+- **A game that declares pack dependencies needs a recent client.** A client shell exported before dependency support joins without the extra packs. Every game ships as a pack, so this is the one case where an old client is not enough.
 
 <Related>
 - [Getting started](/learn/godot/getting-started) — if you have not cloned anything yet

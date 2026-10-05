@@ -41,6 +41,16 @@ Four things follow from that:
   snapping back.
 - **Prediction.** A client applies locally, sends, and rolls back on a no.
 
+A predicting manager (`authoritative = false`) keeps what it has applied and not heard about, and three calls reconcile it with the server:
+
+```gdscript
+inv.confirm(op_dict)                 # the server said yes
+var lost := inv.rollback(op_dict)    # the server said no: undo that op, and only that op
+inv.apply_authoritative(server_op)   # a change the server made: a purchase, a reward
+```
+
+A rollback rewinds to before the refused op and re-applies everything predicted after it, so a refusal does not take a later move the server is about to accept with it; whatever no longer applies is returned and reported through `dropped`. A server's own op lands **underneath** the predictions, because anything still in flight is something the server has not processed yet. A move keeps its uid, so a client can chain its second op onto the uid its first one predicted. `validate` asks everything `apply` will find out, room included — an ADD into a full container is `CODE_QUOTA` before a shop charges for it — and `unlimited_actors` exempts the actor a server gives as from `ops_per_second`.
+
 <Callout type="warning" title="The occupancy map is derived, never stored">
 A grid holding both a cell map and an item list can have them disagree.
 `cells_of()` and `occupied_cells()` are computed from the entries on every call.

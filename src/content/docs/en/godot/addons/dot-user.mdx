@@ -54,6 +54,8 @@ A player who *wants* to be recognised across a set of servers opts into a shared
 scope. A standalone server with no issuer generates its own key on first run and
 gets the same isolation for free.
 
+**When the site has already minted one, that is the key.** A key derived from a server's own secret is a good pseudonym the website can never resolve, so its avatar, profile and stats routes would not know the player. [dot-auth](/learn/godot/addons/dot-auth)'s scoped introspection carries the site's per-server key in the identity's `scoped_key` claim, and `key_for` checks it against the backbone's key shape and uses it as it is; only an identity without one gets a locally derived key.
+
 <Callout type="warning" title="Three properties, and dropping any one makes it theatre">
 The key never leaves the issuer. The derivation is a **keyed MAC**, not a hash —
 an unkeyed hash of a numeric id is reversible by enumeration in seconds. And

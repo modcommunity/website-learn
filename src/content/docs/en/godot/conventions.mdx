@@ -18,8 +18,8 @@ source:
   - ../game-dev/godot/dot-core/README.md
 ---
 
-These hold in every addon. Breaking one is a breaking change across fifty
-addons and the five games built on them, so they are worth knowing before you
+These hold in every addon. Breaking one is a breaking change across fifty-eight
+addons and the seven games built on them, so they are worth knowing before you
 write against any of them.
 
 ## `DotRegistry` instead of autoloads
@@ -200,9 +200,7 @@ anything else.
 Measured: every cross-file type reference *inside* a delivered `.pck` fails to
 compile, so the pack mounts, its scenes load, and every script in it is dead.
 `preload("res://x.gd")` and `extends "res://x.gd"` both work. **This decides what
-a delivered game may look like** — see
-[game-playground](/learn/godot/games#game-playground), whose entities and
-weapons are scripts named by *path* for exactly this reason.
+a delivered game may look like**, and every game in the collection is delivered: each references its own scripts by *path* for exactly this reason. See [Reference games](/learn/godot/games).
 </Callout>
 
 ## GDScript traps the collection has paid for

@@ -89,6 +89,8 @@ snapshot count unconverted — at 128 ticks and 20 snapshots a second the render
 time sat past the newest snapshot, so every remote entity was quietly
 *extrapolated*.
 
+**A clock that catches up.** A client behind its target tick stamps every command for a tick the server has already simulated, and every one is discarded as late — so a client behind by more than the input margin (`catch_up_threshold_ticks()`) jumps forward at once, and only a client *ahead* is eased back. Eased both ways, a half-second loading hitch on a first connect was ten seconds of a player who could not steer.
+
 **Lag compensation.** The server rewinds every other entity to where the shooter
 saw them — accounting for both their latency and their interpolation buffer —
 tests the shot, and restores. Bounded by `max_rewind_sec`, so a client cannot
@@ -217,8 +219,9 @@ client and server built before 2026-09-26 must be rebuilt once.
 
 - **Feed `DotNetStats.note_rtt`.** `receive_snapshot` reads
   `rtt_percentile(0.5)` on every snapshot to drive the clock, and dot-net never
-  touches a transport — so nothing inside it can write a sample. Point an
-  `rtt_source` at your link's ping.
+  touches a transport — so nothing inside it can write a sample. Call it with
+  your link's ping every tick; game-arena's bridge does it through an
+  `rtt_source` callable of its own.
 - **Adopt the server's tick rate on the client**, including
   `Engine.physics_ticks_per_second`. A client counting at its own rate replays
   prediction at the wrong step and reconstitutes every replicated time through

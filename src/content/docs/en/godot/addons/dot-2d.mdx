@@ -7,7 +7,7 @@ keywords:
   - "2D"
   - "top-down"
   - "twin stick"
-  - "agar"
+  - "grow by eating"
   - "blob"
   - "mass"
   - "spatial hash"
@@ -47,7 +47,7 @@ for id in arena.overlapping(state.position, state.radius, my_id):
 <Callout type="info" title="The pointer is resolved before it goes on the wire">
 A screen position is meaningless on a server that has no window and no camera,
 so `Dot2DSampler` turns it into a **direction and a world-space distance**. That
-one decision is what makes an agar.io-shaped game predictable at all — and
+one decision is what makes a grow-by-eating game predictable at all — and
 sending a *point* rather than a direction is what lets a split player's pieces
 steer back toward each other and merge, which a direction alone can never do.
 </Callout>
@@ -58,7 +58,7 @@ steer back toward each other and merge, which a direction alone can never do.
 | --- | --- |
 | `Dot2DCommand` | What a player asked for. Sanitised against everything a hostile client sends. |
 | `Dot2DState` | Position, velocity, facing, radius, mass. Snapshot-able and replayable. |
-| `Dot2DTunables` | How it moves. `top_down()`, `thrust()` or `blob()`. |
+| `Dot2DTunables` | How it moves. `topdown()`, `thrust()` or `blob()`. |
 | `Dot2DMassRules` | How mass becomes size, speed and the right to eat somebody. |
 | `Dot2DMotor` | The simulation. Pure, deterministic, node-free. |
 | `Dot2DBody` | What it collides against. `Flat` for a bounded arena, `Physics` for the rest. |

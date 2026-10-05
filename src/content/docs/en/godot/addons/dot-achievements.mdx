@@ -87,6 +87,10 @@ Hidden entries are absent until earned and secret ones arrive without their
 description. The filtering happens here rather than in a UI, because a
 description withheld by the interface that drew it was still sent to the client.
 
+## Reporting to the backbone
+
+Set `report_to_backbone` and the tracker drives its own `DotAchievementReporter`: every `report_interval` seconds (ten by default) it declares the catalogue once — retried on a doubling delay while the backbone is unreachable, dropped after a refusal — and sends the queued unlocks in one batch, so a round's end that awards a dozen is one request. `report_app` is the app id sent with the declaration, and `await tracker.report()` sends on demand, which is what a host does before shutdown. The tracker owns the timer because it is the one node a host already places; before it did, nothing in the family ever flushed the queue and every unlock sat there until the queue limit dropped it.
+
 <Related>
 - [dot-stats](/learn/godot/addons/dot-stats) — the natural source of the numbers
 - [dot-leaderboard](/learn/godot/addons/dot-leaderboard) — the other thing the backbone stores

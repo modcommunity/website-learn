@@ -83,7 +83,7 @@ The generated systemd unit lists all of them under `RestartPreventExitStatus`.
 `dot-server-deploy` is where the collection comes together into something a
 server owner starts with one command. It is a Godot project that boots a
 `dot-server`, reads its configuration from `cfg/*.yml`, loads games out of
-`content/`, and serves a browser client — and it ships **no game of its own**.
+`content/`, and serves a browser client — and it ships **no game of its own**. Every game, the lobby included, is a signed [dot-cloud](/learn/godot/addons/dot-cloud) pack that the server installs from a content origin and every client downloads on connect, so the client is the same build whatever it joins and a new game needs no new one.
 
 ```bash
 ./setup.sh              # find a runtime, wire the addons, write ./server
@@ -92,7 +92,7 @@ server owner starts with one command. It is a Godot project that boots a
 docker compose up -d    # or the same thing in a container
 ```
 
-Windows: `setup.bat` (a shim for `setup.ps1`), then `server.cmd`.
+Windows: `setup.bat` (a shim for `setup.ps1`), then `.\server.ps1`.
 
 <Callout type="info" title="It used to be called `dot-server-setup-test`">
 Same project, clearer name. If you have an older checkout or an older link, it
@@ -110,13 +110,7 @@ now.
 ./play.sh down
 ```
 
-`play.sh` is for a developer who changed a line and wants to look at it. It
-prints a link, rebuilds the export when the game is newer, copies `embed.html`
-over Godot's generated `index.html` — the one that takes `?server=` from the
-query string — and **tells you when the vendored `game/` is older than the
-repositories it was copied from**. `setup.sh` copies that directory while the
-addons beside it stay symlinked, so it is the one part that goes stale, and a
-stale copy exports cleanly, runs, and is last week's game.
+`play.sh` is for a developer who changed a line and wants to look at it. It prints a link, rebuilds the export when it is out of date, copies `embed.html` over Godot's generated `index.html` — the one that takes `?server=` from the query string — and **tells you when a published pack in `dist/` is older than the game repository it was built from**. The addons are symlinked and always current; a pack is a snapshot, so it is the one part that goes stale, and a stale pack mounts cleanly, runs, and is last week's game.
 
 `demo.sh` is the other one: five servers, nginx terminating TLS, a public host,
 a separate registrable domain for the game and a `sudo` step to install a
@@ -138,18 +132,13 @@ needs its own registrable domain.
   addons, writes a commented `cfg/`, and writes `./server`. It never overwrites
   a config file that already exists. RCON ships off.
 - **Configuration in YAML**, split by subject — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`. Anything
+  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Anything
   `dot-server` exposes as a console variable can go in them under its own name.
 - **Roles, not flags.** dot-server's permission model is flags, deliberately;
   `groups.yml` is the translation, so an operator writes
   `admin: [kick, ban, mute]` and a player gets the flags.
-- **Games loaded at run time.** A directory under `content/` with a `game.yml`
-  in it is a game, and `changelevel` switches between them with players still
-  connected.
-- **The players choose the next game.** `!nominate`, `!rtv`, `!votefor`,
-  `!timeleft`, `!nextmap` over the games in `content/`, through
-  [`dot-vote`](/learn/godot/addons/dot-vote). Each game gets its own time limit
-  in its own `game.yml`.
+- **Games installed by name.** `--games g2gfast,playground` (or `TMC_GAMES`) fetches each game's descriptor and pack from the content origin at startup; `owner/name@version` names somebody else's published game. A directory under `content/` with a `game.yml` in it is a game, and `changelevel` switches between them with players still connected.
+- **The players choose the next game.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` over the games in `content/`, through [`dot-vote`](/learn/godot/addons/dot-vote). The prefix leaves the bare `!rtv` to a game that votes on its own maps. Each game gets its own time limit in its own `game.yml`.
 - **A browser client.** `./server export-web` builds it; one export serves every
   server, because the address comes from `?server=`.
 
@@ -157,15 +146,15 @@ needs its own registrable domain.
 
 ```
 cfg/       what an operator edits
-content/   what the server serves
-data/      what the server writes — from_yaml.cfg, admins.json, bans.json, audit.jsonl
+content/   the games it offers — a game.yml each; the game itself is a pack
+data/      what the server writes — from_yaml.cfg, admins.json, bans.json, audit.jsonl, the pack cache
+dist/      packs published from this box, and the index servers install from
 host/      the boot: YAML -> DotServer
-client/    the client shell. Knows nothing about any game
+client/    the client shell. Contains no game; it mounts what the server names
 web/       the browser build, and the page that takes ?server= from the URL
 ```
 
-A container mounts the first two read-only and the third read-write, and a
-systemd unit points `ReadWritePaths` at exactly one directory.
+`cfg/` is what you edit and `data/` is what the server writes. `content/` is written when the server installs a game, because the `game.yml` comes out of the signed pack; a box that carries its own content and installs nothing can mount it read-only.
 
 <Callout type="info" title="`data/from_yaml.cfg` is what your YAML became">
 Read it when a setting seems to be ignored. The YAML is a **surface over
@@ -173,9 +162,7 @@ dot-server's own vocabulary**, not a second one, and that file is the
 translation.
 </Callout>
 
-It is also the only place three games are compiled into one build and switched
-between under live players, and the first place anything in this collection was
-loaded in a browser.
+It is also where every game in the collection is published as a pack and switched between under live players, and the first place anything in this collection was loaded in a browser.
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server)
