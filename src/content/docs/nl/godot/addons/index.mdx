@@ -1,6 +1,6 @@
 ---
 title: De add-ons
-description: Alle vijftig Dot-add-ons voor Godot 4 — waar elk voor dient, waar het van afhangt en waar een game erop aansluit.
+description: Alle achtenvijftig Dot-add-ons voor Godot 4 — waar elk voor dient, waar het van afhangt en waar een game erop aansluit.
 order: 40
 keywords:
   - "add-ons"
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-Vijftig add-ons die samenwerken en die, op `dot-core` na, ook los werken. Elk is
+Achtenvijftig add-ons die samenwerken en die, op `dot-core` na, ook los werken. Elk is
 een eigen repository onder [`modcommunity`](https://github.com/modcommunity),
 elk levert één map `addons/<naam>/`, en elk heeft zijn eigen headless testsuite.
 
@@ -27,12 +27,13 @@ geen van deze add-ons noemt de identifiers van een andere — want in GDScript
 mislukt een script dat een ontbrekende `class_name` ook maar *noemt* al bij het
 parsen, en het sleept alles mee dat ernaar verwijst.
 
-Zeven zijn de uitzondering die de regel bevestigt, en elk zegt dat zelf:
+Acht zijn de uitzondering die de regel bevestigt, en elk zegt dat zelf:
 `dot-npc-ai` en `dot-npc-ai-director` hebben `dot-npc` nodig;
 `dot-player-controller`, `dot-player-char` en `dot-player-class` hebben
-`dot-player` nodig; en `dot-server-query` en `dot-server-security` hebben
+`dot-player` nodig; `dot-server-query` en `dot-server-security` hebben
 `dot-server` nodig, omdat elk daarvan een *onderdeel* van een server is en niet
-iets dat een server er desgewenst bij raadpleegt.
+iets dat een server er desgewenst bij raadpleegt; en `dot-game` heeft `dot-server`
+en `dot-net` samen nodig, omdat het de bedrading *tussen* die twee is.
 </Callout>
 
 ## De basis
@@ -40,6 +41,8 @@ iets dat een server er desgewenst bij raadpleegt.
 | | Hangt af van | |
 | --- | --- | --- |
 | [dot-core](/learn/godot/addons/dot-core) | — | Logging, platformmogelijkheden, paden, instelbare knooppuntverwijzingen, gelaagde configuratie, taken met een framebudget, multiplayertransporten, HTTP en reproduceerbare toevalsstromen. |
+| [dot-log](/learn/godot/addons/dot-log) | dot-core | Waar de records van `DotLog` echt naartoe gaan: een roterend bestand, een geheugenring, syslog, een databasetabel of een gehoste collector — met floodsamenvoeging, begrensde wachtrijen en redactie die één keer vóór ze allemaal gebeurt. |
+| [dot-entity](/learn/godot/addons/dot-entity) | dot-core | De id-ruimte die elk wereldobject deelt. Een allocator waarvan de id's hun eigen soort dragen, opzoekingen in beide richtingen, en een record dat naast de node wordt bewaard in plaats van erop. |
 
 ## De speler
 
@@ -72,14 +75,19 @@ Elke game in de verzameling gebruikt deze.
 | --- | --- | --- |
 | [dot-net](/learn/godot/addons/dot-net) | dot-core | Netcode: ticksynchronisatie, een bitgepakt wireformaat, statusreplicatie, snapshotinterpolatie, voorspelling aan clientzijde, lagcompensatie, interestbeheer. |
 | [dot-server](/learn/godot/addons/dot-server) | dot-core, *optioneel* dot-auth + dot-cloud | De dedicated server: console, RCON, rechten, moderatie, stemmingen, modules en het wisselen van game onder levende spelers. |
+| [dot-game](/learn/godot/addons/dot-game) | dot-core, dot-server, dot-net | De serverkant van de bedrading die elke game herhaalde: netcode, een brug, identiteit, services, een deelnemerslijst, één gezaghebbende tick, en een afbouw in omgekeerde volgorde. Maak een subklasse van `DotGameModule` en schrijf alleen wat van jou is. |
 | [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *optioneel* dot-stats | De serverkant van een query: DQP — met challenge, in secties, voorwaardelijk te pollen en bereikbaar vanuit een browser — en heel A2S, beide beantwoord vanuit één snapshot. |
 | [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *optioneel* dot-moderation + dot-chat + dot-auth | Verharding als configuratie: regels over een schuivend venster die opklimmen van waarschuwing naar gag, kick en ban; anti-cheat die scheidt wat de server bewees van wat een mens moet bekijken; en externe banlijsten. Wordt in droogloop geleverd. |
 | [dot-browser](/learn/godot/addons/dot-browser) | dot-core | De andere helft van die query's: een client. DQP over UDP, hetzelfde protocol als JSON over een WebSocket, en A2S — achter een lijstmodel met bronnen, filters en favorieten. |
 | [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | Sessies die spelers voor elkaar hosten: toetredingscodes, gereedheid, een hostverkiezing die een pure functie van de ledenlijst is, en een eerlijk verhaal over NAT. |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Bans, kicks, gags, voice-mutes en waarschuwingen als één duurzame registratie. Publiceert de mute- en banbronnen die de andere raadplegen. |
 | [dot-chat](/learn/godot/addons/dot-chat) | dot-core, *optioneel* dot-moderation | Tekstchat onder gezag van de server: kanalen met een publieksregel, opschoning, snelheidslimieten, terugblik, commando's. |
+| [dot-friends](/learn/godot/addons/dot-friends) | dot-core | De vrienden van de speler en hun aanwezigheid vanaf de site — online, in welke game, op welke server, in welke party — en een `join()` die doorgeeft aan de party of de server. |
+| [dot-party](/learn/godot/addons/dot-party) | dot-core | Parties vanaf beide kanten van het partysysteem van de site: een client die de readyronde naar zijn server volgt, de claim en rapportage van de server, en boekingen die een gereserveerde server ook echt privé houden. |
+| [dot-matchmaking](/learn/godot/addons/dot-matchmaking) | dot-core | Wie tegen wie speelt: Glicko-2-ratings per wachtrij, playlists die strikt beginnen en breder worden naarmate het wachten duurt, parties in hun geheel geplaatst, gebalanceerde kanten. Op TMC houdt de site de ratings bij. |
 | [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Voicechat: opname, een verwisselbare codec, een jitterbuffer per spreker, en routering aan serverzijde naar iedereen, een team of een straal. |
 | [dot-spectate](/learn/godot/addons/dot-spectate) | dot-core | Wie naar wie kijkt en wat de server laat zien: zeven waarnemersmodi, een force-camerabeleid, de doodscameraketen, een uitzendvertraging. |
+| [dot-replay](/learn/godot/addons/dot-replay) | dot-core | Matchdemo's voor kijken, terugkijken en moderatiebewijs: tickgestempelde kanalen in een in stukken verdeeld, hashgeketend bestand dat per keyframe zoekt en een crash overleeft, plus een ring voor "bewaar die clip". |
 | [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optioneel* dot-server + dot-map | Stemmen over wat er hierna draait, als één instelbare machine: rtv, nominaties, vier telmethodes, vijf manieren om gelijkspel te breken. |
 
 ## Het gevecht
@@ -123,6 +131,7 @@ Elke game in de verzameling gebruikt deze.
 | --- | --- | --- |
 | [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Schermen, HUD en menu's zonder enige artwork. Een schermstapel, een instellingenpaneel gegenereerd uit elke `DotConfig`, en een toetsenhermapper met conflictdetectie. |
 | [dot-settings](/learn/godot/addons/dot-settings) | dot-core | Instellingen als begrensd document met drie bereiken — inclusief de paar die een server mag begrenzen en nooit mag lezen. |
+| [dot-locale](/learn/godot/addons/dot-locale) | dot-core | Lokalisatie die de eigen localebestanden van de website leest, zodat een weigeringssleutel op de site en in een game hetzelfde betekent. ICU-berichten, CLDR-meervouden, pseudolokalisatie. |
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *optioneel* dot-server | De console van de speler: een fysieke toets, een regel, geschiedenis, aanvulling, een begrensde terugblik — en commando*bronnen* in plaats van een tweede commandosysteem. |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | Gameaudio die geen audio meelevert: een catalogus van id's, gepoolde stemmen met prioriteitsverdringing, gelijktijdigheidslimieten, afstandsculling, muziek en ducking. |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | Visuele effecten als documenten: gepoold, gebudgetteerd, met kwaliteitsniveaus, weggelaten op afstand. Een effect verandert de simulatie nooit. |

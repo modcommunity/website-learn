@@ -3,6 +3,7 @@ title: dot-cloud
 description: Godot 向けの実行時コンテンツ配信。署名付きマニフェスト、内容アドレス方式のキャッシュ、再開可能な並列ダウンロード、バージョンで名前空間を切ったマウント。ブラウザーでも動きます。
 navTitle: dot-cloud
 order: 130
+badge: updated
 keywords:
   - "CDN"
   - "ダウンロード"
@@ -14,6 +15,11 @@ keywords:
   - "署名"
   - "DLC"
   - "パッチ"
+  - "requires.json"
+  - "api level"
+  - "namespace"
+  - "uid"
+  - "_imported"
 source:
   - ../game-dev/godot/dot-cloud/README.md
   - ../game-dev/godot/dot-cloud/CLAUDE.md
@@ -79,6 +85,45 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 - **容量への配慮。** ブラウザーのストレージ見積り、モバイル向けの上限、そして
   使用中のコンテンツは決して追い出さない LRU 方式の退避。
 
+## マウント時に検査されること
+
+ダウンロードからマウントまでのあいだ、パックは 4 つのルールで検査されます。どれも、
+誰かが計測した失敗から生まれたものです。
+
+- **まず `requires.json` を読みます。** パックのスクリプトはホストのアドオンに対して
+  コンパイルされるので、より新しいアドオンを必要とするパックは、読み込みの途中で
+  パースに失敗していました。今はスクリプトが 1 つも読み込まれる前に拒否され、
+  *「このゲームには dot-net の API レベル 3 以上が必要です。このクライアントは
+  レベル 2 です」* と表示されます。
+  [アドオン API レベル](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi)を
+  参照してください。`host_role` がどちら側かを指定します。
+- **コンテンツ id は所有者の名前を含められます。`<owner>/<name>`。** `/` はどちらの
+  半分にも現れないので、`alice/*` にスコープされたキーは厳密です。平坦化された
+  `alice_bob` では、`alice` + `bob_x` と `alice_bob` + `x` を区別できません。各
+  セグメントはスラッグでなければなりません。first-party のパックすべてがそうである
+  素の id も、引き続き有効です。
+- **1 つの id が 2 つの意味を持つことはできません。** 同じ
+  `content_id@version` に対する、別の公開者からの 2 つ目のマニフェストは、最初の
+  もののマウントを渡されるのではなく `CODE_CONFLICT` で拒否されます。パックには
+  スクリプトを入れられ、「最初のもの」は他人のコードだからです。通信路から再読み込み
+  された同一のマニフェストは、従来どおり安価な何もしない処理です。
+- **マウントされたパックは自分の uid を登録しますが、他人のものを奪ってはなりません。**
+  インポートされたアセット（`.glb`、`.png`）は兄弟アセットを UID で参照しますが、
+  それは別の場所にマウントされると失われます。マウンターは各 UID をマウントされた
+  コピーに向け直します。ホストがすでに持っている UID は拒否されて報告されます。
+  そうしないと、ビルド内のすべての `load("uid://…")` がダウンロードされた
+  コンテンツに向け直されかねないからです。
+
+<Callout type="warning" title="インポート済み出力は `.godot/` ではなく `_imported/` の下で配布されます">
+公開されたパックにはエンジンのインポート済み出力が入っていて、以前は実際のパスである
+`.godot/imported/` に置かれていました。Linux ではそれが完璧に読み戻せますが、**web
+エクスポートでは読めず**、ゲーム全体がブラウザーで起動を拒否していました。出力は
+今は `_imported/` の下で配布され、各 `.import` マーカーは出力の置き場所を指すよう
+書き換えられます。そうしないと、マウントされたパックのアートの欠落は警告としてしか
+現れず、パックは検証され、マウントされ、読み込まれ、テクスチャーだけが無い状態に
+なります。
+</Callout>
+
 ## ゲームが差し込める場所
 
 <Params>
@@ -108,13 +153,15 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
   <Param name="DotCloudConfig">
     `trusted_keys`、`require_signed_manifests`、`cache_bytes`、
     `mobile_cache_bytes`、`web_quota_fraction`、`parallel_downloads`、
-    `max_attempts_per_file`、`throttle_bytes_per_sec`、`mount_root`、
-    `verify_before_mount`、`resume_downloads`。どの `DotConfig` とも同じく
-    階層化されています。
+    `max_attempts_per_file`、`throttle_bytes_per_sec`、`file_timeout_sec`、`cache_dir`、
+    `verify_before_mount`、`verify_cache_on_start`、`resume_downloads`、
+    `enforce_mount_prefix`。どの `DotConfig` とも同じく階層化されています。
+  </Param>
+  <Param name="manifest_url_template / manifest_url_fallbacks" type="DotCloudClient">
+    ベース URL、id、バージョンからマニフェストをどこに求めるか。既定は `{base}/{id}/{version}/manifest.json` で、サイトが公開する形です。`manifest_url_fallbacks` は、それに続けてベースごとに試す別の形の一覧です。1 つの配信元に 2 種類のレイアウトで公開されたパックが混在しうるため、すべてを再公開することを起動の前提条件にはしないからです。
   </Param>
   <Param name="シグナル">
-    `phase_changed`、`progress_changed`、`file_finished`、`sync_finished`、
-    `content_ready`、`content_released`、`failed`。
+    `DotCloudClient` では `phase_changed`、`progress_changed`、`content_ready`、`content_released`、`failed`。ファイルごとの詳細はダウンローダー側にあります。`file_finished`、`sync_finished`。
   </Param>
 </Params>
 
@@ -129,10 +176,16 @@ ensure(content_id: String, version: String) -> DotResult
 is_mounted(content_id: String, version: String) -> bool
 ```
 
+ほとんどのアドオンは、
+[`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent) の
+`DotContent`——共有の呼び出し口——経由でこれらに到達します。アバターのパーツ、
+プロップ、NPC、乗り物、アイテムがコンテンツ名を持つときに、実際にそれを取得する
+のはそのおかげです。
+
 <Callout type="warning" title="クラウドクライアントが無い構成も正当です">
 どの呼び出し側も「`dot_cloud_client` が無い」を「このデプロイはコンテンツを
-ビルドに同梱している」と解釈します。多くの場合それは本当なので、登録に失敗した
-クライアントと区別がつきません。配信されたマップやゲームが無言で何もしないときは、
+ビルドに同梱している」と解釈します。自分のゲームにとっては正当な選択で、したがって登録に失敗した
+クライアントと区別がつきません。TMC 自身のデプロイはビルドにコンテンツを一切同梱せず、すべてのゲーム、インポートされたすべてのマップ、そしてロビーがこのアドオンの取得するパックです。配信されたマップやゲームが無言で何もしないときは、
 まずレジストリーを見てください。
 </Callout>
 

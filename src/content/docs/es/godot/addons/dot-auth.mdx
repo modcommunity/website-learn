@@ -23,7 +23,7 @@ source:
 Un servidor comunitario necesita saber quién es un jugador. Lo que **no** debe
 recibir es una credencial de toda su cuenta: un operador que la tenga puede
 actuar como cualquier jugador que se haya conectado alguna vez. `dot-auth` es la
-respuesta a eso, y tiene la misma forma que los tickets de sesión de Steam.
+respuesta a eso, y tiene la misma forma que los tickets de sesión que las grandes tiendas de PC entregan a los servidores de juego.
 
 ```
 cliente ──(código de dispositivo + PKCE)──> infraestructura   quién soy
@@ -82,6 +82,8 @@ conexión.
 | `LOCAL` | Red local y desarrollo. Cuentas en un archivo JSON. |
 | `ANONYMOUS` | Todo el mundo es invitado. Los vetos no pueden significar nada. Avisa. |
 
+`INTROSPECT` tiene una segunda forma, con ámbito. Entrega a `DotAuthServer.backbone` el `DotBackboneClient` propio del servidor y enviará el token del jugador a `integration/v1/player/introspect` **como ese servidor**, y recibirá la clave del jugador en el ámbito de ese servidor en lugar de su id de cuenta: la identidad es `site:<key>` con la clave en el claim `scoped_key`, que es el único identificador que las rutas de avatar, perfil y estadísticas del sitio resuelven para ese servidor, y uno que otros operadores no pueden correlacionar. Sin configurar, lee `/me` como antes. `scoped_only` rechaza una unión mientras no se haya entregado ningún cliente de backbone en lugar de recurrir a la alternativa, de modo que un jugador admitido durante el arranque no queda con una clave durante un minuto y con otra después.
+
 ## Cuentas sin nube
 
 `allow_local_profiles` deja que un visitante se cree una cuenta que vive **en ese
@@ -113,7 +115,7 @@ completa, sin infraestructura ninguna.
   <Param name="Subclase de DotAuthProvider">
     `_provider_name()`, `_handles(credential)`, `_authenticate(credential)`,
     `_validate()`. Se registra con `DotAuthServer.add_provider`. Aquí es donde
-    entran Steam, Epic, un bot de Discord o tu propio servicio.
+    entran la identidad de una tienda, un bot de una plataforma de chat o tu propio servicio.
 
     Mantén `_handles` barato y puramente estructural: «¿tiene este diccionario mi
     campo?». Un proveedor que hace trabajo de red ahí lo hace en cada intento de

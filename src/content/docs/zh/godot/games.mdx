@@ -1,8 +1,9 @@
 ---
 title: 参考游戏
-description: 用 Dot 合集做出来的五个游戏——每个各自要证明什么，以及为什么插件之间的接缝只有在游戏里才会被真正跑起来。
+description: 用 Dot 合集做出来的游戏和资源包——每个各自要证明什么，以及为什么插件之间的接缝只有在游戏里才会被真正跑起来。
 navTitle: 参考游戏
 order: 50
+badge: updated
 keywords:
   - "示例"
   - "样例"
@@ -11,17 +12,32 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
+  - "game-simple-lobby"
+  - "mg-smash-copter"
+  - "mg-buses-from-hell"
+  - "zee-dot-weapons"
   - "大厅"
   - "死斗"
   - "沙盒"
 source:
   - ../game-dev/godot/NOTES.md
   - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-五个游戏，而且它们不是演示。每个插件的测试套件都是**在其他插件缺席的情况下**跑那个
-插件的，所以插件之间的接合只存在于游戏里——按这套合集反复得到的教训：*只有一种部署
-形态才能走到的代码路径，就是从来没被跑过的代码路径。*
+与合集一同发布的有八个项目——五个参考游戏、两个小游戏和一个武器包——而且它们不是演示。
+每个插件的测试套件都是在其他插件缺席的情况下跑那个插件的，所以插件之间的接合只存在于
+游戏里，而只有一种部署形态才能走到的代码路径，就是从来没被跑过的代码路径。
+
+它们放在 [`gamemann`](https://github.com/gamemann) 名下，而不是插件所在的组织名下；
+为什么这种划分是一条规则，见[总览](/learn/godot)。
+
+**它们全都是分发下来的，而不是内置的。** 每个游戏，包括大厅在内，都以签名的
+[`dot-cloud`](/learn/godot/addons/dot-cloud) 资源包形式发布；服务器安装它被告知要提供的那些，
+玩家的客户端在加入时下载资源包。客户端外壳里根本不含任何游戏，所以不管连到哪里，它都是
+同一份构建，而新游戏无需新客户端就能送到玩家手里。这也是这里每个游戏都按路径而不是按
+`class_name` 引用自己脚本的原因：挂载的资源包里的 `class_name` 全局名永远不会被注册，
+所以按另一种写法写的游戏能挂载、能加载场景，却一行自己的代码都跑不起来。
 
 <Callout type="info" title="bug 就在这里">
 把玩法类插件放进同一个进程里跑，找出了七个 bug，其中六个在*别的*仓库里，而且没有
@@ -29,12 +45,18 @@ source:
 浏览器客户端连真服务器，之后还找出七个。这个规律每次都成立。
 </Callout>
 
+有两个插件是由 [TMC 的服务器工具](/learn/godot/tooling#tmc-的服务器工具)为**每一个**游戏构建的，
+而不是由任何游戏构建：每台服务器上的一个 [`dot-replay`](/learn/godot/addons/dot-replay)
+环形缓冲（控制台里 `replay save`，每次踢出和封禁都会附上一段片段的哈希），以及导出的客户端
+外壳里与组队客户端并列的一个 [`dot-friends`](/learn/godot/addons/dot-friends) 客户端，它在站点的好友路由部署之前会自行关闭。
+没有任何游戏会自己去链接它们。
+
 ## game-arena
 
 **一个用开发贴图的 3D 竞技场死斗。参考游戏。** 它存在的意义是证明这些插件能组合起来、
 展示桥接代码长什么样，以及成为新游戏抄写的模板。
 
-用到 `dot-core`、`dot-fps-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
+用到 `dot-core`、`dot-player-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
 `dot-ui`、`dot-server` 和 `dot-net`。
 
 有四个文件很关键，而它们各自属于*游戏*而不是插件的理由每次都一样：
@@ -65,8 +87,8 @@ godot --headless --path . res://examples/dedicated.tscn        # 一台真正的
 唯一同时运行的地方。
 
 用到 `dot-2d`、`dot-net`、`dot-server`、`dot-match`、`dot-ui`、`dot-user-avatar`、
-`dot-loadout`、`dot-platform` 和 `dot-cloud` —— 除 `dot-fps-controller` 和
-`dot-combat` 之外的全部。
+`dot-loadout`、`dot-platform` 和 `dot-cloud` —— 除 `dot-player-controller` 和
+`dot-combat` 之外的全部。一个资源包带有五种模式——classic、frenzy、gauntlet、warrens 和 reef——每种都有自己的 `game.yml`，共用同一套内容。
 
 它同时是**通往浏览器那一栏的最短路径**：体量小、不需要线程，而且在没有其他东西碍事的
 情况下把每一条浏览器约束都踩了一遍。它的 `web/README.md` 就是部署契约：用 WebSocket
@@ -82,26 +104,24 @@ godot --headless --path . res://examples/dedicated.tscn        # 一台真正的
 ——因为跳跃路线不属于任何移动类型，而正是它说明了
 [`dot-timer`](/learn/godot/addons/dot-timer) 并非只服务于 surf 和 bunny-hop。
 
-用到 `dot-fps-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+用到 `dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
 `dot-ui` 和 `dot-server`。
 
 <Callout type="warning" title="实体和武器都是按“路径”命名的脚本">
 不是按 `class_name`。挂载的 `dot-cloud` 资源包无法注册 `class_name` 全局名——这是实测
 结论——所以在资源包挂上、场景也加载得好好的同时，包内所有跨文件的类型引用统统编译失败。
-**路径是可分发实体唯一能采用的形式**，这个游戏就是为此刻意这么写的。
+**路径是可分发实体唯一能采用的形式**，这是第一个这样写的游戏；如今每个游戏都是。
 </Callout>
 
-这是 `dot-fps-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+这是 `dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
 `dot-ui` 和 `dot-server` 在同一个进程里一起跑的唯一场所。它的测试套件找出了九个
 bug，其中三个在别的仓库里；截图又找出了四个。
 
 ## game-g2gfast
 
-**Counter-Strike 形态的 bunny-hop 与 surf 计时服务器。** Source 的单位与 cvar、
-Source 的视场角、第一人称与第三人称，以及把每位玩家都画成形象——他们从平台带来的那个，
-或者一个默认形象。
+**回合制竞技射击游戏移动服务器形态的 bunny-hop 与 surf 计时服务器。** 它们的单位、cvar 与视场角、第一人称与第三人称，以及把每位玩家都画成形象——他们从平台带来的那个，或者一个默认形象。每张导入的地图都是自己的资源包，在服务器切换到它时才获取，所以游戏资源包保持小巧，新增地图也不需要新游戏。
 
-用到 `dot-fps-controller`、`dot-timer`、`dot-map`、`dot-leaderboard`、`dot-server`、
+用到 `dot-player-controller`、`dot-timer`、`dot-map`、`dot-leaderboard`、`dot-server`、
 `dot-user-avatar` 和 `dot-ui`。
 
 ```
@@ -130,11 +150,59 @@ g2g_zone_save
 
 没加载游戏的服务器是完全合理的运行状态，`dot-server` 一直都支持；缺的只是“有东西可
 看”，而一个连上去什么都看不到的玩家，是分不清这和一台坏掉的服务器的。它同时也是通用
-浏览器客户端最先下载的那个游戏。
+浏览器客户端最先下载的那个游戏——和其他游戏一样以资源包形式，因为内置在客户端里的大厅，改动时就需要新客户端。
 
-## 跑这些游戏教会了什么
+## mg-smash-copter
 
-有四条教训反复出现，在你动手写自己的桥接代码之前值得先知道。
+**一个对手是地板的小游戏。** 两到六支队伍站在各自架在单根支柱上的平台上，离地四十米，
+中间的一门大炮不停朝他们扔东西。时间到时仍然站在上面的人，会被扔到天空的一个角落，
+手里拿着一把自己没选的武器，最后留下的那支队伍获胜。
+
+第一人称与第三人称。用 `dot-props` 处理大炮扔出的一切，`dot-vehicle` 处理直升机，
+`dot-combat` 处理生命值和命中判定，`dot-match` 处理回合和阵营，另有 `dot-player-controller`、
+`dot-net`、负责服务器接线的 `dot-game`，以及 `zee-dot-weapons`——后半程用的二十七把武器就出自它。
+`dot-spectate`、`dot-audio`、`dot-stats` 和 `dot-achievements` 是后来加的——它是最后一队
+存活制，被淘汰的玩家此前无事可看。它以书面形式拒绝了 `dot-settings`：它的客户端没有
+可以放设置的界面。
+
+## mg-buses-from-hell
+
+**不对称的那一个。** 两名驾驶员开着公交车，对抗所有徒步的其他人，场地是一个四周有墙的
+沙坑，里面有板条箱和爆炸桶。驾驶员想把跑者碾过去；跑者有一把锤子，而锤子伤不到任何人
+——它只能砸碎板条箱、把东西推开。整个游戏就是这样。
+
+用到 `dot-props`、`dot-vehicle`、`dot-combat`、`dot-match`、`dot-player-controller`、
+`dot-net` 和 `dot-game`，外加 `dot-spectate`、`dot-audio`、`dot-stats`、
+`dot-achievements`、`dot-settings` 和 `dot-fx`（用于爆炸桶）。它取消链接了 `dot-spawn`、
+`dot-team` 和 `dot-physics`——每个都被点名却从没用过。它也是
+[dot-entity](/learn/godot/addons/dot-entity) 在里面找到泄漏的那个项目：一个没有任何
+`forget()` 的 `_next_entity_id` 计数器，给每个加入过的玩家都留下了一个 `DotHealth`，
+而每个都指向一个已释放的节点。
+
+## zee-dot-weapons
+
+**不是游戏——是一个武器包。** 它是 [`dot-weapon`](/learn/godot/addons/dot-weapon)
+刻意留给别人去做的那一半：视图模型、世界模型、动画和美术，已经在它的目录之上做好了
+二十七把武器。
+
+第一人称视图模型、第三人称世界模型、程序化动画，以及让别的玩家的武器在你的屏幕上看起来
+正确的复制逻辑。美术用的是 Kenney 的 Blaster Kit，近战武器来自 Weapon Pack 和 Survival
+Kit——全是 CC0、全都内置，无需下载。
+
+## dot-game-template
+
+**新游戏的起点。** 不在那八个之列：它跟插件放在一起，位于
+[`modcommunity`](https://github.com/modcommunity/dot-game-template) 名下，因为它是第三方
+开发者会去复制的东西。它是 **Coin Grab**，一个建立在 [`dot-game`](/learn/godot/addons/dot-game)
+之上的小型联网 2D 游戏——带预测、服务器权威，并且不使用 `class_name`，所以从第一次提交起
+就能作为分发的资源包使用。`tools/rename.sh` 会把它变成你的。打上 `v*` 标签时，它的发布
+工作流会把游戏附为一个 `-pack.zip`，站点再把它签名并发布为 `<你的站点用户名>/<仓库>`，
+这就是服务器安装它所用的名字。服务器工具每次检查都会挂载它打包好的发布版本，所以这个
+模板是按陌生人的游戏会被验证的方式来验证的。
+
+## 给你自己的桥接代码的教训
+
+这些游戏里反复出现四种失败，而且四种对于通常能抓住 bug 的那类检查都是不可见的。
 
 **一个被正确算出来却没人读的值，看上去和算错了的值一模一样。** 插值后的位置、兴趣
 集合和云端客户端，三者都算得没错却没人读，而每一次表面症状都指向生产方。

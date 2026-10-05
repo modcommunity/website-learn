@@ -65,21 +65,34 @@ git clone https://github.com/modcommunity/dot-timer
 ## 在本地开发某个插件
 
 除 `dot-core` 之外的每个项目，光是要*打开*就需要 `dot-core` 在场；游戏则需要它用到
-的每一个插件。这些软链都在 `.gitignore` 里，因为使用者是复制目录而不是链接：
+的每一个插件。这些软链都在 `.gitignore` 里，因为使用者是复制目录而不是链接——所以刚克隆
+下来的仓库在有东西把它们建出来之前是打不开的。
+
+**不要手动建。** `dot-bootstrap` 会克隆每个仓库，并把每个项目需要的每个插件都链接好：
 
 ```bash
-cd dot-cloud   # 或任意一个插件项目
-ln -s ../../dot-core/addons/dot_core addons/dot_core
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh              # 克隆缺的、拉取没缺的、链接所有东西
+./bootstrap.sh --links      # 只重做链接
+./bootstrap.sh --status     # 每个仓库的分支、是否有改动、是否有未推送内容
+./bootstrap.sh --check      # projects.tsv 是否仍与磁盘一致？
+./bootstrap.sh --content-keys   # 一把内容签名密钥，让这台机器能发布资源包
 ```
 
-```bash
-cd game-arena
-for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
-            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
-            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
-  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
-done
-```
+它里面既没有项目清单，也没有每个项目需要什么的清单：项目来自 `projects.tsv`，而一个项目的
+插件是从**该项目自己的 `.gitignore`** 里的 `/addons/<name>` 行读出来的——这是唯一不会过期的
+地方，因为新增了依赖的那个仓库，正是必须忽略那条链接的仓库。它之前的版本带有四份清单，
+它们已经漂移到只覆盖了合集当时 33 个仓库中的 19 个；现在一次运行会在其中五十八个仓库里
+链接将近三百个文件夹。
+
+`--content-keys` 是唯一与仓库无关的模式：[dot-cloud](/learn/godot/addons/dot-cloud) 拒绝未签名的
+清单，所以发布资源包需要一把私钥，而私钥是克隆永远带不来的东西。它会生成一把，并让
+`dot-server-deploy/client/content.json` 指向它——这会让那个已提交的文件在本地处于被修改状态，
+这是有意为之，也是它需要主动选择的原因。
+
+[入门](/learn/godot/getting-started)是完整的上手流程，包括 Windows 的做法（它复制文件夹，
+因为 Godot 不会跟随 junction）。
 
 [`dot-serve`](/learn/godot/tooling) 这些都不需要：它是个 shell 脚本，运行时自己去
 找 Godot 可执行文件。

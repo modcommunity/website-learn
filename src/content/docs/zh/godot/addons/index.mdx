@@ -1,6 +1,6 @@
 ---
 title: 全部插件
-description: Godot 4 的五十个 Dot 插件——每个的用途、依赖关系，以及游戏从哪里接入。
+description: Godot 4 的五十八个 Dot 插件——每个的用途、依赖关系，以及游戏从哪里接入。
 order: 40
 keywords:
   - "插件"
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-五十个插件，既能协同工作，除 `dot-core` 之外也都能单独使用。每个都是
+五十八个插件，既能协同工作，除 `dot-core` 之外也都能单独使用。每个都是
 [`modcommunity`](https://github.com/modcommunity) 下的独立仓库，每个只分发一个
 `addons/<名称>/` 目录，每个都有自己的无界面测试套件。
 
@@ -26,11 +26,12 @@ source:
 解析，这些插件都不会写出彼此的标识符——因为在 GDScript 里，一个脚本只要*提到*了
 项目中不存在的 `class_name` 就会解析失败，并把所有引用它的脚本一起拖垮。
 
-有七个是证明规则的例外，而且每个都自己说明了这一点：`dot-npc-ai` 和
+有八个是证明规则的例外，而且每个都自己说明了这一点：`dot-npc-ai` 和
 `dot-npc-ai-director` 需要 `dot-npc`；`dot-player-controller`、
 `dot-player-char` 和 `dot-player-class` 需要 `dot-player`；`dot-server-query`
 和 `dot-server-security` 需要 `dot-server`——因为这两个本身*就是*服务器的一部分，
-而不是服务器顺便去查询的东西。
+而不是服务器顺便去查询的东西；`dot-game` 则要 `dot-server` 和 `dot-net` 同时具备，
+因为它是两者*之间*的接线。
 </Callout>
 
 ## 基础
@@ -38,6 +39,8 @@ source:
 | | 依赖 | |
 | --- | --- | --- |
 | [dot-core](/learn/godot/addons/dot-core) | — | 日志、平台能力检测、路径、可配置的节点引用、分层配置、带帧预算的作业、多人传输层、HTTP，以及可复现的随机流。 |
+| [dot-log](/learn/godot/addons/dot-log) | dot-core | `DotLog` 的记录最终去向何处：滚动文件、内存环形缓冲、syslog、数据库表或托管收集器——洪泛折叠、有界队列和脱敏都在它们前面统一做一次。 |
+| [dot-entity](/learn/godot/addons/dot-entity) | dot-core | 每个世界对象共享的 id 空间。一个 id 自带其种类的分配器、双向查找，以及放在节点旁边而不是节点上的记录。 |
 
 ## 玩家
 
@@ -70,14 +73,19 @@ source:
 | --- | --- | --- |
 | [dot-net](/learn/godot/addons/dot-net) | dot-core | 网络代码：tick 同步、位打包的传输格式、状态复制、快照插值、客户端预测、延迟补偿、兴趣管理。 |
 | [dot-server](/learn/godot/addons/dot-server) | dot-core, *可选* dot-auth + dot-cloud | 专用服务器：控制台、RCON、权限、管理处置、投票、模块，以及在玩家在线时切换游戏。 |
+| [dot-game](/learn/godot/addons/dot-game) | dot-core, dot-server, dot-net | 每个游戏都重复写的服务器端接线：网络代码、桥接、身份、服务、名单、一个权威 tick，以及逆序拆除。继承 `DotGameModule`，只写属于你的部分。 |
 | [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *可选* dot-stats | 服务器查询的应答一侧：带质询、分节、可条件轮询、浏览器也能访问的 DQP，以及完整的 A2S，两者都从同一份快照作答。 |
 | [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *可选* dot-moderation + dot-chat + dot-auth | 把加固写成配置：滑动窗口规则按警告→禁言→踢出→封禁逐级升级；反作弊把“服务器已证明的”和“该由人来看的”分开；还有外部封禁名单。默认以空跑模式发布。 |
 | [dot-browser](/learn/godot/addons/dot-browser) | dot-core | 那些查询的另一半：客户端。UDP 上的 DQP、同一协议经 WebSocket 的 JSON 形式，以及 A2S——都在一个带来源、过滤和收藏的列表模型之后。 |
 | [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | 玩家彼此开房的会话：加入码、准备状态、作为成员列表纯函数的房主选举，以及对 NAT 的诚实说明。 |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | 把封禁、踢出、禁言、语音静音和警告作为一份长期留存的记录。并发布其他插件会查询的静音源与封禁源。 |
 | [dot-chat](/learn/godot/addons/dot-chat) | dot-core, *可选* dot-moderation | 服务器权威的文字聊天：带受众规则的频道、清洗、频率限制、回看、命令。 |
+| [dot-friends](/learn/godot/addons/dot-friends) | dot-core | 来自站点的玩家好友及其在线状态——在线、在哪个游戏、在哪台服务器、在哪个队伍——以及一个把玩家交给队伍或服务器的 `join()`。 |
+| [dot-party](/learn/godot/addons/dot-party) | dot-core | 站点组队系统两端的队伍：一个跟着准备轮次进入服务器的客户端、服务器端的认领与上报，以及真正能让预订的服务器保持私有的预订。 |
+| [dot-matchmaking](/learn/godot/addons/dot-matchmaking) | dot-core | 谁和谁打：每个队列的 Glicko-2 评分、先严格再随等待放宽的播放列表、整队安置、平衡的两方。在 TMC 上由站点保管评分。 |
 | [dot-voice](/learn/godot/addons/dot-voice) | dot-core | 语音聊天：采集、可替换编解码器、每位说话者一个抖动缓冲，以及服务端向全体、某队或某半径的路由。 |
 | [dot-spectate](/learn/godot/addons/dot-spectate) | dot-core | 谁在看谁，以及服务器允许看到什么：七种观战模式、强制视角策略、死亡镜头链、转播延迟。 |
+| [dot-replay](/learn/godot/addons/dot-replay) | dot-core | 用于观战、复盘和管理证据的比赛录像：带 tick 时间戳的通道，存在分块、哈希链接的文件里，能按关键帧跳转、崩溃后仍然幸存，外加一个用于“保存那段片段”的环形缓冲。 |
 | [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *可选* dot-server + dot-map | 投票决定接下来玩什么，作为一台可配置的引擎：rtv、提名、四种计票方式、五种平局处理。 |
 
 ## 战斗
@@ -121,6 +129,7 @@ source:
 | --- | --- | --- |
 | [dot-ui](/learn/godot/addons/dot-ui) | dot-core | 界面、HUD 和菜单，不含任何美术资源。一个界面栈、一个由任意 `DotConfig` 生成的设置面板，以及带冲突检测的按键重绑。 |
 | [dot-settings](/learn/godot/addons/dot-settings) | dot-core | 把设置写成带三种作用域的有界文档——包括少数几项服务器可以限制、但永远不能读取的设置。 |
+| [dot-locale](/learn/godot/addons/dot-locale) | dot-core | 读取网站自己的语言文件的本地化，所以一个拒绝原因的 key 在站点和游戏里意思相同。ICU 消息、CLDR 复数、伪本地化。 |
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *可选* dot-server | 玩家的控制台：一个物理按键、一行输入、历史、补全、有上限的回滚缓冲——以及命令*来源*，而不是第二套命令系统。 |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | 不附带任何音频文件的游戏音频：一份 ID 目录、按优先级抢占的声音池、并发上限、距离剔除、音乐与闪避。 |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | 把视觉特效写成文档：池化、有预算、分质量档、按距离剔除。特效永远不会改变模拟。 |

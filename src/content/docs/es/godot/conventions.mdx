@@ -19,8 +19,9 @@ source:
 ---
 
 Estas reglas valen en todos los complementos. Romper una es un cambio
-incompatible en veintidós repositorios, así que conviene conocerlas antes de
-escribir contra cualquiera de ellos.
+incompatible en cincuenta y ocho complementos y en los siete juegos construidos
+sobre ellos, así que conviene conocerlas antes de escribir contra cualquiera de
+ellos.
 
 ## `DotRegistry` en vez de autoloads
 
@@ -205,9 +206,7 @@ otra cosa.
 Medido: dentro de un `.pck` entregado, cada referencia de tipo entre archivos
 falla al compilar, así que el paquete se monta, sus escenas cargan, y todos sus
 scripts están muertos. `preload("res://x.gd")` y `extends "res://x.gd"` sí
-funcionan. **Esto decide qué aspecto puede tener un juego entregado** — mira
-[game-playground](/learn/godot/games#game-playground), cuyas entidades y armas
-son scripts nombrados por *ruta* exactamente por esto.
+funcionan. **Esto decide qué aspecto puede tener un juego entregado**, y todos los juegos de la colección se entregan: cada uno referencia sus propios scripts por *ruta* exactamente por esto. Mira [Juegos de referencia](/learn/godot/games).
 </Callout>
 
 ## Trampas de GDScript que la colección ha pagado

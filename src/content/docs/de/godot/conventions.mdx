@@ -19,8 +19,8 @@ source:
 ---
 
 Diese Regeln gelten in jedem Addon. Eine davon zu brechen ist eine
-Bruchänderung über zweiundzwanzig Repositories, also lohnt es sich, sie zu
-kennen, bevor man gegen eines davon schreibt.
+Bruchänderung über achtundfünfzig Addons und die sieben darauf gebauten Spiele,
+also lohnt es sich, sie zu kennen, bevor man gegen eines davon schreibt.
 
 ## `DotRegistry` statt Autoloads
 
@@ -211,9 +211,8 @@ Gemessen: In einem ausgelieferten `.pck` scheitert jede dateiübergreifende
 Typreferenz beim Kompilieren — das Paket hängt sich ein, seine Szenen laden, und
 jedes Skript darin ist tot. `preload("res://x.gd")` und `extends "res://x.gd"`
 funktionieren beide. **Das entscheidet, wie ein ausgeliefertes Spiel aussehen
-darf** — siehe [game-playground](/learn/godot/games#game-playground), dessen
-Entitäten und Waffen genau deshalb Skripte sind, die über einen *Pfad* benannt
-werden.
+darf**, und jedes Spiel der Sammlung wird ausgeliefert: Jedes verweist genau
+deshalb auf seine eigenen Skripte über den *Pfad*. Siehe [Referenzspiele](/learn/godot/games).
 </Callout>
 
 ## GDScript-Fallen, für die die Sammlung bezahlt hat

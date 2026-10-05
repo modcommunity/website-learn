@@ -74,21 +74,41 @@ debería poder llevarse `dot-timer` y `dot-core` y nada más.
 Todos los proyectos salvo `dot-core` necesitan que `dot-core` esté presente solo
 para *abrirse*, y los juegos necesitan todos los complementos que usan. Esos
 enlaces están en el `.gitignore`, porque quien consume el complemento copia las
-carpetas en su lugar:
+carpetas en su lugar — y por eso un clon recién hecho no se abre hasta que
+algo los haya creado.
+
+**No los hagas a mano.** `dot-bootstrap` clona cada repositorio y enlaza todos
+los complementos que necesita cada proyecto:
 
 ```bash
-cd dot-cloud   # o cualquier proyecto de complemento
-ln -s ../../dot-core/addons/dot_core addons/dot_core
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh              # clona lo que falta, actualiza lo demás, enlaza todo
+./bootstrap.sh --links      # rehace solo los enlaces
+./bootstrap.sh --status     # rama, cambios, sin subir, por repositorio
+./bootstrap.sh --check      # ¿sigue projects.tsv de acuerdo con el disco?
+./bootstrap.sh --content-keys   # una clave de firma de contenido, para que esta máquina pueda publicar paquetes
 ```
 
-```bash
-cd game-arena
-for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
-            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
-            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
-  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
-done
-```
+No contiene ninguna lista de proyectos ni de lo que necesita cada uno: los
+proyectos salen de `projects.tsv`, y los complementos de un proyecto se leen del
+**`.gitignore` de ese mismo proyecto**, de sus líneas `/addons/<name>` — el único
+sitio que no puede quedarse obsoleto, porque el repositorio que gana una
+dependencia es el que tiene que ignorar el enlace. La versión anterior llevaba
+cuatro manifiestos y se habían desfasado hasta cubrir 19 de los 33 repositorios
+que tenía entonces la colección; una sola ejecución enlaza ahora cerca de
+trescientas carpetas en cincuenta y ocho de ellos.
+
+`--content-keys` es el único modo que no trata de repositorios:
+[dot-cloud](/learn/godot/addons/dot-cloud) rechaza un manifiesto sin firmar, así
+que publicar un paquete necesita una clave privada, y una clave privada es lo
+único que un clon nunca puede llevar. Genera una y apunta
+`dot-server-deploy/client/content.json` hacia ella — lo que deja ese archivo
+versionado modificado en local, a propósito, y es la razón de que sea opcional.
+
+[Primeros pasos](/learn/godot/getting-started) es el recorrido completo,
+incluido lo que hace Windows en su lugar (copia las carpetas, porque Godot no
+sigue una unión de directorios).
 
 [`dot-serve`](/learn/godot/tooling) no necesita nada de esto: es un script de
 shell y encuentra un binario de Godot en tiempo de ejecución.

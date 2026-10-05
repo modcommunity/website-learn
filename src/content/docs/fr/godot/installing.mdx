@@ -76,21 +76,41 @@ d'autre.
 Tous les projets sauf `dot-core` ont besoin que `dot-core` soit présent rien que
 pour *s'ouvrir*, et les jeux ont besoin de tous les modules qu'ils utilisent. Ces
 liens sont ignorés par Git, parce qu'un consommateur copie les dossiers à la
-place :
+place — et un clone neuf ne s'ouvre donc pas tant que quelque chose ne les a
+pas créés.
+
+**Ne les créez pas à la main.** `dot-bootstrap` clone chaque dépôt et lie tous
+les modules dont chaque projet a besoin :
 
 ```bash
-cd dot-cloud   # ou n'importe quel projet de module
-ln -s ../../dot-core/addons/dot_core addons/dot_core
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh              # clone ce qui manque, met à jour le reste, lie tout
+./bootstrap.sh --links      # ne refait que les liens
+./bootstrap.sh --status     # branche, modifié, non poussé, par dépôt
+./bootstrap.sh --check      # projects.tsv est-il encore d'accord avec le disque ?
+./bootstrap.sh --content-keys   # une clé de signature de contenu, pour que cette machine puisse publier des packs
 ```
 
-```bash
-cd game-arena
-for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
-            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
-            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
-  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
-done
-```
+Il ne contient aucune liste de projets ni de ce dont chacun a besoin : les projets
+viennent de `projects.tsv`, et les modules d'un projet sont lus dans **le
+`.gitignore` de ce projet**, à partir de ses lignes `/addons/<nom>` — le seul
+endroit qui ne puisse pas se périmer, parce que le dépôt qui gagne une dépendance
+est celui qui doit ignorer le lien. La version précédente portait quatre manifestes
+et ils avaient dérivé jusqu'à ne couvrir que 19 des 33 dépôts que comptait alors la
+collection ; une exécution lie aujourd'hui près de trois cents dossiers répartis
+sur cinquante-huit d'entre eux.
+
+`--content-keys` est le seul mode qui ne concerne pas les dépôts :
+[dot-cloud](/learn/godot/addons/dot-cloud) refuse un manifeste non signé, donc
+publier un pack exige une clé privée, et une clé privée est la seule chose qu'un
+clone ne peut jamais porter. Il en génère une et pointe
+`dot-server-deploy/client/content.json` dessus — ce qui laisse ce fichier versionné
+modifié en local, exprès, et c'est pourquoi le mode est optionnel.
+
+[Premiers pas](/learn/godot/getting-started) est le pas-à-pas complet, y compris
+ce que fait Windows à la place (il copie les dossiers, parce que Godot ne suit pas
+une jonction).
 
 [`dot-serve`](/learn/godot/tooling) n'a besoin de rien de tout cela : c'est un
 script shell qui trouve un binaire Godot à l'exécution.

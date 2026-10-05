@@ -62,7 +62,11 @@ buscarlo.
 | Dónde viven los vetos (BD compartida, servicio HTTP) | subclase de `DotBanStore` en `DotBanManager` |
 | Grupos del sitio → permisos del servidor | `DotAuthAdminSource`, o cualquier objeto con `lookup()` / `source_name()` |
 | Comandos y comportamiento del servidor | subclase de `DotModule`, o `DotConsole.command` |
-| Qué informa del juego una consulta al servidor | `DotQueryProvider`, o `DotModule.add_query_provider` |
+| Qué informa del juego una consulta al servidor | subclase de `DotQueryProvider` en `dot_query_source`, o `DotModule.add_query_provider` |
+| Qué castiga un servidor, y hasta dónde escala | documentos `DotSecurityRule`, en JSON o construidos en código |
+| De dónde lee un servidor las listas de vetos | entradas `DotBanFeed` en `DotBanFeeds`, encadenadas a `dot_ban_source` |
+| Si una afirmación de movimiento es posible | `DotAntiCheat.movement_reference`, un `Callable` que resimula un tick |
+| Cómo se ilumina un mundo, y cuánto de él dibuja esta máquina | `DotLightDocument` y `DotLightProfile`, aplicados por `DotLightRig` |
 | Reaccionar a algo o vetarlo | `DotEventBus.hook_pre` / `hook_post` |
 | Qué se replica y con qué precisión | declaraciones de `DotNetVar`; `Type.CUSTOM` para cualquier tipo |
 | Simulación, controles, mensajes | subclases de `DotNetBehaviour`, `DotNetInput`, `DotNetMessage` |
@@ -193,9 +197,23 @@ Los marcados con **debe** no tienen un valor por defecto útil.
   <Param name="DotBanStore" type="dot-server">
     `_store_name`, **`_load`**, `_put`, `_remove`, `_refresh`, `_writable`.
   </Param>
-  <Param name="DotQueryProvider" type="dot-server">
+  <Param name="DotQueryProvider" type="dot-server-query">
     `_provider_name`, **`_contribute(snapshot)`** — así publica un juego su
-    propio estado en una consulta al servidor.
+    propio estado en una consulta al servidor. El número de bots es el que
+    demuestra el punto: nada en un framework de servidor puede saberlo, porque un
+    bot nunca se conecta.
+  </Param>
+  <Param name="DotSecurityRule" type="dot-server-security">
+    Un nombre de evento, un umbral, una ventana, un ámbito y una escalera de
+    pasos. Se escribe como JSON o se construye en código, y
+    `guard.report_session(&"your.event", session)` basta para pasar el evento
+    propio de un juego por todo el motor.
+  </Param>
+  <Param name="DotBanFeed" type="dot-server-security">
+    `url`, `auth`, `token_file`, `list_path`, `on_failure`. Seis modos de
+    autenticación y varias formas de lista, porque una lista de bloqueo a la que no
+    puedes apuntar esto es una que acabarás copiando a mano a un archivo, y
+    entonces está obsoleta.
   </Param>
   <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
     La misma forma en los tres: **`_fetch`**, `_store`, `_remove`, `_open`,
@@ -219,12 +237,12 @@ Los marcados con **debe** no tienen un valor por defecto útil.
     **`_world_ray`** y nada más. El recorrido de las cajas de impacto, el
     desempate a favor de la pared y la restauración son de la clase base.
   </Param>
-  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+  <Param name="DotFpsBody / Dot2DBody" type="dot-player-controller, dot-2d">
     `sweep` / `move`, `overlaps`, `describe`. Las consultas de colisión que
     necesita el motor, con una implementación analítica plana para el
     determinismo y otra física para geometría real.
   </Param>
-  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+  <Param name="DotFpsMoveMode" type="dot-player-controller">
     `_name`, `_enter`, `_exit`, **`_simulate`**, `_uses_crouch`. Una escalera,
     agua, un gancho — usando la colisión y la aceleración del propio motor.
   </Param>
@@ -336,7 +354,10 @@ ninguna de las dos partes importe a la otra.
 
 | Nombre | Lo publica | Lo consulta |
 | --- | --- | --- |
-| `dot_ban_source` | `DotModerationManager` | la comprobación de admisión de `dot-server` |
+| `dot_ban_source` | `DotModerationManager`, y las fuentes de `dot-server-security` | la comprobación de admisión de `dot-server` — **se consultan ambas, y ambas deben decir que sí** |
+| `dot_query_host`, `dot_query_stats` | `dot-server-query` | el gancho `attach_query_host` de `dot-server` |
+| `dot_security`, `dot_anticheat`, `dot_security_bans` | `dot-server-security` | sus propios comandos de consola, y tu propio código |
+| `dot_random_source` | `DotRandomManager`, en `dot-core` | cualquier cosa que quiera un flujo que pueda reproducir |
 | `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
 | `dot_cloud_client` | `DotCloudClient` | el cargador de `dot-map`, el cambio de juego de `dot-server`, el catálogo de `dot-user-avatar` |
 | `dot_user_manager` | `DotUserManager` | `dot-server`, `dot-platform` |

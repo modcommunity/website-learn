@@ -1,8 +1,9 @@
 ---
 title: リファレンスゲーム
-description: Dot コレクションで作られた 5 本のゲーム。それぞれが何を証明するために存在するのか、そしてアドオン間の継ぎ目がゲームの中でしか動かない理由。
+description: Dot コレクションで作られたゲームとパック。それぞれが何を証明するために存在するのか、そしてアドオン間の継ぎ目がゲームの中でしか動かない理由。
 navTitle: リファレンスゲーム
 order: 50
+badge: updated
 keywords:
   - "サンプル"
   - "例"
@@ -11,19 +12,38 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
+  - "game-simple-lobby"
+  - "mg-smash-copter"
+  - "mg-buses-from-hell"
+  - "zee-dot-weapons"
   - "ロビー"
   - "デスマッチ"
   - "サンドボックス"
 source:
   - ../game-dev/godot/NOTES.md
   - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-5 本のゲームがあり、これらはデモではありません。各アドオンのテストスイートは
-**他のアドオンが無い状態**でそのアドオンを走らせるので、アドオン同士の接合は
-ゲームの中にしか存在しません。そしてこのコレクションが繰り返し学んだ教訓の通り、
-*1 つのデプロイ形態からしか到達しないコードパスは、何も実行していないコードパス*
-です。
+コレクションと並んで 8 つのプロジェクトが公開されています。リファレンスゲーム 5 本、
+ミニゲーム 2 本、武器パック 1 つで、これらはデモではありません。各アドオンの
+テストスイートは他のアドオンが無い状態でそのアドオンを走らせるので、アドオン同士の
+接合はゲームの中にしか存在せず、1 つのデプロイ形態からしか到達しないコードパスは、
+何も実行していないコードパスだからです。
+
+これらはアドオンが置かれている組織ではなく
+[`gamemann`](https://github.com/gamemann) の下にあります。なぜその分け方がルール
+なのかは[概要](/learn/godot)を参照してください。
+
+**どれも組み込みではなく、配信されます。** ロビーを含むすべてのゲームが、署名された
+[`dot-cloud`](/learn/godot/addons/dot-cloud) パックとして公開されます。サーバーは
+提供するよう指示されたものをインストールし、プレイヤーのクライアントは参加時に
+パックをダウンロードします。クライアントシェルにはゲームが一切含まれないため、
+接続先が何であっても同じビルドで、新しいゲームは新しいクライアントなしでプレイヤーに
+届きます。これが、ここにあるすべてのゲームが自分のスクリプトを `class_name` ではなく
+パスで参照する理由でもあります。マウントされたパックの `class_name` グローバルは
+登録されないため、逆の書き方をしたゲームは、マウントされ、シーンも読み込まれるのに、
+自分のコードが 1 行も動きません。
 
 <Callout type="info" title="バグはここにあります">
 ゲームプレイ系アドオンを 1 プロセスに通したところ 7 件のバグが見つかり、うち 6 件は
@@ -32,13 +52,22 @@ source:
 つないでさらに 7 件。この傾向は毎回同じです。
 </Callout>
 
+2 つのアドオンは、どのゲームでもなく
+[TMC のサーバーツール](/learn/godot/tooling#tmcs-server-tool)が**すべての**ゲームに
+ビルドします。すべてのサーバーに載る [`dot-replay`](/learn/godot/addons/dot-replay)
+のリング（コンソールの `replay save`、そしてキックと BAN のたびに記録されるクリップの
+ハッシュ）と、エクスポートされたクライアントシェルでパーティークライアントの隣に
+置かれる [`dot-friends`](/learn/godot/addons/dot-friends) クライアント（サイトの
+フレンド用ルートがデプロイされるまでは自動的にオフになります）です。どのゲームも
+どちらもリンクしません。
+
 ## game-arena
 
 **開発用テクスチャーの 3D アリーナ・デスマッチ。リファレンスゲームです。**
 アドオンが組み合わさることを示し、橋渡しコードがどんな形になるかを見せ、新しい
 ゲームがそこからコピーされる対象になるために存在します。
 
-`dot-core`、`dot-fps-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
+`dot-core`、`dot-player-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
 `dot-ui`、`dot-server`、`dot-net` を使います。
 
 重要なファイルは 4 つで、それぞれがアドオンではなく*ゲーム側*にある理由は毎回
@@ -73,8 +102,8 @@ godot --headless --path . res://examples/dedicated.tscn        # 実物の DotSe
 ゲームであり、ゲームプレイ側と身元側が一緒に走る唯一の場所です。
 
 `dot-2d`、`dot-net`、`dot-server`、`dot-match`、`dot-ui`、`dot-user-avatar`、
-`dot-loadout`、`dot-platform`、`dot-cloud` を使います。`dot-fps-controller` と
-`dot-combat` 以外すべてです。
+`dot-loadout`、`dot-platform`、`dot-cloud` を使います。`dot-player-controller` と
+`dot-combat` 以外すべてです。1 つのパックに 5 つのモード——classic、frenzy、gauntlet、warrens、reef——が入り、それぞれ同じコンテンツの上に独自の `game.yml` を持ちます。
 
 これは **ブラウザー対応への最短経路**でもあります。小さく、スレッドも不要で、
 ほかに邪魔するものが無い状態でブラウザーの制約をひと通り踏みます。
@@ -94,29 +123,26 @@ godot --headless --path . res://examples/dedicated.tscn        # 実物の DotSe
 ジャンルではなく、[`dot-timer`](/learn/godot/addons/dot-timer) が surf と bunny-hop
 専用ではないことを示すものだからです。
 
-`dot-fps-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+`dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
 `dot-ui`、`dot-server` を使います。
 
 <Callout type="warning" title="エンティティと武器はパスで指定されたスクリプトです">
 `class_name` ではありません。マウントされた `dot-cloud` パックは `class_name` の
 グローバルを登録できません——計測済みです——ので、パックがマウントされ、そのシーンが
 読み込まれる一方で、パック内のファイルをまたぐ型参照はすべてコンパイルに失敗します。
-**パスこそ、配信されるエンティティが取りうる唯一の形**であり、このゲームは意図的に
-そう書かれています。
+**パスこそ、配信されるエンティティが取りうる唯一の形**であり、これはそう書かれた最初のゲームでした。今ではすべてのゲームがそうです。
 </Callout>
 
-`dot-fps-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
+`dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
 `dot-ui`、`dot-server` が 1 プロセスで動く唯一の場所です。このスイートは 9 件の
 バグを見つけ、うち 3 件は他のリポジトリのものでした。スクリーンショットがさらに
 4 件を見つけています。
 
 ## game-g2gfast
 
-**Counter-Strike の形をした、bunny-hop と surf のタイマーサーバー。** Source の
-単位と cvar、Source の視野角、一人称と三人称、そして全プレイヤーがアバターとして
-描かれます——プラットフォームから来た本人のもの、あるいは既定のもの。
+**ラウンド制の対戦シューターの移動サーバーの形をした、bunny-hop と surf のタイマーサーバー。** それらの単位、cvar、視野角、一人称と三人称、そして全プレイヤーがアバターとして描かれます——プラットフォームから来た本人のもの、あるいは既定のもの。インポートされた各マップはそれぞれ独立したパックで、サーバーがそのマップに切り替わるときに取得されるので、ゲームのパックは小さいままで、新しいマップに新しいゲームは要りません。
 
-`dot-fps-controller`、`dot-timer`、`dot-map`、`dot-leaderboard`、`dot-server`、
+`dot-player-controller`、`dot-timer`、`dot-map`、`dot-leaderboard`、`dot-server`、
 `dot-user-avatar`、`dot-ui` を使います。
 
 ```
@@ -148,11 +174,67 @@ g2g_zone_save
 ゲームを読み込んでいないサーバーは正当な運用形態で、`dot-server` は昔から対応して
 いました。無かったのは「見るもの」で、接続して何も見えないプレイヤーには、それが
 壊れたサーバーと区別できません。汎用ブラウザークライアントが最初にダウンロードする
-ゲームでもあります。
+ゲームでもあります——ほかのすべてと同じくパックとして。ロビーがクライアントに組み込まれていると、それを変えるたびに新しいクライアントが必要になるからです。
 
-## 動かして分かったこと
+## mg-smash-copter
 
-繰り返し出てくる教訓が 4 つあり、自前の橋渡しを書く前に知っておく価値があります。
+**敵が床そのものであるミニゲーム。** 2〜6 チームが、1 本の柱の上でバランスを取る
+プラットフォームの上、地上 40 メートルに立ち、中央の大砲が彼らに向けて物を投げ
+つけます。時間切れの時点でまだ上にいた者は、自分で選んでいない武器を持たされて空の
+隅へ放り出され、最後に残ったチームが勝ちます。
+
+一人称と三人称。大砲が投げるものすべてに `dot-props`、ヘリに `dot-vehicle`、
+体力とヒット判定に `dot-combat`、ラウンドと陣営に `dot-match`、そして
+`dot-player-controller`、`dot-net`、サーバー配線に `dot-game`、後半戦で使う 27 種の
+武器に `zee-dot-weapons` を使います。`dot-spectate`、`dot-audio`、`dot-stats`、
+`dot-achievements` は後から加わりました——最後のチームが残るまで続くゲームなので、
+脱落したプレイヤーには見るものが無かったからです。`dot-settings` は文書で明確に
+拒否しています。クライアントにそれを置く画面が無いためです。
+
+## mg-buses-from-hell
+
+**非対称なほう。** バスに乗った 2 人のドライバー対、徒歩のそれ以外全員。舞台は
+木箱と爆発する樽が置かれた、壁に囲まれた砂のすり鉢です。ドライバーはランナーを
+轢こうとし、ランナーはハンマーを持っていますが、ハンマーは誰も傷つけません——
+木箱を壊し、相手を突き飛ばすだけ。ゲームのすべてがそれです。
+
+`dot-props`、`dot-vehicle`、`dot-combat`、`dot-match`、`dot-player-controller`、
+`dot-net`、`dot-game` に加え、`dot-spectate`、`dot-audio`、`dot-stats`、
+`dot-achievements`、`dot-settings`、そして（爆発する樽のために）`dot-fx` を使います。
+名前だけ挙げられて一度も使われていなかった `dot-spawn`、`dot-team`、`dot-physics` は
+リンクを外しました。また、[dot-entity](/learn/godot/addons/dot-entity) がリークを
+見つけたプロジェクトでもあります。`forget()` がどこにも無い `_next_entity_id`
+カウンターのせいで、参加したことのあるプレイヤーごとに、解放済みノードを指す
+`DotHealth` が残り続けていました。
+
+## zee-dot-weapons
+
+**ゲームではなく、武器パックです。** [`dot-weapon`](/learn/godot/addons/dot-weapon)
+があえて含めなかった半分——ビューモデル、ワールドモデル、アニメーション、アート——
+であり、そのカタログの上にすでに 27 種の武器が作られています。
+
+一人称のビューモデル、三人称のワールドモデル、プロシージャルアニメーション、そして
+他のプレイヤーの武器があなたの画面で正しく見えるようにするレプリケーション。アートは
+Kenney の Blaster Kit に、Weapon Pack と Survival Kit の近接武器を加えたもの——すべて
+CC0 で、すべて同梱されており、ダウンロードするものはありません。
+
+## dot-game-template
+
+**新しいゲームの出発点。** 8 つのうちのひとつではありません。サードパーティーの
+開発者がコピーするものなので、アドオンと同じ
+[`modcommunity`](https://github.com/modcommunity/dot-game-template) の下にあります。
+これは [`dot-game`](/learn/godot/addons/dot-game) 上に作られた小さなネットワーク対応
+2D ゲーム **Coin Grab** で——予測あり、サーバー権威、そして `class_name` を使わずに
+書かれているので、最初のコミットから配信パックとして動きます。`tools/rename.sh` で
+自分のものにできます。`v*` タグでリリースワークフローがゲームを `-pack.zip` として
+添付し、サイトがそれに署名して `<サイトのユーザー名>/<リポジトリ>` として公開します。
+サーバーがそれをインストールするときの名前です。サーバーツールは確認のたびにパッケージ
+済みリリースをマウントするので、テンプレートは他人のゲームと同じ方法で検証されます。
+
+## 自前の橋渡しコードのための教訓
+
+これらのゲームでは 4 つの失敗が繰り返し起き、そのどれもが、通常ならバグを捕まえる
+種類の検査からは見えません。
 
 **正しく作られて誰にも読まれていない値は、間違って作られた値と見分けがつきません。**
 補間された位置、関心集合、コンテンツクライアントは、いずれも正しく計算されていて

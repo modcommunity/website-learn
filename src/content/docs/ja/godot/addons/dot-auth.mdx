@@ -23,7 +23,7 @@ source:
 コミュニティが運営するサーバーは、目の前のプレイヤーが誰かを知る必要があります。
 しかし**アカウント全体の資格情報を渡してはいけません**。それを持つ運営者は、
 過去に参加したすべてのプレイヤーとして振る舞えてしまいます。`dot-auth` はその
-答えであり、形としては Steam の認証セッションチケットと同じです。
+答えであり、形としては大手 PC ストアフロントがゲームサーバーに渡すセッションチケットと同じです。
 
 ```
 クライアント ──(デバイスコード + PKCE)──> バックボーン        自分は誰か
@@ -80,6 +80,8 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 | `LOCAL` | LAN と開発用。アカウントは JSON ファイルに。 |
 | `ANONYMOUS` | 全員ゲスト。BAN は何の意味も持てません。警告します。 |
 
+`INTROSPECT` には、スコープ付きの 2 つ目の形があります。`DotAuthServer.backbone` にそのサーバー自身の `DotBackboneClient` を渡すと、プレイヤーのトークンを **そのサーバーとして** `integration/v1/player/introspect` に投げ、アカウント id の代わりに、そのサーバーのスコープでのプレイヤーのキーを受け取ります。身元は `site:<key>` で、キーは `scoped_key` クレームに入ります。これはサイトのアバター、プロフィール、統計のルートがそのサーバーに対して解決する唯一の識別子で、他の運営者が突き合わせることはできません。未設定なら、従来どおり `/me` を読みます。`scoped_only` は、バックボーンクライアントが渡されるまでの参加を、フォールバックせずに拒否します。起動中に入れたプレイヤーが、1 分間は一方のキーで、その後は別のキーで扱われることがないようにするためです。
+
 ## クラウド無しのアカウント
 
 `allow_local_profiles` を使うと、訪問者は**そのサーバーだけに存在する**
@@ -110,8 +112,8 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 <Params>
   <Param name="DotAuthProvider のサブクラス">
     `_provider_name()`、`_handles(credential)`、`_authenticate(credential)`、
-    `_validate()`。`DotAuthServer.add_provider` で登録します。Steam、Epic、
-    Discord のボット、あるいは自前のサービスはここに入ります。
+    `_validate()`。`DotAuthServer.add_provider` で登録します。ストアフロントの
+    身元、チャットプラットフォームのボット、あるいは自前のサービスはここに入ります。
 
     `_handles` は安価かつ純粋に構造的に保ってください。「この辞書に自分のフィールドが
     あるか」だけです。ここでネットワーク処理をするプロバイダーは、他人宛ての試行も

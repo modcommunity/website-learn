@@ -62,7 +62,11 @@ source:
 | Где хранятся баны (общая БД, HTTP-служба) | наследник `DotBanStore` у `DotBanManager` |
 | Группы сайта → права на сервере | `DotAuthAdminSource` или любой объект с `lookup()` / `source_name()` |
 | Команды и поведение сервера | наследник `DotModule` либо `DotConsole.command` |
-| Что запрос к серверу сообщает об игре | `DotQueryProvider` либо `DotModule.add_query_provider` |
+| Что запрос к серверу сообщает об игре | наследник `DotQueryProvider` у `dot_query_source` либо `DotModule.add_query_provider` |
+| Что сервер наказывает и как далеко эскалирует | документы `DotSecurityRule` — в JSON или собранные в коде |
+| Откуда сервер читает списки банов | записи `DotBanFeed` в `DotBanFeeds`, подцепленные к `dot_ban_source` |
+| Возможно ли заявленное движение | `DotAntiCheat.movement_reference` — `Callable`, пересчитывающий один тик |
+| Как освещён мир и какую его часть рисует эта машина | `DotLightDocument` и `DotLightProfile`, применяемые `DotLightRig` |
 | Отреагировать на что-то или запретить это | `DotEventBus.hook_pre` / `hook_post` |
 | Что реплицируется и с какой точностью | объявления `DotNetVar`; `Type.CUSTOM` для любого типа |
 | Симуляция, управление, сообщения | наследники `DotNetBehaviour`, `DotNetInput`, `DotNetMessage` |
@@ -195,9 +199,21 @@ source:
   <Param name="DotBanStore" type="dot-server">
     `_store_name`, **`_load`**, `_put`, `_remove`, `_refresh`, `_writable`.
   </Param>
-  <Param name="DotQueryProvider" type="dot-server">
+  <Param name="DotQueryProvider" type="dot-server-query">
     `_provider_name`, **`_contribute(snapshot)`** — так игра публикует
-    собственное состояние в ответе на запрос к серверу.
+    собственное состояние в ответе на запрос к серверу. Число ботов доказывает это
+    лучше всего: ничто в серверном фреймворке не может его знать, потому что бот
+    никогда не подключается.
+  </Param>
+  <Param name="DotSecurityRule" type="dot-server-security">
+    Имя события, порог, окно, область и лестница шагов. Записывается как JSON или
+    собирается в коде, а `guard.report_session(&"your.event", session)` достаточно,
+    чтобы пропустить собственное событие игры через весь движок.
+  </Param>
+  <Param name="DotBanFeed" type="dot-server-security">
+    `url`, `auth`, `token_file`, `list_path`, `on_failure`. Шесть режимов
+    аутентификации и несколько форм списка, потому что блоклист, на который это
+    нельзя направить, вы скопируете в файл вручную — и он устареет.
   </Param>
   <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
     Во всех трёх одна и та же форма: **`_fetch`**, `_store`, `_remove`, `_open`,
@@ -221,12 +237,12 @@ source:
     **`_world_ray`** и больше ничего. Обход хитбоксов, разрешение ничьей в пользу
     стены и восстановление принадлежат базовому классу.
   </Param>
-  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+  <Param name="DotFpsBody / Dot2DBody" type="dot-player-controller, dot-2d">
     `sweep` / `move`, `overlaps`, `describe`. Запросы столкновений, нужные
     мотору, с плоской аналитической реализацией ради детерминизма и физической —
     для настоящей геометрии.
   </Param>
-  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+  <Param name="DotFpsMoveMode" type="dot-player-controller">
     `_name`, `_enter`, `_exit`, **`_simulate`**, `_uses_crouch`. Лестница, вода,
     крюк — на собственных столкновениях и ускорении мотора.
   </Param>
@@ -336,7 +352,10 @@ source:
 
 | Имя | Кто публикует | Кто спрашивает |
 | --- | --- | --- |
-| `dot_ban_source` | `DotModerationManager` | проверка допуска в `dot-server` |
+| `dot_ban_source` | `DotModerationManager` и ленты `dot-server-security` | проверка допуска в `dot-server` — **спрашиваются обе, и обе должны ответить «да»** |
+| `dot_query_host`, `dot_query_stats` | `dot-server-query` | хук `attach_query_host` в `dot-server` |
+| `dot_security`, `dot_anticheat`, `dot_security_bans` | `dot-server-security` | его собственные консольные команды и ваш код |
+| `dot_random_source` | `DotRandomManager` в `dot-core` | всё, что хочет воспроизводимый поток |
 | `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
 | `dot_cloud_client` | `DotCloudClient` | загрузчик `dot-map`, смена игры в `dot-server`, каталог `dot-user-avatar` |
 | `dot_user_manager` | `DotUserManager` | `dot-server`, `dot-platform` |

@@ -23,7 +23,7 @@ source:
 Een door de community gedraaide server moet weten wie een speler is. Hij mag
 **geen** credential voor diens hele account krijgen — een beheerder die er een
 heeft, kan optreden als elke speler die ooit is binnengekomen. `dot-auth` is het
-antwoord daarop, en heeft dezelfde vorm als Steams auth session tickets.
+antwoord daarop, en heeft dezelfde vorm als de sessietickets die de grote pc-winkels aan gameservers geven.
 
 ```
 client ──(apparaatcode + PKCE)──> backend          wie ben ik
@@ -81,6 +81,8 @@ Verificatie gebeurt offline — geen backend-roundtrip per join.
 | `LOCAL` | LAN en ontwikkeling. Accounts in een JSON-bestand. |
 | `ANONYMOUS` | Iedereen is gast. Bans kunnen niets betekenen. Waarschuwt. |
 
+`INTROSPECT` heeft een tweede, afgebakende vorm. Geef `DotAuthServer.backbone` de eigen `DotBackboneClient` van de server en hij post het token van de speler naar `integration/v1/player/introspect` **als die server**, en krijgt in plaats van het account-id de sleutel van de speler terug binnen het bereik van die server: de identiteit is `site:<key>` met de sleutel in de claim `scoped_key`, de ene identifier die de avatar-, profiel- en statsroutes van de site voor die server oplossen, en een die andere beheerders niet kunnen correleren. Zonder instelling leest hij `/me` zoals eerder. `scoped_only` weigert een join zolang er geen backbone-client is doorgegeven in plaats van terug te vallen, zodat een speler die tijdens het opstarten wordt toegelaten niet een minuut op de ene manier en daarna op een andere gesleuteld is.
+
 ## Accounts zonder cloud
 
 `allow_local_profiles` laat een bezoeker een account maken dat **op die server en
@@ -112,7 +114,7 @@ platform, zonder backend.
   <Param name="Subklasse van DotAuthProvider">
     `_provider_name()`, `_handles(credential)`, `_authenticate(credential)`,
     `_validate()`. Registreer hem met `DotAuthServer.add_provider`. Hier komen
-    Steam, Epic, een Discord-bot of je eigen dienst binnen.
+    de identiteit van een winkel, een bot voor een chatplatform of je eigen dienst binnen.
 
     Houd `_handles` goedkoop en puur structureel — "zit mijn veld in deze
     dictionary". Een provider die daar netwerkwerk doet, doet dat bij elke

@@ -1,6 +1,6 @@
 ---
 title: Les modules
-description: Les cinquante modules Dot pour Godot 4 — à quoi sert chacun, de quoi il dépend, et où un jeu vient s'y brancher.
+description: Les cinquante-huit modules Dot pour Godot 4 — à quoi sert chacun, de quoi il dépend, et où un jeu vient s'y brancher.
 order: 40
 keywords:
   - "modules"
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-Cinquante modules qui fonctionnent ensemble et qui, à l'exception de
+Cinquante-huit modules qui fonctionnent ensemble et qui, à l'exception de
 `dot-core`, fonctionnent indépendamment. Chacun a son propre dépôt sous
 [`modcommunity`](https://github.com/modcommunity), chacun livre un dossier
 `addons/<nom>/`, et chacun a sa propre suite de tests sans interface.
@@ -29,12 +29,13 @@ aucun de ces modules ne nomme les identifiants d'un autre — parce qu'en
 GDScript, un script qui mentionne un `class_name` absent ne compile pas et
 entraîne avec lui tout ce qui le référence.
 
-Sept sont l'exception qui confirme la règle, et chacun le dit : `dot-npc-ai` et
+Huit sont l'exception qui confirme la règle, et chacun le dit : `dot-npc-ai` et
 `dot-npc-ai-director` ont besoin de `dot-npc` ; `dot-player-controller`,
-`dot-player-char` et `dot-player-class` ont besoin de `dot-player` ; et
-`dot-server-query` et `dot-server-security` ont besoin de `dot-server`, parce
-que chacun *est* une pièce d'un serveur plutôt qu'une chose qu'un serveur
-consulte.
+`dot-player-char` et `dot-player-class` ont besoin de `dot-player` ; `dot-server-query` et
+`dot-server-security` ont besoin de `dot-server`, parce que chacun *est* une
+pièce d'un serveur plutôt qu'une chose qu'un serveur consulte ; et `dot-game` a
+besoin de `dot-server` et `dot-net` ensemble, parce qu'il est le câblage *entre*
+les deux.
 </Callout>
 
 ## La fondation
@@ -42,6 +43,8 @@ consulte.
 | | Dépend de | |
 | --- | --- | --- |
 | [dot-core](/learn/godot/addons/dot-core) | — | Journalisation, capacités de plateforme, chemins, références de nœud configurables, configuration en couches, tâches à budget par image, transports multijoueur, HTTP, et des flux d'aléatoire reproductibles. |
+| [dot-log](/learn/godot/addons/dot-log) | dot-core | Où vont réellement les enregistrements de `DotLog` : un fichier à rotation, un anneau en mémoire, syslog, une table de base de données ou un collecteur hébergé — avec fusion des rafales, files bornées et masquage faits une seule fois en amont de tous. |
+| [dot-entity](/learn/godot/addons/dot-entity) | dot-core | L'espace d'identifiants que partagent tous les objets du monde. Un allocateur dont les identifiants portent leur propre genre, des recherches dans les deux sens, et un enregistrement tenu à côté du nœud plutôt que dessus. |
 
 ## Le joueur
 
@@ -74,14 +77,19 @@ Tous les jeux de la collection utilisent ceux-ci.
 | --- | --- | --- |
 | [dot-net](/learn/godot/addons/dot-net) | dot-core | Code réseau : synchronisation des ticks, format binaire compact, réplication d'état, interpolation d'instantanés, prédiction côté client, compensation de latence, gestion d'intérêt. |
 | [dot-server](/learn/godot/addons/dot-server) | dot-core, *optionnellement* dot-auth + dot-cloud | Le serveur dédié : console, RCON, permissions, modération, votes, modules, changement de jeu à chaud. |
+| [dot-game](/learn/godot/addons/dot-game) | dot-core, dot-server, dot-net | Le câblage côté serveur que chaque jeu répétait : code réseau, un pont, l'identité, des services, un effectif, un tick autoritatif unique, et un démontage en ordre inverse. Dérivez `DotGameModule` et n'écrivez que ce qui est à vous. |
 | [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *optionnellement* dot-stats | Le côté serveur d'une requête : DQP — avec défi, par sections, interrogeable de façon conditionnelle et joignable depuis un navigateur — et tout A2S, répondus depuis un seul instantané. |
 | [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *optionnellement* dot-moderation + dot-chat + dot-auth | Le durcissement comme configuration : des règles à fenêtre glissante qui escaladent d'avertissement à bâillon, exclusion puis bannissement ; un anti-triche qui sépare ce que le serveur a prouvé de ce qu'un humain doit regarder ; et des listes de bannissement externes. Livré en mode simulation. |
 | [dot-browser](/learn/godot/addons/dot-browser) | dot-core | L'autre moitié de ces requêtes : un client. DQP sur UDP, le même protocole en JSON sur WebSocket, et A2S — derrière un modèle de liste avec sources, filtres et favoris. |
 | [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | Des sessions que les joueurs hébergent les uns pour les autres : codes d'accès, préparation, une élection d'hôte qui est une fonction pure de la liste des membres, et un exposé honnête du NAT. |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | Bannissements, exclusions, bâillons, coupures de micro et avertissements comme un seul enregistrement durable. Publie les sources de sourdine et de bannissement que les autres consultent. |
 | [dot-chat](/learn/godot/addons/dot-chat) | dot-core, *optionnellement* dot-moderation | Chat texte autoritatif côté serveur : canaux avec règle d'audience, assainissement, limites de débit, historique, commandes. |
+| [dot-friends](/learn/godot/addons/dot-friends) | dot-core | Les amis du joueur et leur présence depuis le site — en ligne, dans quel jeu, sur quel serveur, dans quel groupe — et un `join()` qui passe la main au groupe ou au serveur. |
+| [dot-party](/learn/godot/addons/dot-party) | dot-core | Les groupes vus des deux bouts du système de groupes du site : un client qui suit la manche de préparation jusqu'à son serveur, la réservation et le signalement côté serveur, et des réservations qui gardent vraiment privé un serveur réservé. |
+| [dot-matchmaking](/learn/godot/addons/dot-matchmaking) | dot-core | Qui joue contre qui : des classements Glicko-2 par file, des playlists strictes au début qui s'élargissent avec l'attente, des groupes placés entiers, des camps équilibrés. Sur TMC, c'est le site qui tient les classements. |
 | [dot-voice](/learn/godot/addons/dot-voice) | dot-core | Chat vocal : capture, codec remplaçable, un tampon de gigue par locuteur, et routage serveur vers tout le monde, une équipe ou un rayon. |
 | [dot-spectate](/learn/godot/addons/dot-spectate) | dot-core | Qui regarde qui, et ce que le serveur laisse voir : sept modes d'observateur, une politique de caméra forcée, la chaîne de caméra de mort, un délai de diffusion. |
+| [dot-replay](/learn/godot/addons/dot-replay) | dot-core | Des démos de partie pour la spectature, la relecture et les preuves de modération : des canaux horodatés par tick dans un fichier découpé en blocs et chaîné par hachage, qui se parcourt par images-clés et survit à un plantage, plus un anneau pour « sauvegarde ce clip ». |
 | [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *optionnellement* dot-server + dot-map | Voter pour la suite, comme un seul moteur configurable : rtv, nominations, quatre méthodes de dépouillement, cinq départages. |
 
 ## Le combat
@@ -125,6 +133,7 @@ Tous les jeux de la collection utilisent ceux-ci.
 | --- | --- | --- |
 | [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Écrans, ATH et menus sans aucun élément graphique. Une pile d'écrans, un panneau de réglages généré depuis n'importe quel `DotConfig`, et un réassignateur de touches avec détection de conflits. |
 | [dot-settings](/learn/godot/addons/dot-settings) | dot-core | Les réglages comme un document borné à trois portées — dont les quelques-uns qu'un serveur peut brider et ne peut jamais lire. |
+| [dot-locale](/learn/godot/addons/dot-locale) | dot-core | Une localisation qui lit les propres fichiers de langue du site, pour qu'une clé de refus signifie la même chose sur le site et dans un jeu. Messages ICU, pluriels CLDR, pseudo-localisation. |
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *optionnellement* dot-server | La console du joueur : une touche physique, une ligne, un historique, la complétion, un tampon borné — et des *sources* de commandes plutôt qu'un second système de commandes. |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | De l'audio de jeu qui ne livre aucun audio : un catalogue d'identifiants, des voix mutualisées avec vol par priorité, des plafonds de simultanéité, un rejet par distance, musique et ducking. |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | Les effets visuels comme documents : mutualisés, budgétés, par palier de qualité, rejetés par distance. Un effet ne change jamais la simulation. |

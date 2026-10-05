@@ -56,7 +56,11 @@ source:
 | 封禁记录存在哪（共享数据库、HTTP 服务） | `DotBanManager` 上的 `DotBanStore` 子类 |
 | 站点分组 → 服务器权限 | `DotAuthAdminSource`，或任何带 `lookup()` / `source_name()` 的对象 |
 | 服务器命令与行为 | `DotModule` 子类，或 `DotConsole.command` |
-| 服务器查询里关于游戏的内容 | `DotQueryProvider`，或 `DotModule.add_query_provider` |
+| 服务器查询里关于游戏的内容 | 挂在 `dot_query_source` 上的 `DotQueryProvider` 子类，或 `DotModule.add_query_provider` |
+| 服务器惩罚什么，以及升级到多严 | `DotSecurityRule` 文档，用 JSON 写或在代码里构建 |
+| 服务器从哪里读取封禁名单 | `DotBanFeeds` 上的 `DotBanFeed` 条目，链到 `dot_ban_source` 上 |
+| 一个移动声明是否可能成立 | `DotAntiCheat.movement_reference`，一个重新模拟一帧的 `Callable` |
+| 世界如何打光，以及这台机器绘制多少 | 由 `DotLightRig` 应用的 `DotLightDocument` 和 `DotLightProfile` |
 | 对某件事作出反应或加以否决 | `DotEventBus.hook_pre` / `hook_post` |
 | 复制什么、精度多高 | `DotNetVar` 声明；任意类型用 `Type.CUSTOM` |
 | 模拟、操作、消息 | `DotNetBehaviour`、`DotNetInput`、`DotNetMessage` 子类 |
@@ -178,9 +182,20 @@ source:
   <Param name="DotBanStore" type="dot-server">
     `_store_name`、**`_load`**、`_put`、`_remove`、`_refresh`、`_writable`。
   </Param>
-  <Param name="DotQueryProvider" type="dot-server">
+  <Param name="DotQueryProvider" type="dot-server-query">
     `_provider_name`、**`_contribute(snapshot)`** —— 游戏就是这样把自己的状态
-    放进服务器查询里的。
+    放进服务器查询里的。机器人数量最能说明这一点：服务器框架里没有任何东西能知道它，
+    因为机器人从不“连接”。
+  </Param>
+  <Param name="DotSecurityRule" type="dot-server-security">
+    一个事件名、一个阈值、一个时间窗口、一个作用范围，以及一串升级步骤。用 JSON 写或在
+    代码里构建，而 `guard.report_session(&"your.event", session)` 就足以让游戏自己的
+    事件走完整个引擎。
+  </Param>
+  <Param name="DotBanFeed" type="dot-server-security">
+    `url`、`auth`、`token_file`、`list_path`、`on_failure`。六种认证模式和多种列表
+    形状，因为一份你没法把它指过去的封禁名单，最后只会被你手工抄进一个文件里，然后就
+    过期了。
   </Param>
   <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
     三者形状相同：**`_fetch`**、`_store`、`_remove`、`_open`、`_close`、
@@ -203,11 +218,11 @@ source:
   <Param name="DotTrace" type="dot-combat">
     只需 **`_world_ray`**。遍历碰撞盒、平局判给墙面、以及复原，都归基类管。
   </Param>
-  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+  <Param name="DotFpsBody / Dot2DBody" type="dot-player-controller, dot-2d">
     `sweep` / `move`、`overlaps`、`describe`。马达所需的碰撞查询，带一个用于保证
     确定性的平面解析实现，以及一个用于真实几何的物理实现。
   </Param>
-  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+  <Param name="DotFpsMoveMode" type="dot-player-controller">
     `_name`、`_enter`、`_exit`、**`_simulate`**、`_uses_crouch`。梯子、水中、
     抓钩——都建立在马达自身的碰撞与加速之上。
   </Param>
@@ -310,7 +325,10 @@ source:
 
 | 名字 | 由谁发布 | 由谁查询 |
 | --- | --- | --- |
-| `dot_ban_source` | `DotModerationManager` | `dot-server` 的准入检查 |
+| `dot_ban_source` | `DotModerationManager`，以及 `dot-server-security` 的封禁源 | `dot-server` 的准入检查——**两者都会被询问，而且都必须答应** |
+| `dot_query_host`、`dot_query_stats` | `dot-server-query` | `dot-server` 的 `attach_query_host` 钩子 |
+| `dot_security`、`dot_anticheat`、`dot_security_bans` | `dot-server-security` | 它自己的控制台命令，以及你自己的代码 |
+| `dot_random_source` | `dot-core` 里的 `DotRandomManager` | 任何想要可复现随机流的东西 |
 | `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
 | `dot_cloud_client` | `DotCloudClient` | `dot-map` 的加载器、`dot-server` 的切换游戏、`dot-user-avatar` 的目录 |
 | `dot_user_manager` | `DotUserManager` | `dot-server`、`dot-platform` |

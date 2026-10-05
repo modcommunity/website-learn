@@ -3,6 +3,7 @@ title: dot-cloud
 description: Livraison de contenu à l'exécution pour Godot — manifestes signés, cache adressé par contenu, téléchargements parallèles reprenables et montage sous espace de noms versionné, y compris dans le navigateur.
 navTitle: dot-cloud
 order: 130
+badge: updated
 keywords:
   - "CDN"
   - "téléchargement"
@@ -14,6 +15,11 @@ keywords:
   - "signature"
   - "DLC"
   - "correctifs"
+  - "requires.json"
+  - "api level"
+  - "namespace"
+  - "uid"
+  - "_imported"
 source:
   - ../game-dev/godot/dot-cloud/README.md
   - ../game-dev/godot/dot-cloud/CLAUDE.md
@@ -82,6 +88,45 @@ un serveur maison ; il vous avertira à chaque fois.
   mobiles, et éviction du moins récemment utilisé qui n'évince jamais du contenu
   en cours d'usage.
 
+## Ce que vérifie le montage
+
+Entre le téléchargement et le montage, un pack est soumis à quatre règles qui
+viennent chacune d'un échec que quelqu'un a mesuré :
+
+- **Son `requires.json` est lu en premier.** Les scripts d'un pack compilent
+  contre les modules de l'hôte, si bien qu'un pack exigeant un module plus récent
+  échouait autrefois à l'analyse en plein chargement. Il est désormais refusé avant
+  qu'un script ne charge, avec *« Ce jeu a besoin de dot-net API level 3 ou plus ;
+  ce client est au niveau 2. »* — voir
+  [niveaux d'API des modules](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
+  `host_role` nomme le côté.
+- **Un identifiant de contenu peut nommer son propriétaire : `<owner>/<name>`.**
+  `/` ne peut apparaître dans aucune des deux moitiés, donc une clé bornée à
+  `alice/*` est exacte — un `alice_bob` aplati ne pourrait pas distinguer `alice` +
+  `bob_x` de `alice_bob` + `x`. Chaque segment doit être un slug ; un identifiant nu,
+  ce que sont tous les packs first-party, est toujours valide.
+- **Un identifiant ne peut pas signifier deux choses.** Un second manifeste pour le
+  même `content_id@version` venant d'un autre éditeur est refusé avec
+  `CODE_CONFLICT` plutôt que de recevoir le montage du premier — un pack peut
+  contenir des scripts, et « celui du premier » est le code de quelqu'un d'autre. Un
+  manifeste identique relu sur le réseau reste un no-op bon marché.
+- **Un pack monté enregistre ses propres uids, et ne peut prendre ceux de
+  personne d'autre.** Un asset importé (un `.glb`, un `.png`) désigne ses voisins
+  par UID, ce qui ne survit pas à un montage ailleurs ; le monteur repointe chaque
+  UID vers la copie montée. Un UID que l'hôte détient déjà est refusé et signalé,
+  faute de quoi chaque `load("uid://…")` de la build pourrait être repointé vers du
+  contenu téléchargé.
+
+<Callout type="warning" title="Les sorties importées sont livrées sous `_imported/`, jamais `.godot/`">
+Un pack publié transporte les sorties importées du moteur, et elles se trouvaient
+autrefois à leur vrai chemin, `.godot/imported/`. Linux les relit parfaitement ;
+**un export web ne le peut pas**, et tout le jeu refusait de démarrer dans le
+navigateur. Les sorties sont désormais livrées sous `_imported/`, chaque marqueur
+`.import` étant réécrit pour nommer l'endroit où la sortie a atterri. Sinon, des
+visuels manquants dans un pack monté ne se manifestent que par des avertissements —
+le pack se vérifie, se monte et se charge sans ses textures.
+</Callout>
+
 ## Où un jeu se branche
 
 <Params>
@@ -111,12 +156,21 @@ un serveur maison ; il vous avertira à chaque fois.
   <Param name="DotCloudConfig">
     `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
     `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
-    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
-    `verify_before_mount`, `resume_downloads`. En couches comme tout `DotConfig`.
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `file_timeout_sec`, `cache_dir`,
+    `verify_before_mount`, `verify_cache_on_start`, `resume_downloads`,
+    `enforce_mount_prefix`. En couches comme tout `DotConfig`.
+  </Param>
+  <Param name="manifest_url_template / manifest_url_fallbacks" type="DotCloudClient">
+    Où un manifeste est demandé, à partir d'une URL de base, d'un identifiant et
+    d'une version. Par défaut `{base}/{id}/{version}/manifest.json`, ce que publie
+    le site ; `manifest_url_fallbacks` liste d'autres formes essayées ensuite, par
+    base, parce qu'une même origine peut contenir des packs publiés sous deux
+    dispositions et les republier tous n'est pas un préalable pour démarrer.
   </Param>
   <Param name="Signaux">
-    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
-    `content_ready`, `content_released`, `failed`.
+    Sur `DotCloudClient` : `phase_changed`, `progress_changed`, `content_ready`,
+    `content_released`, `failed`. Le détail par fichier est sur le téléchargeur :
+    `file_finished`, `sync_finished`.
   </Param>
 </Params>
 
@@ -131,10 +185,18 @@ ensure(content_id: String, version: String) -> DotResult
 is_mounted(content_id: String, version: String) -> bool
 ```
 
+La plupart des modules les atteignent par `DotContent` dans
+[`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent), l'appelant
+partagé unique — ce qui fait que les parties d'avatar, les props, les PNJ, les
+véhicules et les objets qui nomment un contenu le récupèrent désormais
+réellement.
+
 <Callout type="warning" title="Un client de contenu absent est une configuration légitime">
 Tous les appelants traitent « pas de `dot_cloud_client` » comme « ce déploiement
-embarque son contenu dans la build » — ce qui est vrai pour la plupart d'entre
-eux, et donc indiscernable d'un client qui ne s'est pas enregistré. Quand une
+embarque son contenu dans la build » — ce qui est un choix légitime pour votre
+propre jeu, et donc indiscernable d'un client qui ne s'est pas enregistré. Le
+déploiement de TMC n'embarque aucun contenu dans sa build : chaque jeu, chaque
+carte importée et le salon sont des packs que ce module récupère. Quand une
 carte ou un jeu livré ne fait silencieusement rien, regardez d'abord le registre.
 </Callout>
 

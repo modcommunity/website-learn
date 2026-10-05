@@ -20,8 +20,8 @@ source:
 ---
 
 社区自建的服务器需要知道来的是谁。但它**不该**拿到玩家整个账号的凭据——手里有那种
-凭据的服主，可以冒充每一个曾经加入过的玩家。`dot-auth` 就是对此的回答，形态与 Steam
-的 auth session ticket 相同。
+凭据的服主，可以冒充每一个曾经加入过的玩家。`dot-auth` 就是对此的回答，形态与大型 PC 商店发给游戏服务器的
+会话票据相同。
 
 ```
 客户端 ──(设备码 + PKCE)──> 后端            我是谁
@@ -76,6 +76,8 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 | `LOCAL` | 局域网与开发。账号放在一个 JSON 文件里。 |
 | `ANONYMOUS` | 所有人都是访客。封禁不可能有任何意义。会警告。 |
 
+`INTROSPECT` 还有第二种带作用域的形式。把服务器自己的 `DotBackboneClient` 交给 `DotAuthServer.backbone`，它就会**以该服务器的身份**把玩家的令牌 POST 到 `integration/v1/player/introspect`，拿回的是玩家在该服务器作用域内的 key，而不是账号 id：身份是 `site:<key>`，key 放在 `scoped_key` 声明里，这是站点的形象、档案和统计路由对该服务器唯一能解析的标识符，其他服主也无法据此关联。不设置时，它像以前一样读取 `/me`。`scoped_only` 会在尚未交入后端客户端时拒绝加入，而不是回退，这样启动期间放进来的玩家就不会先按一种方式记 key、一分钟后又换成另一种。
+
 ## 没有云也能有账号
 
 `allow_local_profiles` 允许访客建立一个**只存在于这台服务器**的账号，带档案和形象，
@@ -102,7 +104,7 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 <Params>
   <Param name="DotAuthProvider 的子类">
     `_provider_name()`、`_handles(credential)`、`_authenticate(credential)`、
-    `_validate()`。用 `DotAuthServer.add_provider` 注册。Steam、Epic、一个 Discord
+    `_validate()`。用 `DotAuthServer.add_provider` 注册。某个商店的身份、一个聊天平台
     机器人，或者你自己的服务，都从这里接进来。
 
     把 `_handles` 写得便宜且纯粹是结构性的——“这个字典里有没有我的字段”。在那里做网络

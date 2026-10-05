@@ -19,8 +19,8 @@ source:
 ---
 
 Ces règles valent dans tous les modules. En casser une est une rupture de
-compatibilité sur vingt-deux dépôts, alors autant les connaître avant d'écrire
-quoi que ce soit contre l'un d'eux.
+compatibilité sur cinquante-huit modules et les sept jeux construits dessus,
+alors autant les connaître avant d'écrire quoi que ce soit contre l'un d'eux.
 
 ## `DotRegistry` au lieu des autoloads
 
@@ -208,9 +208,9 @@ tout le reste.
 Mesuré : à l'intérieur d'un `.pck` livré, chaque référence de type inter-fichiers
 échoue à la compilation — donc le pack se monte, ses scènes chargent, et tous ses
 scripts sont morts. `preload("res://x.gd")` et `extends "res://x.gd"` marchent
-tous les deux. **Cela décide à quoi peut ressembler un jeu livré** — voyez
-[game-playground](/learn/godot/games#game-playground), dont les entités et les
-armes sont des scripts nommés par *chemin* exactement pour cette raison.
+tous les deux. **Cela décide à quoi peut ressembler un jeu livré**, et chaque jeu de la
+collection est livré : chacun référence ses propres scripts par *chemin* exactement
+pour cette raison. Voyez [Jeux de référence](/learn/godot/games).
 </Callout>
 
 ## Les pièges GDScript que la collection a payés

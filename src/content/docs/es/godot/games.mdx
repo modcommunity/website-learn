@@ -1,8 +1,9 @@
 ---
 title: Juegos de referencia
-description: Los cinco juegos construidos con la colección Dot — qué demuestra cada uno, y por qué las costuras entre complementos solo se ejercitan dentro de un juego.
+description: Los juegos y paquetes construidos con la colección Dot — qué demuestra cada uno, y por qué las costuras entre complementos solo se ejercitan dentro de un juego.
 navTitle: Juegos de referencia
 order: 50
+badge: updated
 keywords:
   - "ejemplo"
   - "muestra"
@@ -11,19 +12,31 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
+  - "game-simple-lobby"
+  - "mg-smash-copter"
+  - "mg-buses-from-hell"
+  - "zee-dot-weapons"
   - "vestíbulo"
   - "deathmatch"
   - "sandbox"
 source:
   - ../game-dev/godot/NOTES.md
   - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Cinco juegos, y no son demostraciones. El conjunto de pruebas de cada complemento
-lo ejecuta **con los demás ausentes**, así que las uniones entre ellos solo
-existen dentro de un juego — y, por la lección que esta colección repite: *un
-camino de código que solo alcanza una forma de despliegue es un camino de código
-que nada ha ejecutado.*
+Ocho proyectos acompañan a la colección — cinco juegos de referencia, dos
+minijuegos y un paquete de armas — y no son demostraciones. El conjunto de
+pruebas de cada complemento lo ejecuta con los demás ausentes, así que las
+uniones entre ellos existen solo dentro de un juego, y un camino de código que
+solo alcanza una forma de despliegue es un camino de código que nada ha
+ejecutado.
+
+Viven bajo [`gamemann`](https://github.com/gamemann) y no bajo la organización
+donde están los complementos; consulta [la visión general](/learn/godot) para ver
+por qué esa separación es una regla.
+
+**Ninguno está integrado: todos se entregan.** Cada juego, el vestíbulo incluido, se publica como un paquete firmado de [`dot-cloud`](/learn/godot/addons/dot-cloud); un servidor instala los que se le indica que ofrezca, y el cliente del jugador descarga el paquete al unirse. El shell del cliente no contiene ningún juego, así que es la misma compilación sea cual sea aquello a lo que se conecta, y un juego nuevo llega a los jugadores sin un cliente nuevo. Por eso cada juego de aquí referencia sus propios scripts por ruta y no por `class_name`: los globales `class_name` de un paquete montado nunca se registran, de modo que un juego escrito al revés se monta, carga sus escenas y no ejecuta nada de su código.
 
 <Callout type="info" title="Aquí es donde están los fallos">
 Poner juntos los complementos de jugabilidad en un mismo proceso encontró siete
@@ -33,13 +46,22 @@ encontró doce más. Abrir un cliente de navegador real contra un servidor real
 encontró otros siete. El patrón se repite siempre.
 </Callout>
 
+Dos complementos se construyen para **todos** los juegos con
+[la herramienta de servidor de TMC](/learn/godot/tooling#tmcs-server-tool) y no
+con ningún juego: un anillo de [`dot-replay`](/learn/godot/addons/dot-replay) en
+cada servidor (`replay save` en la consola, y el hash de un clip archivado con
+cada expulsión y cada veto), y un cliente de [`dot-friends`](/learn/godot/addons/dot-friends)
+junto al cliente de grupo en el shell de cliente exportado, que se desactiva solo
+hasta que se despliegan las rutas de amigos del sitio. Ningún juego enlaza
+ninguno de los dos.
+
 ## game-arena
 
 **Un deathmatch de arena en 3D con texturas de prueba. El juego de referencia.**
 Existe para demostrar que los complementos componen, para enseñar cómo son los
 puentes, y para ser aquello de lo que se copia un juego nuevo.
 
-Usa `dot-core`, `dot-fps-controller`, `dot-combat`, `dot-loadout`, `dot-match`,
+Usa `dot-core`, `dot-player-controller`, `dot-combat`, `dot-loadout`, `dot-match`,
 `dot-ui`, `dot-server` y `dot-net`.
 
 Cuatro archivos importan, y la razón de que cada uno esté en el *juego* y no en un
@@ -78,8 +100,8 @@ funcionando sobre un socket real, y el único sitio donde la mitad de jugabilida
 y la mitad de identidad conviven.
 
 Usa `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`, `dot-user-avatar`,
-`dot-loadout`, `dot-platform` y `dot-cloud` — todo excepto `dot-fps-controller` y
-`dot-combat`.
+`dot-loadout`, `dot-platform` y `dot-cloud` — todo excepto `dot-player-controller` y
+`dot-combat`. Un paquete lleva cinco modos — classic, frenzy, gauntlet, warrens y reef — cada uno con su propio `game.yml` sobre el mismo contenido.
 
 También es **el camino más corto hasta la columna del navegador**: pequeño, no
 necesita hilos, y ejercita todas las restricciones del navegador sin nada de por
@@ -100,7 +122,7 @@ consola, y una carrera de saltos de nueve plataformas en la pista extra de
 que dice que [`dot-timer`](/learn/godot/addons/dot-timer) no es solo cosa de surf
 y bunny-hop.
 
-Usa `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+Usa `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`,
 `dot-leaderboard`, `dot-ui` y `dot-server`.
 
 <Callout type="warning" title="Las entidades y las armas son scripts nombrados por RUTA">
@@ -108,22 +130,19 @@ No por `class_name`. Un paquete de `dot-cloud` montado no puede registrar
 globales `class_name` — está medido — así que dentro de un paquete cada
 referencia de tipo entre archivos falla al compilar mientras el paquete se monta
 y sus escenas cargan. **Una ruta es la única forma que puede tener una entidad
-entregada**, y este juego está escrito así a propósito.
+entregada**, y este fue el primer juego escrito así; ahora lo son todos.
 </Callout>
 
-Es el único sitio donde `dot-fps-controller`, `dot-timer`, `dot-map`,
+Es el único sitio donde `dot-player-controller`, `dot-timer`, `dot-map`,
 `dot-props`, `dot-leaderboard`, `dot-ui` y `dot-server` corren en un mismo
 proceso. Su conjunto de pruebas ha encontrado nueve fallos, tres de ellos en otros
 repositorios; las capturas de pantalla encontraron cuatro más.
 
 ## game-g2gfast
 
-**El servidor de cronómetro de bunny-hop y surf, con la forma de
-Counter-Strike.** Unidades y cvars de Source, el campo de visión de Source,
-primera y tercera persona, y cada jugador dibujado como un avatar — el suyo de la
-plataforma, o uno estándar.
+**El servidor de cronómetro de bunny-hop y surf, con la forma de los servidores de movimiento de los shooters competitivos por rondas.** Sus unidades, cvars y campo de visión, primera y tercera persona, y cada jugador dibujado como un avatar — el suyo de la plataforma, o uno estándar. Cada mapa importado es su propio paquete, que se descarga cuando el servidor cambia a él, así que el paquete del juego sigue siendo pequeño y un mapa nuevo no necesita un juego nuevo.
 
-Usa `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
+Usa `dot-player-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
 `dot-server`, `dot-user-avatar` y `dot-ui`.
 
 ```
@@ -155,12 +174,61 @@ chat.
 Un servidor sin juego cargado es algo legítimo de ejecutar y `dot-server` siempre
 lo ha admitido; lo que no tenía era algo que mirar, y un jugador que se conecta y
 no ve nada no puede distinguir eso de un servidor roto. También es el juego que
-un cliente genérico de navegador descarga primero.
+un cliente genérico de navegador descarga primero — como paquete, igual que todos los demás, porque un vestíbulo integrado en el cliente es un vestíbulo que necesita un cliente nuevo para cambiar.
 
-## Lo que enseña ejecutarlos
+## mg-smash-copter
 
-Cuatro lecciones se repiten, y conviene tenerlas antes de escribir tu propio
-puente.
+**Un minijuego cuyo antagonista es el suelo.** De dos a seis equipos se plantan
+sobre plataformas en equilibrio sobre pilares únicos, a cuarenta metros de
+altura, mientras un cañón en el centro les lanza cosas. Quien siga arriba cuando
+se acabe el reloj es lanzado a un rincón del cielo con un arma que no eligió, y
+gana el último equipo en pie.
+
+En primera y tercera persona. Usa `dot-props` para todo lo que lanza el cañón,
+`dot-vehicle` para el helicóptero, `dot-combat` para la salud y el registro de
+impactos, `dot-match` para la ronda y los bandos, `dot-player-controller`,
+`dot-net`, `dot-game` para el cableado del servidor, y `zee-dot-weapons` para las
+veintisiete armas con las que se pelea la segunda mitad. `dot-spectate`,
+`dot-audio`, `dot-stats` y `dot-achievements` llegaron después — es de último
+equipo en pie, y un jugador eliminado no tenía nada que mirar. Rechaza
+`dot-settings` por escrito: su cliente no tiene pantalla donde ponerlo.
+
+## mg-buses-from-hell
+
+**El asimétrico.** Dos conductores en autobuses contra todos los demás a pie, en
+un cuenco de arena amurallado con cajas y barriles explosivos. Los conductores
+intentan atropellar a los corredores; los corredores tienen un martillo, y el
+martillo no hace daño a nadie — rompe cajas y empuja. Ese es todo el juego.
+
+Usa `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
+`dot-player-controller`, `dot-net` y `dot-game`, además de `dot-spectate`,
+`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings` y `dot-fx` (para los
+barriles explosivos). Dejó de enlazar `dot-spawn`, `dot-team` y `dot-physics`, cada uno
+nombrado y nunca usado. También es el proyecto en el que
+[dot-entity](/learn/godot/addons/dot-entity) encontró una fuga: un contador
+`_next_entity_id` sin ningún `forget()`, que dejaba un `DotHealth` por cada
+jugador que se hubiera unido alguna vez, cada uno apuntando a un nodo liberado.
+
+## zee-dot-weapons
+
+**No es un juego: es un paquete de armas.** Es la mitad que
+[`dot-weapon`](/learn/godot/addons/dot-weapon) deja fuera a propósito: los
+modelos de vista, los modelos de mundo, la animación y el arte, con veintisiete
+armas ya construidas sobre su catálogo.
+
+Modelos de vista en primera persona, modelos de mundo en tercera, animación
+procedimental, y la replicación que hace que el arma de otro jugador se vea bien
+en tu pantalla. El arte es el Blaster Kit de Kenney, con el cuerpo a cuerpo del
+Weapon Pack y el Survival Kit — todo CC0, todo incluido, nada que descargar.
+
+## dot-game-template
+
+**Donde empieza un juego nuevo.** No es uno de los ocho: vive con los complementos, bajo [`modcommunity`](https://github.com/modcommunity/dot-game-template), porque es lo que copia un desarrollador externo. Es **Coin Grab**, un pequeño juego 2D en red sobre [`dot-game`](/learn/godot/addons/dot-game) — con predicción, autoritativo en el servidor, y escrito sin `class_name` para que funcione como paquete entregado desde el primer commit. `tools/rename.sh` lo hace tuyo. Con una etiqueta `v*`, su flujo de lanzamiento adjunta el juego como un `-pack.zip`, y el sitio lo firma y lo publica como `<your site username>/<repository>`, que es el nombre con el que un servidor lo instala. La herramienta de servidor monta su versión empaquetada en cada comprobación, así que la plantilla se verifica como se verificaría el juego de un desconocido.
+
+## Lecciones para tus propios puentes
+
+Cuatro fallos se repiten en estos juegos, y los cuatro son invisibles para el
+tipo de comprobación que normalmente atraparía un error.
 
 **Un valor producido correctamente y consumido por nada se parece exactamente a
 un valor producido mal.** La posición interpolada, el conjunto de interés y el

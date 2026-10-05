@@ -15,7 +15,7 @@ keywords:
   - "web エクスポート"
 source:
   - ../game-dev/godot/dot-serve/README.md
-  - ../game-dev/godot/dot-server-setup-test/README.md
+  - ../game-dev/godot/dot-server-deploy/README.md
 ---
 
 [`dot-server`](/learn/godot/addons/dot-server) は非常に細かく設定できます。cvar、
@@ -81,10 +81,10 @@ RCON のリスナー自体が開きません。拒否されるのは、そのま
 
 ## TMC のサーバーツール
 
-`dot-server-setup-test` は、このコレクションがサーバー運営者の「コマンド 1 つで
+`dot-server-deploy` は、このコレクションがサーバー運営者の「コマンド 1 つで
 起動できるもの」にまとまる場所です。`dot-server` を起動し、設定を `cfg/*.yml` から
 読み、`content/` からゲームを読み込み、ブラウザークライアントを配信する Godot
-プロジェクトで、**自前のゲームは 1 本も持ちません**。
+プロジェクトで、**自前のゲームは 1 本も持ちません**。ロビーを含むすべてのゲームは、署名された [dot-cloud](/learn/godot/addons/dot-cloud) パックで、サーバーがコンテンツの配信元からインストールし、すべてのクライアントが接続時にダウンロードします。そのためクライアントは何に参加しても同じビルドで、新しいゲームに新しいクライアントは要りません。
 
 ```bash
 ./setup.sh              # ランタイムを探し、アドオンを配線し、./server を書き出す
@@ -93,7 +93,44 @@ RCON のリスナー自体が開きません。拒否されるのは、そのま
 docker compose up -d    # またはコンテナーで同じことを
 ```
 
-Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `server.cmd`。
+Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `.\server.ps1`。
+
+<Callout type="info" title="以前は `dot-server-setup-test` という名前でした">
+同じプロジェクトで、名前が分かりやすくなっただけです。古いチェックアウトや古い
+リンクをお持ちなら、現在は
+[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy)
+です。
+</Callout>
+
+### 取り違えやすい 3 つのスクリプト
+
+```bash
+./play.sh               # サーバーとブラウザークライアントを、ループバックで
+./play.sh playground    # 特定のゲームで開始する
+./play.sh games         # content/ に他に何があるか
+./play.sh status
+./play.sh down
+```
+
+`play.sh` は、1 行変えたのでそれを見たい開発者のためのものです。リンクを表示し、
+エクスポートが古ければ再ビルドし、Godot が生成した `index.html` を `embed.html`
+（`?server=` をクエリ文字列から受け取るほう）で上書きし、さらに **`dist/` にある公開済み
+パックが、その元になったゲームリポジトリより古いときは知らせてくれます**。アドオンは
+シンボリックリンクで常に最新ですが、パックはスナップショットなので、古くなるのは
+そこだけです。そして古いパックは問題なくマウントされ、動き、先週のゲームになります。
+
+`demo.sh` はもう一方です。サーバー 5 台、TLS を終端する nginx、公開ホスト、ゲーム用の
+別の登録可能ドメイン、そしてリスナーをインストールするための `sudo` の手順。誰かに
+プラットフォームを見せるには適していますが、1 行の変更には不向きです。
+
+どちらも `dev.sh` とは無関係です。`dev.sh` は**ウェブサイト**で、ゲームは一切起動
+しません。両者は並べて動かせます。
+
+<Callout type="warning" title="`play.sh` はループバックの HTTP 専用です">
+HTTPS のページは `ws://` ソケットを開けないため、この形はそこでしか動きません。
+ゲームをサイトの*中*にフレームで埋め込むのはまた別の話で、専用の登録可能ドメインが
+必要です。
+</Callout>
 
 ### 運営者に与えるもの
 
@@ -101,19 +138,22 @@ Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `server.cmd`�
   コメント付きの `cfg/` と `./server` を書き出します。すでにある設定ファイルを
   上書きすることは決してありません。RCON は無効の状態で出荷されます。
 - **設定は YAML**、テーマごとに分割されています。`server.yml`、`net.yml`、
-  `rcon.yml`、`auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`。
+  `rcon.yml`、`auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`、`security.yml`、`log.yml`。
   `dot-server` がコンソール変数として公開しているものは、すべてそのままの名前で
   書けます。
 - **フラグではなくロール。** dot-server の権限モデルは意図的にフラグですが、
   `groups.yml` がその翻訳です。運営者は `admin: [kick, ban, mute]` と書き、
   プレイヤーにはフラグが付きます。
-- **ゲームは実行時に読み込まれます。** `content/` の下にある `game.yml` を含む
-  ディレクトリーが 1 本のゲームで、`changelevel` はプレイヤーを接続したまま
-  切り替えます。
+- **ゲームは名前でインストールされます。** `--games g2gfast,playground`（または
+  `TMC_GAMES`）で、起動時にコンテンツの配信元から各ゲームのディスクリプターとパックを
+  取得します。`owner/name@version` は他の誰かが公開したゲームを指します。`content/` の
+  下にある `game.yml` を含むディレクトリーが 1 本のゲームで、`changelevel` は
+  プレイヤーを接続したまま切り替えます。
 - **次に何を遊ぶかはプレイヤーが決めます。** `content/` のゲームに対して
-  `!nominate`、`!rtv`、`!votefor`、`!timeleft`、`!nextmap`。
-  [`dot-vote`](/learn/godot/addons/dot-vote) 経由です。各ゲームは自分の
-  `game.yml` に自分の時間制限を持ちます。
+  `!game_nominate`、`!game_rtv`、`!game_vote`、`!game_timeleft`、`!game_next`。
+  [`dot-vote`](/learn/godot/addons/dot-vote) 経由です。接頭辞があるので、素の `!rtv` は
+  自分のマップを投票にかけるゲームに残されます。各ゲームは自分の `game.yml` に自分の
+  時間制限を持ちます。
 - **ブラウザークライアント。** `./server export-web` でビルドします。アドレスは
   `?server=` から来るので、1 回のエクスポートですべてのサーバーに使えます。
 
@@ -121,15 +161,15 @@ Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `server.cmd`�
 
 ```
 cfg/       運営者が編集するもの
-content/   サーバーが配信するもの
-data/      サーバーが書き込むもの — from_yaml.cfg、admins.json、bans.json、audit.jsonl
+content/   提供するゲーム — それぞれに game.yml。ゲーム本体はパック
+data/      サーバーが書き込むもの — from_yaml.cfg、admins.json、bans.json、audit.jsonl、パックのキャッシュ
+dist/      このマシンから公開したパックと、サーバーがインストール元にする索引
 host/      起動処理: YAML -> DotServer
-client/    クライアントの外枠。どのゲームのことも知りません
+client/    クライアントの外枠。ゲームを含まず、サーバーが指名したものをマウントする
 web/       ブラウザー用ビルドと、URL から ?server= を読むページ
 ```
 
-コンテナーは最初の 2 つを読み取り専用で、3 つ目を読み書き可でマウントし、systemd
-ユニットは `ReadWritePaths` をちょうど 1 つのディレクトリーに向けます。
+`cfg/` は編集するもの、`data/` はサーバーが書き込むものです。`content/` はサーバーがゲームをインストールするときに書き込まれます。`game.yml` は署名されたパックから出てくるからです。自前のコンテンツを持ち何もインストールしないマシンなら、読み取り専用でマウントできます。
 
 <Callout type="info" title="`data/from_yaml.cfg` はあなたの YAML が変換された結果です">
 設定が無視されているように見えたら、これを読んでください。YAML は
@@ -137,9 +177,7 @@ web/       ブラウザー用ビルドと、URL から ?server= を読むペー�
 このファイルがその翻訳結果です。
 </Callout>
 
-ここは、3 本のゲームが 1 つのビルドにコンパイルされ、プレイヤーが接続したまま
-切り替えられる唯一の場所であり、このコレクションの何かが初めてブラウザーで
-読み込まれた場所でもあります。
+ここは、コレクションのすべてのゲームがパックとして公開され、プレイヤーが接続したまま切り替えられる場所であり、このコレクションの何かが初めてブラウザーで読み込まれた場所でもあります。
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server)

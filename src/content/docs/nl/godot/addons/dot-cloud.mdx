@@ -3,6 +3,7 @@ title: dot-cloud
 description: Contentlevering tijdens het draaien voor Godot — ondertekende manifesten, een op inhoud geadresseerde cache, hervatbare parallelle downloads en aankoppelen onder een naamruimte per versie, ook in de browser.
 navTitle: dot-cloud
 order: 130
+badge: updated
 keywords:
   - "CDN"
   - "download"
@@ -14,6 +15,11 @@ keywords:
   - "handtekening"
   - "DLC"
   - "patchen"
+  - "requires.json"
+  - "api level"
+  - "namespace"
+  - "uid"
+  - "_imported"
 source:
   - ../game-dev/godot/dot-cloud/README.md
   - ../game-dev/godot/dot-cloud/CLAUDE.md
@@ -80,6 +86,45 @@ eigen server; hij waarschuwt elke keer.
 - **Quotabewustzijn.** Opslagschattingen van de browser, mobiele plafonds, en
   least-recently-used-verdringing die nooit content verdringt die in gebruik is.
 
+## Wat het aankoppelen controleert
+
+Tussen download en aankoppelen wordt een pakket aan vier regels gehouden, die elk
+voortkwamen uit een mislukking die iemand heeft gemeten:
+
+- **Zijn `requires.json` wordt eerst gelezen.** De scripts van een pakket
+  compileren tegen de add-ons van de host, dus een pakket dat een nieuwere add-on
+  nodig had, kon halverwege het laden niet parsen. Nu wordt het geweigerd voordat
+  er een script laadt, met *"Deze game heeft dot-net API-niveau 3 of nieuwer nodig;
+  deze client heeft niveau 2."* — zie
+  [add-on-API-niveaus](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
+  `host_role` noemt de kant.
+- **Een content-id mag zijn eigenaar noemen: `<owner>/<name>`.** `/` kan in geen
+  van beide helften voorkomen, dus een sleutel met bereik `alice/*` is exact — een
+  platgeslagen `alice_bob` kon `alice` + `bob_x` niet onderscheiden van
+  `alice_bob` + `x`. Elk segment moet een slug zijn; een kaal id, wat elk
+  first-partypakket is, valideert nog steeds.
+- **Eén id kan geen twee dingen betekenen.** Een tweede manifest voor dezelfde
+  `content_id@version` van een andere uitgever wordt geweigerd met
+  `CODE_CONFLICT` in plaats van de aankoppeling van het eerste te krijgen — een
+  pakket kan scripts bevatten, en "die van het eerste" is andermans code. Een
+  gelijk manifest dat opnieuw van de lijn wordt gelezen, blijft een goedkope no-op.
+- **Een aangekoppeld pakket registreert zijn eigen uid's, en mag die van niemand
+  anders overnemen.** Een geïmporteerde asset (een `.glb`, een `.png`) verwijst
+  per UID naar zijn buren, en dat overleeft het elders aankoppelen niet; de
+  aankoppelaar laat elke UID naar de aangekoppelde kopie wijzen. Een UID die de
+  host al heeft, wordt geweigerd en gemeld, anders zou elke `load("uid://…")` in de
+  build naar gedownloade content kunnen worden omgeleid.
+
+<Callout type="warning" title="Geïmporteerde uitvoer wordt onder `_imported/` geleverd, nooit onder `.godot/`">
+Een gepubliceerd pakket bevat de geïmporteerde uitvoer van de engine, en die
+stond vroeger op zijn echte pad, `.godot/imported/`. Linux leest dat probleemloos
+terug; **een webexport kan het niet**, en de hele game weigerde in de browser te
+starten. Uitvoer wordt nu onder `_imported/` geleverd, met elke `.import`-markering
+herschreven zodat hij noemt waar de uitvoer terecht is gekomen. Ontbrekende art in
+een aangekoppeld pakket verschijnt anders alleen als waarschuwingen — het pakket
+verifieert, koppelt aan en laadt zonder zijn texturen.
+</Callout>
+
 ## Waar een game aansluit
 
 <Params>
@@ -108,12 +153,14 @@ eigen server; hij waarschuwt elke keer.
   <Param name="DotCloudConfig">
     `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
     `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
-    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
-    `verify_before_mount`, `resume_downloads`. Gelaagd zoals elke `DotConfig`.
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `file_timeout_sec`, `cache_dir`,
+    `verify_before_mount`, `verify_cache_on_start`, `resume_downloads`, `enforce_mount_prefix`. Gelaagd zoals elke `DotConfig`.
+  </Param>
+  <Param name="manifest_url_template / manifest_url_fallbacks" type="DotCloudClient">
+    Waar een manifest wordt opgevraagd, vanuit een basis-URL, een id en een versie. De standaard is `{base}/{id}/{version}/manifest.json`, wat de site publiceert; `manifest_url_fallbacks` noemt andere vormen die daarna per basis worden geprobeerd, omdat één bron pakketten kan bevatten die onder twee indelingen zijn gepubliceerd en ze allemaal opnieuw publiceren geen voorwaarde is om te kunnen starten.
   </Param>
   <Param name="Signalen">
-    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
-    `content_ready`, `content_released`, `failed`.
+    Op `DotCloudClient`: `phase_changed`, `progress_changed`, `content_ready`, `content_released`, `failed`. Detail per bestand zit op de downloader: `file_finished`, `sync_finished`.
   </Param>
 </Params>
 
@@ -128,10 +175,15 @@ ensure(content_id: String, version: String) -> DotResult
 is_mounted(content_id: String, version: String) -> bool
 ```
 
+De meeste add-ons bereiken ze via `DotContent` in
+[`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent), de
+ene gedeelde aanroeper — waardoor avatar-onderdelen, props, NPC's, voertuigen en
+items die content noemen die nu ook echt ophalen.
+
 <Callout type="warning" title="Een afwezige cloudclient is een legitieme configuratie">
 Elke aanroepplek behandelt "geen `dot_cloud_client`" als "deze uitrol levert zijn
-content mee in de build" — wat voor de meeste ervan klopt, en dus niet te
-onderscheiden is van een client die zich niet heeft geregistreerd. Als een
+content mee in de build" — wat een legitieme keuze is voor je eigen game, en dus niet
+te onderscheiden is van een client die zich niet heeft geregistreerd. De eigen uitrol van TMC levert helemaal geen content mee in zijn build: elke game, elke geïmporteerde map en de lobby is een pakket dat deze add-on ophaalt. Als een
 geleverde map of game stilletjes niets doet, kijk dan eerst in de registry.
 </Callout>
 

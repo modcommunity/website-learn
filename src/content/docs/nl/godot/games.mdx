@@ -1,8 +1,9 @@
 ---
 title: Referentiegames
-description: De vijf games die uit de Dot-collectie zijn gebouwd — wat elk ervan moet aantonen, en waarom de naden tussen add-ons alleen in een game echt worden beproefd.
+description: De games en pakketten die uit de Dot-collectie zijn gebouwd — wat elk ervan moet aantonen, en waarom de naden tussen add-ons alleen in een game echt worden beproefd.
 navTitle: Referentiegames
 order: 50
+badge: updated
 keywords:
   - "voorbeeld"
   - "demo"
@@ -10,18 +11,30 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
+  - "game-simple-lobby"
+  - "mg-smash-copter"
+  - "mg-buses-from-hell"
+  - "zee-dot-weapons"
   - "lobby"
   - "deathmatch"
   - "sandbox"
 source:
   - ../game-dev/godot/NOTES.md
   - ../game-dev/CLAUDE.md
+  - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Vijf games, en het zijn geen demonstraties. De testsuite van elke add-on draait
-die add-on **met de andere afwezig**, dus de verbindingen ertussen bestaan alleen
-in een game — en volgens de les die deze collectie steeds herhaalt: *een codepad
-dat maar één uitrolvorm bereikt, is een codepad dat niets heeft gedraaid.*
+Acht projecten worden met de collectie meegeleverd — vijf referentiegames, twee
+minigames en een wapenpakket — en het zijn geen demonstraties. De testsuite van
+elke add-on draait die add-on met de andere afwezig, dus de verbindingen ertussen
+bestaan alleen in een game, en een codepad dat maar één uitrolvorm bereikt, is een
+codepad dat niets heeft gedraaid.
+
+Ze staan onder [`gamemann`](https://github.com/gamemann) en niet onder de
+organisatie waar de add-ons in zitten; zie [het overzicht](/learn/godot) voor
+waarom die splitsing een regel is.
+
+**Elk ervan wordt geleverd, niet ingebouwd.** Elke game, de lobby inbegrepen, wordt gepubliceerd als een ondertekend [`dot-cloud`](/learn/godot/addons/dot-cloud)-pakket; een server installeert degene die hij moet aanbieden, en de client van een speler downloadt het pakket bij het joinen. De clientschil bevat helemaal geen game, dus het is dezelfde build ongeacht waarmee hij verbindt, en een nieuwe game bereikt spelers zonder nieuwe client. Daarom verwijst elke game hier naar zijn eigen scripts met een pad in plaats van met `class_name`: de `class_name`-globals van een aangekoppeld pakket worden nooit geregistreerd, dus een game die op de andere manier is geschreven koppelt aan, laadt zijn scènes, en draait geen van zijn code.
 
 <Callout type="info" title="Hier zitten de bugs">
 De gameplay-add-ons door één proces halen leverde zeven bugs op, zes daarvan in
@@ -31,13 +44,21 @@ echte browserclient tegen een echte server openen leverde er daarna nog zeven op
 Het patroon houdt elke keer stand.
 </Callout>
 
+Twee add-ons worden voor **elke** game gebouwd door
+[TMC's servertool](/learn/godot/tooling#tmcs-servertool) en niet door een game:
+een [`dot-replay`](/learn/godot/addons/dot-replay)-ring op elke server
+(`replay save` in de console, en de hash van een clip wordt bij elke kick en ban
+bewaard), en een [`dot-friends`](/learn/godot/addons/dot-friends)-client naast de
+partyclient in de geëxporteerde clientschil, die zichzelf uitschakelt totdat de
+vriendenroutes van de site zijn uitgerold. Geen enkele game linkt er zelf naar.
+
 ## game-arena
 
 **Een 3D-arena-deathmatch met dev-textures. De referentiegame.** Hij bestaat om
 te bewijzen dat de add-ons samenwerken, om te laten zien hoe de bruggen eruitzien,
 en om datgene te zijn waar een nieuwe game van wordt overgeschreven.
 
-Gebruikt `dot-core`, `dot-fps-controller`, `dot-combat`, `dot-loadout`,
+Gebruikt `dot-core`, `dot-player-controller`, `dot-combat`, `dot-loadout`,
 `dot-match`, `dot-ui`, `dot-server` en `dot-net`.
 
 Vier bestanden doen ertoe, en de reden dat elk ervan in de *game* zit en niet in
@@ -77,7 +98,7 @@ samen draaien.
 
 Gebruikt `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
 `dot-user-avatar`, `dot-loadout`, `dot-platform` en `dot-cloud` — alles behalve
-`dot-fps-controller` en `dot-combat`.
+`dot-player-controller` en `dot-combat`. Eén pakket bevat vijf modi — classic, frenzy, gauntlet, warrens en reef — elk met een eigen `game.yml` over dezelfde content.
 
 Het is ook **de kortste route naar de browserkolom**: klein, heeft geen threads
 nodig, en het beproeft elke browserbeperking zonder dat er iets anders tussen
@@ -98,7 +119,7 @@ springparcours geen bewegingsgenre is, en omdat het laat zien dat
 [`dot-timer`](/learn/godot/addons/dot-timer) niet alleen iets voor surf en
 bunny-hop is.
 
-Gebruikt `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-props`,
+Gebruikt `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`,
 `dot-leaderboard`, `dot-ui` en `dot-server`.
 
 <Callout type="warning" title="Entiteiten en wapens zijn scripts die bij PAD worden genoemd">
@@ -106,21 +127,19 @@ Niet bij `class_name`. Een aangekoppeld `dot-cloud`-pakket kan geen
 `class_name`-globals registreren — dat is gemeten — dus binnen een pakket faalt
 elke typeverwijzing tussen bestanden bij het compileren terwijl het pakket
 aankoppelt en de scènes laden. **Een pad is de enige vorm die een geleverde
-entiteit kan aannemen**, en deze game is met opzet zo geschreven.
+entiteit kan aannemen**, en dit was de eerste game die zo is geschreven; nu is elke game dat.
 </Callout>
 
-Het is de enige plek waar `dot-fps-controller`, `dot-timer`, `dot-map`,
+Het is de enige plek waar `dot-player-controller`, `dot-timer`, `dot-map`,
 `dot-props`, `dot-leaderboard`, `dot-ui` en `dot-server` in één proces draaien.
 Zijn suite heeft negen bugs gevonden, drie daarvan in andere repositories;
 screenshots vonden er nog vier.
 
 ## game-g2gfast
 
-**De bunny-hop- en surftimerserver, in de Counter-Strike-vorm.** Source-eenheden
-en -cvars, het gezichtsveld van Source, eerste en derde persoon, en elke speler
-getekend als avatar — de eigen avatar van het platform, of een standaardexemplaar.
+**De bunny-hop- en surftimerserver, in de vorm van de bewegingsservers van de rondegebaseerde competitieve shooters.** Hun eenheden, cvars en gezichtsveld, eerste en derde persoon, en elke speler getekend als avatar — de eigen avatar van het platform, of een standaardexemplaar. Elke geïmporteerde map is een eigen pakket, opgehaald wanneer de server ernaar wisselt, zodat het gamepakket klein blijft en een nieuwe map geen nieuwe game vraagt.
 
-Gebruikt `dot-fps-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
+Gebruikt `dot-player-controller`, `dot-timer`, `dot-map`, `dot-leaderboard`,
 `dot-server`, `dot-user-avatar` en `dot-ui`.
 
 ```
@@ -152,12 +171,61 @@ dat nog toelating, lidmaatschap, replicatie, voorspelling en chat beproeft.
 Een server zonder geladen game is iets volstrekt legitiems en `dot-server` heeft
 dat altijd ondersteund; wat ontbrak was iets om naar te kijken, en wie verbindt en
 niets ziet, kan dat niet onderscheiden van een kapotte server. Het is ook de game
-die een generieke browserclient als eerste downloadt.
+die een generieke browserclient als eerste downloadt — als pakket, net als elke andere, want een lobby die in de client is ingebouwd, is een lobby waarvoor je een nieuwe client nodig hebt om hem te wijzigen.
 
-## Wat het draaien ervan heeft geleerd
+## mg-smash-copter
 
-Vier lessen komen steeds terug, en het loont ze te kennen voor je je eigen brug
-schrijft.
+**Een minigame waarvan de tegenstander de vloer is.** Twee tot zes teams staan op
+platforms die op enkele pilaren balanceren, veertig meter hoog, terwijl een kanon
+in het midden dingen naar hen gooit. Wie nog overeind staat als de klok afloopt,
+wordt in een hoek van de lucht gegooid met een wapen dat hij niet koos, en het
+laatste team dat overeind staat wint.
+
+Eerste en derde persoon. Gebruikt `dot-props` voor alles wat het kanon gooit,
+`dot-vehicle` voor de chopper, `dot-combat` voor gezondheid en hitregistratie,
+`dot-match` voor de ronde en de kanten, `dot-player-controller`, `dot-net`,
+`dot-game` voor de serverbedrading, en `zee-dot-weapons` voor de zevenentwintig
+wapens waarmee de tweede helft wordt uitgevochten. `dot-spectate`, `dot-audio`,
+`dot-stats` en `dot-achievements` kwamen later — het is laatste-team-overeind, en
+een uitgeschakelde speler had niets om naar te kijken. Hij weigert `dot-settings`
+op schrift: zijn client heeft geen scherm om er een op te zetten.
+
+## mg-buses-from-hell
+
+**De asymmetrische.** Twee chauffeurs in bussen tegen alle anderen te voet, in een
+ommuurde zandkom met kratten en exploderende vaten erin. De chauffeurs proberen de
+lopers te overrijden; de lopers hebben een hamer, en de hamer doet niemand pijn —
+hij breekt kratten en duwt ze weg. Dat is het hele spel.
+
+Gebruikt `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
+`dot-player-controller`, `dot-net` en `dot-game`, plus `dot-spectate`,
+`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings` en `dot-fx` (voor de
+exploderende vaten). Hij ontkoppelde `dot-spawn`, `dot-team` en `dot-physics`, elk
+genoemd en nooit gebruikt. Het is ook het project waarin
+[dot-entity](/learn/godot/addons/dot-entity) een lek vond: een
+`_next_entity_id`-teller zonder enige `forget()`, waardoor er een `DotHealth` bleef
+staan voor elke speler die ooit had gejoind, elk wijzend naar een vrijgegeven node.
+
+## zee-dot-weapons
+
+**Geen game — een wapenpakket.** Het is de helft die
+[`dot-weapon`](/learn/godot/addons/dot-weapon) bewust weglaat: de viewmodels, de
+wereldmodellen, de animatie en de art, met zevenentwintig wapens die al op zijn
+catalogus zijn gebouwd.
+
+Eerstepersoons-viewmodels, derdepersoons-wereldmodellen, procedurele animatie, en
+de replicatie die ervoor zorgt dat het wapen van een andere speler er op jouw
+scherm goed uitziet. De art is Kenney's Blaster Kit met melee uit de Weapon Pack
+en Survival Kit — allemaal CC0, allemaal meegeleverd, niets te downloaden.
+
+## dot-game-template
+
+**Waar een nieuwe game begint.** Niet een van de acht: hij leeft bij de add-ons, onder [`modcommunity`](https://github.com/modcommunity/dot-game-template), omdat een externe ontwikkelaar hem kopieert. Het is **Coin Grab**, een kleine netwerk-2D-game op [`dot-game`](/learn/godot/addons/dot-game) — voorspeld, server-autoritatief, en zonder `class_name` geschreven zodat hij vanaf de eerste commit als geleverd pakket werkt. `tools/rename.sh` maakt hem de jouwe. Bij een `v*`-tag voegt zijn releaseworkflow de game toe als `-pack.zip`, en de site ondertekent en publiceert dat als `<je sitegebruikersnaam>/<repository>`, de naam waarmee een server het installeert. De servertool koppelt zijn verpakte release bij elke controle aan, zodat de template wordt geverifieerd zoals de game van een vreemde dat zou worden.
+
+## Lessen voor je eigen bruggen
+
+Vier fouten keren terug in deze games, en alle vier zijn onzichtbaar voor het soort
+controle dat een bug normaal zou vangen.
 
 **Een waarde die correct wordt geproduceerd en door niets wordt gelezen, ziet er
 precies zo uit als een verkeerd geproduceerde waarde.** De geïnterpoleerde

@@ -3,6 +3,7 @@ title: dot-cloud
 description: Inhaltsauslieferung zur Laufzeit für Godot — signierte Manifeste, ein inhaltsadressierter Cache, fortsetzbare parallele Downloads und versionsbasiertes Einhängen unter eigenem Namensraum, auch im Browser.
 navTitle: dot-cloud
 order: 130
+badge: updated
 keywords:
   - "CDN"
   - "Download"
@@ -14,6 +15,11 @@ keywords:
   - "Signatur"
   - "DLC"
   - "Patchen"
+  - "requires.json"
+  - "api level"
+  - "namespace"
+  - "uid"
+  - "_imported"
 source:
   - ../game-dev/godot/dot-cloud/README.md
   - ../game-dev/godot/dot-cloud/CLAUDE.md
@@ -81,6 +87,46 @@ eigenen Server kannst du es abschalten; es warnt jedes Mal.
 - **Kontingentbewusstsein.** Browser-Speicherschätzungen, mobile Obergrenzen und
   eine LRU-Verdrängung, die nie Inhalt verdrängt, der gerade benutzt wird.
 
+## Was das Einhängen prüft
+
+Zwischen Download und Einhängen wird ein Paket an vier Regeln gemessen, die jede
+aus einem Fehler stammen, den jemand gemessen hat:
+
+- **Seine `requires.json` wird zuerst gelesen.** Die Skripte eines Pakets
+  kompilieren gegen die Addons des Hosts, sodass eines, das ein neueres Addon
+  brauchte, früher mitten im Laden beim Parsen scheiterte. Jetzt wird es
+  abgelehnt, bevor ein Skript lädt, mit *„This game needs dot-net API level 3 or
+  newer; this client has level 2.“* — siehe
+  [Addon-API-Levels](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
+  `host_role` benennt die Seite.
+- **Eine Content-Id darf ihren Eigentümer nennen: `<owner>/<name>`.** `/` kann in
+  keiner der beiden Hälften vorkommen, also ist ein Schlüssel mit Geltungsbereich
+  `alice/*` exakt — ein abgeflachtes `alice_bob` könnte `alice` + `bob_x` nicht
+  von `alice_bob` + `x` unterscheiden. Jedes Segment muss ein Slug sein; eine
+  bloße Id, wie sie jedes Erstanbieter-Paket hat, validiert weiterhin.
+- **Eine Id kann nicht zwei Dinge bedeuten.** Ein zweites Manifest für dieselbe
+  `content_id@version` von einem anderen Herausgeber wird mit `CODE_CONFLICT`
+  abgelehnt, statt den Mount des ersten zu bekommen — ein Paket kann Skripte
+  enthalten, und „das des ersten“ ist der Code von jemand anderem. Ein gleiches,
+  erneut von der Leitung gelesenes Manifest ist weiterhin ein billiges No-op.
+- **Ein eingehängtes Paket registriert seine eigenen UIDs und darf keine fremden
+  übernehmen.** Ein importiertes Asset (eine `.glb`, eine `.png`) verweist per UID
+  auf seine Geschwister, und die überlebt das Einhängen an anderer Stelle nicht;
+  der Mounter richtet jede UID auf die eingehängte Kopie. Eine UID, die der Host
+  bereits hält, wird abgelehnt und gemeldet, sonst könnte jedes
+  `load("uid://…")` im Build auf heruntergeladenen Inhalt umgebogen werden.
+
+<Callout type="warning" title="Importierte Ausgaben werden unter `_imported/` ausgeliefert, nie unter `.godot/`">
+Ein veröffentlichtes Paket trägt die importierten Ausgaben der Engine, und die
+lagen früher an ihrem echten Pfad, `.godot/imported/`. Linux liest das einwandfrei
+zurück; **ein Web-Export kann es nicht**, und das ganze Spiel weigerte sich, im
+Browser zu starten. Ausgaben werden jetzt unter `_imported/` ausgeliefert, und
+jeder `.import`-Marker wird so umgeschrieben, dass er nennt, wohin die Ausgabe
+gekommen ist. Fehlende Grafik in einem eingehängten Paket zeigt sich sonst nur
+als Warnungen — das Paket verifiziert, hängt sich ein und lädt, ohne seine
+Texturen.
+</Callout>
+
 ## Wo sich ein Spiel einklinkt
 
 <Params>
@@ -110,12 +156,14 @@ eigenen Server kannst du es abschalten; es warnt jedes Mal.
   <Param name="DotCloudConfig">
     `trusted_keys`, `require_signed_manifests`, `cache_bytes`,
     `mobile_cache_bytes`, `web_quota_fraction`, `parallel_downloads`,
-    `max_attempts_per_file`, `throttle_bytes_per_sec`, `mount_root`,
-    `verify_before_mount`, `resume_downloads`. Geschichtet wie jede `DotConfig`.
+    `max_attempts_per_file`, `throttle_bytes_per_sec`, `file_timeout_sec`, `cache_dir`,
+    `verify_before_mount`, `verify_cache_on_start`, `resume_downloads`, `enforce_mount_prefix`. Geschichtet wie jede `DotConfig`.
+  </Param>
+  <Param name="manifest_url_template / manifest_url_fallbacks" type="DotCloudClient">
+    Wo ein Manifest angefragt wird, aus einer Basis-URL, einer Id und einer Version. Der Standard ist `{base}/{id}/{version}/manifest.json`, was die Seite veröffentlicht; `manifest_url_fallbacks` listet weitere Formen, die danach je Basis versucht werden, weil ein Ursprung Pakete in zwei Layouts halten kann und das erneute Veröffentlichen aller keine Voraussetzung fürs Starten ist.
   </Param>
   <Param name="Signale">
-    `phase_changed`, `progress_changed`, `file_finished`, `sync_finished`,
-    `content_ready`, `content_released`, `failed`.
+    Auf `DotCloudClient`: `phase_changed`, `progress_changed`, `content_ready`, `content_released`, `failed`. Details je Datei liegen am Downloader: `file_finished`, `sync_finished`.
   </Param>
 </Params>
 
@@ -130,10 +178,15 @@ ensure(content_id: String, version: String) -> DotResult
 is_mounted(content_id: String, version: String) -> bool
 ```
 
+Die meisten Addons erreichen sie über `DotContent` in
+[`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent), den
+einen gemeinsamen Aufrufer — wodurch Avatar-Teile, Props, NPCs, Fahrzeuge und
+Gegenstände, die Inhalt benennen, ihn jetzt tatsächlich holen.
+
 <Callout type="warning" title="Ein fehlender Cloud-Client ist eine legitime Konfiguration">
 Jede Aufrufstelle behandelt „kein `dot_cloud_client`“ als „diese Bereitstellung
-liefert ihre Inhalte im Build mit“ — was für die meisten stimmt und daher nicht
-von einem Client zu unterscheiden ist, der sich nicht registriert hat. Wenn eine
+liefert ihre Inhalte im Build mit“ — was für das eigene Spiel eine legitime Wahl ist und daher nicht
+von einem Client zu unterscheiden ist, der sich nicht registriert hat. Die eigene Bereitstellung von TMC liefert überhaupt keinen Inhalt im Build mit: Jedes Spiel, jede importierte Karte und die Lobby ist ein Paket, das dieses Addon holt. Wenn eine
 ausgelieferte Karte oder ein ausgeliefertes Spiel still gar nichts tut, sieh
 zuerst in die Registry.
 </Callout>

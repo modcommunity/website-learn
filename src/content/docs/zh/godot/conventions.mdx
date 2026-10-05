@@ -18,7 +18,7 @@ source:
   - ../game-dev/godot/dot-core/README.md
 ---
 
-这些规则在每个插件里都成立。破坏其中一条，就是横跨二十二个仓库的破坏性变更，所以
+这些规则在每个插件里都成立。破坏其中一条，就是横跨五十八个插件以及建立在它们之上的七个游戏的破坏性变更，所以
 在对其中任何一个写代码之前，值得先知道它们。
 
 ## 用 `DotRegistry`，不用自动加载
@@ -180,9 +180,8 @@ var profile: DotUserProfile = res.value
 <Callout type="warning" title="挂载资源包里的 `class_name` 全局名不会被注册">
 实测：在分发的 `.pck` 内部，所有跨文件的类型引用都编译失败。于是资源包挂上了、场景
 也加载了，而里面每个脚本都是死的。`preload("res://x.gd")` 和 `extends "res://x.gd"`
-两种写法都能用。**这决定了一个可分发的游戏能长成什么样**——看
-[game-playground](/learn/godot/games#game-playground)，它的实体和武器正是因为这个
-原因才用*路径*来命名脚本。
+两种写法都能用。**这决定了一个可分发的游戏能长成什么样**，而这套合集里的每个游戏都是分发的：
+正是因为这个原因，每个游戏都用*路径*引用自己的脚本。见[参考游戏](/learn/godot/games)。
 </Callout>
 
 ## 这套合集为之付过学费的 GDScript 陷阱

@@ -3,6 +3,7 @@ title: dot-cloud
 description: Godot 的运行时内容分发——签名清单、按内容寻址的缓存、可续传的并行下载，以及按版本划分命名空间的挂载；浏览器上同样可用。
 navTitle: dot-cloud
 order: 130
+badge: updated
 keywords:
   - "CDN"
   - "下载"
@@ -14,6 +15,11 @@ keywords:
   - "签名"
   - "DLC"
   - "打补丁"
+  - "requires.json"
+  - "api level"
+  - "namespace"
+  - "uid"
+  - "_imported"
 source:
   - ../game-dev/godot/dot-cloud/README.md
   - ../game-dev/godot/dot-cloud/CLAUDE.md
@@ -72,6 +78,32 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 - **配额意识。** 浏览器的存储估算、移动端上限，以及绝不淘汰正在使用中的内容的
   最近最少使用淘汰策略。
 
+## 挂载时检查什么
+
+在下载和挂载之间，资源包要通过四条规则，每一条都来自有人实测过的失败：
+
+- **先读它的 `requires.json`。** 资源包里的脚本是针对宿主的插件编译的，所以需要更新插件的
+  资源包过去会在加载途中解析失败。现在它在任何脚本加载之前就被拒绝，提示是
+  *“This game needs dot-net API level 3 or newer; this client has level 2.”*——见
+  [插件 API 级别](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi)。
+  `host_role` 指明是哪一侧。
+- **内容 id 可以带上所有者：`<owner>/<name>`。** 两半里都不可能出现 `/`，所以作用域为
+  `alice/*` 的密钥是精确的——压扁成 `alice_bob` 的写法分不清 `alice` + `bob_x` 和
+  `alice_bob` + `x`。每一段都必须是 slug；不带所有者的 id（每个第一方资源包都是）仍然通过校验。
+- **一个 id 不能指两样东西。** 同一个 `content_id@version` 若有来自不同发布者的第二份清单，
+  会以 `CODE_CONFLICT` 被拒绝，而不是拿到第一份的挂载——资源包里可以有脚本，而“第一份”
+  是别人的代码。从网络上重新读到的相同清单仍然是一次廉价的空操作。
+- **挂载的资源包注册自己的 uid，且不得占用别人的。** 导入的资产（`.glb`、`.png`）通过 UID
+  引用它的同伴，而 UID 在被挂载到别处后无法保持；挂载器会把每个 UID 指向挂载后的副本。
+  宿主已持有的 UID 会被拒绝并上报，否则构建里每个 `load("uid://…")` 都可能被重新指向下载来的内容。
+
+<Callout type="warning" title="导入产物放在 `_imported/` 下发布，绝不放在 `.godot/` 下">
+发布的资源包带有引擎的导入产物，它们过去放在真实路径 `.godot/imported/` 下。Linux 读回来
+完全没问题；**web 导出读不了**，整个游戏在浏览器里拒绝启动。现在产物放在 `_imported/` 下发布，
+每个 `.import` 标记都被改写为指向产物落地的位置。否则，挂载的资源包里缺失的美术只会表现为
+警告——资源包校验通过、挂载成功、加载完成，只是缺了贴图。
+</Callout>
+
 ## 游戏从哪里接入
 
 <Params>
@@ -97,12 +129,14 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
   <Param name="DotCloudConfig">
     `trusted_keys`、`require_signed_manifests`、`cache_bytes`、
     `mobile_cache_bytes`、`web_quota_fraction`、`parallel_downloads`、
-    `max_attempts_per_file`、`throttle_bytes_per_sec`、`mount_root`、
-    `verify_before_mount`、`resume_downloads`。像所有 `DotConfig` 一样分层。
+    `max_attempts_per_file`、`throttle_bytes_per_sec`、`file_timeout_sec`、`cache_dir`、
+    `verify_before_mount`、`verify_cache_on_start`、`resume_downloads`、`enforce_mount_prefix`。像所有 `DotConfig` 一样分层。
+  </Param>
+  <Param name="manifest_url_template / manifest_url_fallbacks" type="DotCloudClient">
+    向哪里请求清单，由基础 URL、id 和版本拼出。默认是 `{base}/{id}/{version}/manifest.json`，也就是站点发布的形式；`manifest_url_fallbacks` 列出在它之后、按每个基础地址依次尝试的其他形式，因为同一个源上可能存放着以两种布局发布的资源包，而重新发布全部资源包并不是启动的前提。
   </Param>
   <Param name="信号">
-    `phase_changed`、`progress_changed`、`file_finished`、`sync_finished`、
-    `content_ready`、`content_released`、`failed`。
+    在 `DotCloudClient` 上：`phase_changed`、`progress_changed`、`content_ready`、`content_released`、`failed`。逐文件的细节在下载器上：`file_finished`、`sync_finished`。
   </Param>
 </Params>
 
@@ -116,9 +150,13 @@ ensure(content_id: String, version: String) -> DotResult
 is_mounted(content_id: String, version: String) -> bool
 ```
 
+大多数插件是通过 [`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent)
+里的 `DotContent` 来调用它们的——那是唯一共享的调用方，也正是靠它，点名了内容的形象部件、
+道具、NPC、载具和物品现在才真的会去获取它。
+
 <Callout type="warning" title="没有云端客户端本身也是一种合法配置">
 每一处调用点都把“没有 `dot_cloud_client`”理解为“这套部署把内容打进了构建里”——对
-其中大多数来说这确实是真的，因此它和一个没能注册上的客户端是无法区分的。当一张
+你自己的游戏来说这是一种合法的选择，因此它和一个没能注册上的客户端是无法区分的。TMC 自己的部署在构建里根本不带任何内容：每个游戏、每张导入的地图和大厅，都是由这个插件获取的资源包。当一张
 可分发的地图或一个可分发的游戏悄无声息地什么都不做时，先去看注册表。
 </Callout>
 

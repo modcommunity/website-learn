@@ -15,7 +15,7 @@ keywords:
   - "web 导出"
 source:
   - ../game-dev/godot/dot-serve/README.md
-  - ../game-dev/godot/dot-server-setup-test/README.md
+  - ../game-dev/godot/dot-server-deploy/README.md
 ---
 
 [`dot-server`](/learn/godot/addons/dot-server) 可配置得非常深：cvar、flag、
@@ -73,9 +73,9 @@ dotserve -- +sv_cheats 1 +map dm_arena
 
 ## TMC 的服务器工具
 
-`dot-server-setup-test` 是这套合集汇聚成“服主用一条命令就能启动的东西”的地方。它是
+`dot-server-deploy` 是这套合集汇聚成“服主用一条命令就能启动的东西”的地方。它是
 一个 Godot 项目，负责启动 `dot-server`、从 `cfg/*.yml` 读配置、从 `content/` 加载
-游戏，并提供一个浏览器客户端——而且它**自己不带任何游戏**。
+游戏，并提供一个浏览器客户端——而且它**自己不带任何游戏**。每个游戏，包括大厅在内，都是一个签名的 [dot-cloud](/learn/godot/addons/dot-cloud) 资源包，由服务器从内容源安装、由每个客户端在连接时下载，所以不管加入哪个游戏，客户端都是同一份构建，新增游戏也不需要新客户端。
 
 ```bash
 ./setup.sh              # 找到运行时、接好插件、写出 ./server
@@ -84,23 +84,49 @@ dotserve -- +sv_cheats 1 +map dm_arena
 docker compose up -d    # 或者在容器里做同样的事
 ```
 
-Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `server.cmd`。
+Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `.\server.ps1`。
+
+<Callout type="info" title="它以前叫 `dot-server-setup-test`">
+还是同一个项目，只是名字更清楚。如果你有旧的检出副本或旧链接，它现在是
+[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy)。
+</Callout>
+
+### 三个容易混淆的脚本
+
+```bash
+./play.sh               # 在回环地址上启动一台服务器和浏览器客户端
+./play.sh playground    # 从某个特定游戏开始
+./play.sh games         # content/ 里还有什么
+./play.sh status
+./play.sh down
+```
+
+`play.sh` 是给改了一行代码、想看看效果的开发者用的。它会打印一个链接，在导出过期时重新构建导出，
+把 `embed.html` 复制到 Godot 生成的 `index.html` 上（后者从查询字符串里读取 `?server=`），
+并且**在 `dist/` 里已发布的资源包比它构建来源的游戏仓库更旧时告诉你**。插件是软链接，永远是最新的；
+资源包是快照，所以它是唯一会过期的部分，而过期的资源包照样能干净地挂载、运行，只是上周的游戏。
+
+`demo.sh` 是另一个：五台服务器、由 nginx 终结 TLS、一个公网主机、一个给游戏用的独立可注册域名，
+以及一个安装监听器的 `sudo` 步骤。适合给别人演示这个平台，不适合改一行代码。
+
+两者都和 `dev.sh` 无关，后者是**网站**，完全不启动任何游戏。它们可以并排运行。
+
+<Callout type="warning" title="`play.sh` 只用回环 HTTP">
+HTTPS 页面不能打开 `ws://` 套接字，所以这种形态只在这里可用，别处都不行。把游戏框在站点
+*里面*又是另一回事，需要它自己的可注册域名。
+</Callout>
 
 ### 它给服主的东西
 
 - **一条命令就能启动。** `setup.sh` 会找到 Godot 运行时、接好插件、写出一份带注释的
   `cfg/`，并生成 `./server`。它绝不覆盖已经存在的配置文件。RCON 默认是关的。
 - **配置写在 YAML 里**，按主题拆开——`server.yml`、`net.yml`、`rcon.yml`、
-  `auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`。凡是 `dot-server` 以控制台
+  `auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`、`security.yml`、`log.yml`。凡是 `dot-server` 以控制台
   变量形式暴露出来的东西，都能用它自己的名字写进去。
 - **是角色，不是 flag。** dot-server 的权限模型刻意是 flag；`groups.yml` 就是那层翻译，
   于是服主写 `admin: [kick, ban, mute]`，玩家就拿到对应的 flag。
-- **游戏在运行时加载。** `content/` 下任何一个含有 `game.yml` 的目录就是一个游戏，
-  `changelevel` 能在玩家仍然在线的情况下切换它们。
-- **下一局玩什么由玩家决定。** 对 `content/` 里的游戏使用 `!nominate`、`!rtv`、
-  `!votefor`、`!timeleft`、`!nextmap`，走的是
-  [`dot-vote`](/learn/godot/addons/dot-vote)。每个游戏在自己的 `game.yml` 里有自己的
-  时间限制。
+- **按名字安装游戏。** `--games g2gfast,playground`（或 `TMC_GAMES`）会在启动时从内容源获取每个游戏的描述文件和资源包；`owner/name@version` 指的是别人发布的游戏。`content/` 下任何一个含有 `game.yml` 的目录就是一个游戏，`changelevel` 能在玩家仍然在线的情况下切换它们。
+- **下一局玩什么由玩家决定。** 对 `content/` 里的游戏使用 `!game_nominate`、`!game_rtv`、`!game_vote`、`!game_timeleft`、`!game_next`，走的是 [`dot-vote`](/learn/godot/addons/dot-vote)。这个前缀把不带前缀的 `!rtv` 留给自己对地图投票的游戏。每个游戏在自己的 `game.yml` 里有自己的时间限制。
 - **一个浏览器客户端。** `./server export-web` 负责构建；一次导出就能服务所有服务器，
   因为地址来自 `?server=`。
 
@@ -108,22 +134,22 @@ Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `server.cmd`。
 
 ```
 cfg/       服主编辑的东西
-content/   服务器提供的东西
-data/      服务器写入的东西 —— from_yaml.cfg、admins.json、bans.json、audit.jsonl
+content/   它提供的游戏 —— 每个一个 game.yml；游戏本身是一个资源包
+data/      服务器写入的东西 —— from_yaml.cfg、admins.json、bans.json、audit.jsonl、资源包缓存
+dist/      从这台机器发布的资源包，以及服务器据以安装的索引
 host/      启动流程：YAML -> DotServer
-client/    客户端外壳。它不认识任何一个游戏
+client/    客户端外壳。它不含任何游戏；服务器点名什么，它就挂载什么
 web/       浏览器构建，以及从 URL 里读取 ?server= 的那个页面
 ```
 
-容器把前两个以只读方式挂载、把第三个以读写方式挂载，而 systemd unit 把
-`ReadWritePaths` 指向恰好一个目录。
+`cfg/` 是你编辑的，`data/` 是服务器写入的。`content/` 在服务器安装游戏时被写入，因为 `game.yml` 来自签名的资源包；自带内容、不安装任何东西的机器可以把它以只读方式挂载。
 
 <Callout type="info" title="`data/from_yaml.cfg` 就是你的 YAML 变成的样子">
 当某个设置看起来被忽略了，就读它。这里的 YAML 是**盖在 dot-server 自身词汇之上的一层
 外观**，而不是第二套词汇，而这个文件就是翻译结果。
 </Callout>
 
-它同时也是三个游戏被编译进同一份构建、并在玩家在线时互相切换的唯一场所，也是这套
+它同时也是这套合集里每个游戏都被发布为资源包、并在玩家在线时互相切换的地方，也是这套
 合集里任何东西第一次在浏览器中被加载的地方。
 
 <Related>

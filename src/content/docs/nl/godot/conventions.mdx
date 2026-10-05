@@ -19,8 +19,8 @@ source:
 ---
 
 Deze regels gelden in elke add-on. Er één breken is een breaking change over
-tweeëntwintig repositories heen, dus het loont ze te kennen voor je tegen een
-ervan aan schrijft.
+achtenvijftig add-ons en de zeven games die erop gebouwd zijn, dus het loont ze te
+kennen voor je tegen een ervan aan schrijft.
 
 ## `DotRegistry` in plaats van autoloads
 
@@ -204,9 +204,7 @@ wat ook.
 Gemeten: binnen een geleverde `.pck` faalt elke typeverwijzing tussen bestanden
 bij het compileren, dus het pakket koppelt aan, de scènes laden, en elk script
 erin is dood. `preload("res://x.gd")` en `extends "res://x.gd"` werken allebei.
-**Dit bepaalt hoe een geleverde game eruit mag zien** — zie
-[game-playground](/learn/godot/games#game-playground), waarvan de entiteiten en
-wapens precies hierom scripts zijn die bij *pad* worden genoemd.
+**Dit bepaalt hoe een geleverde game eruit mag zien**, en elke game in de collectie wordt geleverd: elk verwijst precies hierom naar zijn eigen scripts met een *pad*. Zie [Referentiegames](/learn/godot/games).
 </Callout>
 
 ## GDScript-valkuilen waar de collectie voor betaald heeft

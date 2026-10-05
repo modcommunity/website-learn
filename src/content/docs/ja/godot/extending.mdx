@@ -58,7 +58,11 @@ source:
 | BAN の保存先（共有 DB、HTTP サービス） | `DotBanManager` に付ける `DotBanStore` のサブクラス |
 | サイトのグループ → サーバー権限 | `DotAuthAdminSource`、または `lookup()` / `source_name()` を持つ任意のオブジェクト |
 | サーバーのコマンドとふるまい | `DotModule` のサブクラス、または `DotConsole.command` |
-| サーバークエリがゲームについて何を返すか | `DotQueryProvider`、または `DotModule.add_query_provider` |
+| サーバークエリがゲームについて何を返すか | `dot_query_source` 上の `DotQueryProvider` サブクラス、または `DotModule.add_query_provider` |
+| サーバーが何を罰し、どこまでエスカレートするか | JSON またはコードで組み立てる `DotSecurityRule` ドキュメント |
+| サーバーがどこから BAN リストを読むか | `DotBanFeeds` 上の `DotBanFeed` エントリー。`dot_ban_source` に連結される |
+| 移動の主張が可能かどうか | `DotAntiCheat.movement_reference`。1 ティックを再シミュレーションする `Callable` |
+| 世界をどう照らすか、このマシンがどこまで描くか | `DotLightRig` が適用する `DotLightDocument` と `DotLightProfile` |
 | 何かに反応する、あるいは拒否する | `DotEventBus.hook_pre` / `hook_post` |
 | 何をどの精度でレプリケートするか | `DotNetVar` の宣言。任意の型は `Type.CUSTOM` |
 | シミュレーション、操作、メッセージ | `DotNetBehaviour`、`DotNetInput`、`DotNetMessage` のサブクラス |
@@ -187,9 +191,20 @@ source:
   <Param name="DotBanStore" type="dot-server">
     `_store_name`、**`_load`**、`_put`、`_remove`、`_refresh`、`_writable`。
   </Param>
-  <Param name="DotQueryProvider" type="dot-server">
+  <Param name="DotQueryProvider" type="dot-server-query">
     `_provider_name`、**`_contribute(snapshot)`** — ゲームが自分の状態をサーバー
-    クエリに載せる方法です。
+    クエリに載せる方法です。ボットの数がその要点を証明します。ボットは決して接続
+    しないので、サーバーフレームワークの中にはそれを知りうるものが無いのです。
+  </Param>
+  <Param name="DotSecurityRule" type="dot-server-security">
+    イベント名、しきい値、ウィンドウ、スコープ、そして段階の梯子。JSON またはコードで
+    組み立て、`guard.report_session(&"your.event", session)` だけでゲーム独自の
+    イベントをエンジン全体に通せます。
+  </Param>
+  <Param name="DotBanFeed" type="dot-server-security">
+    `url`、`auth`、`token_file`、`list_path`、`on_failure`。6 つの認証モードと複数の
+    リスト形式があります。ここに向けられないブロックリストは、結局手作業でファイルに
+    コピーされ、そして古くなるからです。
   </Param>
   <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
     3 つとも同じ形です。**`_fetch`**、`_store`、`_remove`、`_open`、`_close`、
@@ -213,11 +228,11 @@ source:
     **`_world_ray`** だけ。ヒットボックスの走査、壁を優先する同着処理、復元は基底
     クラスの担当です。
   </Param>
-  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+  <Param name="DotFpsBody / Dot2DBody" type="dot-player-controller, dot-2d">
     `sweep` / `move`、`overlaps`、`describe`。モーターが必要とする衝突クエリで、
     決定性のためのフラットな解析実装と、実ジオメトリー用の物理実装があります。
   </Param>
-  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+  <Param name="DotFpsMoveMode" type="dot-player-controller">
     `_name`、`_enter`、`_exit`、**`_simulate`**、`_uses_crouch`。はしご、水中、
     グラップルを、モーター自身の衝突と加速の上で。
   </Param>
@@ -325,7 +340,10 @@ source:
 
 | 名前 | 公開するもの | 参照するもの |
 | --- | --- | --- |
-| `dot_ban_source` | `DotModerationManager` | `dot-server` の入場チェック |
+| `dot_ban_source` | `DotModerationManager`、および `dot-server-security` のフィード | `dot-server` の入場チェック — **両方に問い合わせ、両方が承認しなければなりません** |
+| `dot_query_host`、`dot_query_stats` | `dot-server-query` | `dot-server` の `attach_query_host` フック |
+| `dot_security`、`dot_anticheat`、`dot_security_bans` | `dot-server-security` | そのコンソールコマンドと、あなた自身のコード |
+| `dot_random_source` | `dot-core` の `DotRandomManager` | 再現できる乱数ストリームを必要とするもの |
 | `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
 | `dot_cloud_client` | `DotCloudClient` | `dot-map` のローダー、`dot-server` のゲーム切り替え、`dot-user-avatar` のカタログ |
 | `dot_user_manager` | `DotUserManager` | `dot-server`、`dot-platform` |

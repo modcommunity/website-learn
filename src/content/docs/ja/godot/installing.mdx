@@ -69,21 +69,40 @@ git clone https://github.com/modcommunity/dot-timer
 
 `dot-core` 以外のプロジェクトは、*開く*だけでも `dot-core` が必要で、ゲームは
 使っているアドオンすべてが必要です。これらのリンクは gitignore されています。
-利用者は代わりにフォルダーをコピーするからです。
+利用者は代わりにフォルダーをコピーするからです——そのため、新しくクローンした直後は、
+何かがリンクを作るまでプロジェクトは開けません。
+
+**手で作らないでください。** `dot-bootstrap` がすべてのリポジトリをクローンし、各
+プロジェクトが必要とするアドオンをすべてリンクします。
 
 ```bash
-cd dot-cloud   # 任意のアドオンプロジェクト
-ln -s ../../dot-core/addons/dot_core addons/dot_core
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh              # 無いものはクローン、あるものは pull、すべてリンク
+./bootstrap.sh --links      # リンクだけをやり直す
+./bootstrap.sh --status     # リポジトリごとのブランチ、未コミット、未プッシュ
+./bootstrap.sh --check      # projects.tsv はまだディスクと一致しているか
+./bootstrap.sh --content-keys   # このマシンがパックを公開できるようにするコンテンツ署名鍵
 ```
 
-```bash
-cd game-arena
-for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
-            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
-            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
-  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
-done
-```
+プロジェクトの一覧も、各プロジェクトが何を必要とするかの一覧も持っていません。
+プロジェクトは `projects.tsv` から、プロジェクトのアドオンは**そのプロジェクト自身の
+`.gitignore`** の `/addons/<name>` 行から読み取ります。依存が増えるリポジトリは、その
+リンクを ignore しなければならないリポジトリでもあるので、ここだけは古くなりようが
+ありません。以前の版は 4 つのマニフェストを持っていて、当時コレクションにあった 33 の
+リポジトリのうち 19 しかカバーしていませんでした。現在は 1 回の実行で、58 の
+リポジトリにまたがるおよそ 300 のフォルダーをリンクします。
+
+`--content-keys` は、リポジトリとは関係のない唯一のモードです。
+[dot-cloud](/learn/godot/addons/dot-cloud) は署名のないマニフェストを拒否するので、
+パックの公開には秘密鍵が必要で、秘密鍵はクローンが決して運べない唯一のものです。
+これは鍵を作り、`dot-server-deploy/client/content.json` をそれに向けます——その結果、
+コミット済みのそのファイルがローカルで変更された状態になりますが、それは意図的で、
+オプトインである理由でもあります。
+
+[はじめに](/learn/godot/getting-started)に一通りの手順があり、Windows が代わりに
+何をするか（フォルダーをコピーします。Godot がジャンクションをたどらないためです）も
+載っています。
 
 [`dot-serve`](/learn/godot/tooling) にはこれらは不要です。シェルスクリプトで、
 実行時に Godot のバイナリーを探します。

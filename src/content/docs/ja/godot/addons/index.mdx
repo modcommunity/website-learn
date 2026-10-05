@@ -1,6 +1,6 @@
 ---
 title: アドオン一覧
-description: Godot 4 向け Dot アドオン 50 種すべて。それぞれの役割、依存関係、そしてゲーム側から差し込める場所。
+description: Godot 4 向け Dot アドオン 58 種すべて。それぞれの役割、依存関係、そしてゲーム側から差し込める場所。
 order: 40
 keywords:
   - "アドオン"
@@ -16,7 +16,7 @@ source:
   - ../game-dev/CLAUDE.md
 ---
 
-連携して動き、かつ `dot-core` を除けば単独でも動く 50 個のアドオンです。それぞれ
+連携して動き、かつ `dot-core` を除けば単独でも動く 58 個のアドオンです。それぞれ
 [`modcommunity`](https://github.com/modcommunity) 配下の独立したリポジトリで、
 それぞれが `addons/<名前>/` フォルダーを 1 つだけ配布し、それぞれがヘッドレスの
 テストスイートを持っています。
@@ -28,12 +28,13 @@ source:
 GDScript では、存在しない `class_name` に*言及しただけ*のスクリプトはパースに
 失敗し、それを参照しているものすべてを道連れにするからです。
 
-例外は 7 つで、いずれも自分でそう明言しています。`dot-npc-ai` と
+例外は 8 つで、いずれも自分でそう明言しています。`dot-npc-ai` と
 `dot-npc-ai-director` は `dot-npc` を必要とし、`dot-player-controller`・
 `dot-player-char`・`dot-player-class` は `dot-player` を必要とし、
 `dot-server-query` と `dot-server-security` は `dot-server` を必要とします。
-後の 2 つはサーバーが必要に応じて参照するものではなく、サーバーの*一部*その
-ものだからです。
+この 2 つはサーバーが必要に応じて参照するものではなく、サーバーの*一部*その
+ものだからで、そして `dot-game` は `dot-server` と `dot-net` の両方を必要と
+します。それはこの 2 つの*あいだ*の配線だからです。
 </Callout>
 
 ## 土台
@@ -41,6 +42,8 @@ GDScript では、存在しない `class_name` に*言及しただけ*のスク�
 | | 依存 | |
 | --- | --- | --- |
 | [dot-core](/learn/godot/addons/dot-core) | — | ログ、プラットフォーム能力の判定、パス、設定可能なノード参照、階層化された設定、フレーム予算つきジョブ、マルチプレイヤー用トランスポート、HTTP、そして再現可能な乱数ストリーム。 |
+| [dot-log](/learn/godot/addons/dot-log) | dot-core | `DotLog` のレコードが実際にどこへ行くか。回転するファイル、メモリーリング、syslog、データベーステーブル、ホスト型コレクターのいずれか——フラッドの集約、上限つきキュー、伏せ字処理は、そのすべての手前で一度だけ行います。 |
+| [dot-entity](/learn/godot/addons/dot-entity) | dot-core | すべてのワールドオブジェクトが共有する id 空間。id 自身が種類を持つアロケーター、双方向の検索、そしてノードの上ではなく隣に保持されるレコード。 |
 
 ## プレイヤー
 
@@ -73,14 +76,19 @@ GDScript では、存在しない `class_name` に*言及しただけ*のスク�
 | --- | --- | --- |
 | [dot-net](/learn/godot/addons/dot-net) | dot-core | ネットコード。ティック同期、ビットパックのワイヤーフォーマット、状態レプリケーション、スナップショット補間、クライアント側予測、ラグ補償、インタレスト管理。 |
 | [dot-server](/learn/godot/addons/dot-server) | dot-core, *任意で* dot-auth + dot-cloud | 専用サーバー。コンソール、RCON、権限、モデレーション、投票、モジュール、そして稼働中のゲーム切り替え。 |
+| [dot-game](/learn/godot/addons/dot-game) | dot-core, dot-server, dot-net | どのゲームも繰り返していたサーバー側の配線。ネットコード、橋渡し、身元、サービス、名簿、1 本の権威ティック、そして逆順の後始末。`DotGameModule` をサブクラス化して、自分のぶんだけ書きます。 |
 | [dot-server-query](/learn/godot/addons/dot-server-query) | dot-core, dot-server, *任意で* dot-stats | サーバークエリのサーバー側。チャレンジつき・セクション単位・条件つきポーリング可能でブラウザーからも届く DQP と、A2S のすべて。どちらも 1 つのスナップショットから答えます。 |
 | [dot-server-security](/learn/godot/addons/dot-server-security) | dot-core, dot-server, *任意で* dot-moderation + dot-chat + dot-auth | 設定としての堅牢化。スライディングウィンドウのルールが警告→発言禁止→キック→BAN と段階を上げ、アンチチートは「サーバーが証明したこと」と「人間が見るべきこと」を分け、外部 BAN リストにも対応します。導入時はドライランです。 |
 | [dot-browser](/learn/godot/addons/dot-browser) | dot-core | そのクエリのもう半分、つまりクライアント。UDP 上の DQP、同じものを WebSocket 上の JSON として、そして A2S を、ソース・フィルター・お気に入りつきのリストモデルの背後で扱います。 |
 | [dot-peer-to-peer](/learn/godot/addons/dot-peer-to-peer) | dot-core | プレイヤー同士がホストしあうセッション。参加コード、準備状態、メンバー一覧の純粋関数であるホスト選出、そして NAT についての正直な説明。 |
 | [dot-moderation](/learn/godot/addons/dot-moderation) | dot-core | BAN、キック、発言禁止、ボイスミュート、警告を 1 つの永続的な記録として扱います。他が参照するミュート元と BAN 元を公開します。 |
 | [dot-chat](/learn/godot/addons/dot-chat) | dot-core, *任意で* dot-moderation | サーバー権威のテキストチャット。受け手の規則を持つチャンネル、サニタイズ、レート制限、スクロールバック、コマンド。 |
+| [dot-friends](/learn/godot/addons/dot-friends) | dot-core | サイトから来るプレイヤーのフレンドとそのプレゼンス——オンライン、どのゲーム、どのサーバー、どのパーティー——と、パーティーかサーバーへ引き渡す `join()`。 |
+| [dot-party](/learn/godot/addons/dot-party) | dot-core | サイトのパーティー機能の両端から見たパーティー。準備完了ラウンドを追ってサーバーまで付いていくクライアント、サーバーの確保と報告、そして予約済みサーバーを本当に非公開に保つ予約。 |
+| [dot-matchmaking](/learn/godot/addons/dot-matchmaking) | dot-core | 誰が誰と遊ぶか。キューごとの Glicko-2 レーティング、最初は厳しく待つほど広がるプレイリスト、まとめて配置されるパーティー、バランスされたサイド。TMC ではレーティングはサイトが持ちます。 |
 | [dot-voice](/learn/godot/addons/dot-voice) | dot-core | ボイスチャット。取り込み、差し替え可能なコーデック、話者ごとのジッターバッファー、そして全員・チーム・半径へのサーバー側ルーティング。 |
 | [dot-spectate](/learn/godot/addons/dot-spectate) | dot-core | 誰が誰を見ていて、サーバーが何を見せるか。7 つの観戦モード、強制カメラのポリシー、デスカメラの連鎖、配信遅延。 |
+| [dot-replay](/learn/godot/addons/dot-replay) | dot-core | 観戦、レビュー、モデレーションの証拠のためのマッチデモ。ティック刻印つきのチャンネルを、キーフレームでシークでき、クラッシュしても残る、チャンク化されハッシュ連鎖したファイルに記録し、「いまのクリップを保存」用のリングも備えます。 |
 | [dot-vote](/learn/godot/addons/dot-vote) | dot-core, *任意で* dot-server + dot-map | 次に何を遊ぶかの投票を、1 つの設定可能なエンジンとして。rtv、推薦、4 つの集計方式、5 つの同数処理。 |
 
 ## 戦闘
@@ -124,6 +132,7 @@ GDScript では、存在しない `class_name` に*言及しただけ*のスク�
 | --- | --- | --- |
 | [dot-ui](/learn/godot/addons/dot-ui) | dot-core | 画面・HUD・メニューを、アート素材なしで。スクリーンスタック、任意の `DotConfig` から生成される設定パネル、衝突検出つきのキー再割り当て。 |
 | [dot-settings](/learn/godot/addons/dot-settings) | dot-core | 設定を 3 つのスコープを持つ有界な文書として。サーバーが上限を課してよく、決して読んではならない少数の項目も含みます。 |
+| [dot-locale](/learn/godot/addons/dot-locale) | dot-core | ウェブサイト自身のロケールファイルを読むローカライズ。拒否キーがサイトでもゲームでも同じ意味になります。ICU メッセージ、CLDR の複数形、擬似ローカライズ。 |
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *任意で* dot-server | プレイヤーのコンソール。物理キー、入力行、履歴、補完、上限つきのスクロールバック、そして第 2 のコマンド体系ではなくコマンド*ソース*。 |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | 音声データを一切同梱しないゲームオーディオ。ID のカタログ、優先度で奪い合うボイスプール、同時再生数の上限、距離カリング、音楽とダッキング。 |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | 視覚エフェクトを文書として。プール化、予算管理、品質段階、距離カリング。エフェクトがシミュレーションを変えることはありません。 |

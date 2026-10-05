@@ -23,7 +23,7 @@ source:
 Ein community-betriebener Server muss wissen, wer ein Spieler ist. Er darf
 **keine** Credential für dessen ganzes Konto bekommen — wer sie hat, kann als
 jeder Spieler handeln, der je beigetreten ist. `dot-auth` ist die Antwort darauf
-und hat dieselbe Form wie Steams Auth-Session-Tickets.
+und hat dieselbe Form wie die Session-Tickets, die die großen PC-Storefronts an Spielserver ausgeben.
 
 ```
 Client ──(Gerätecode + PKCE)──> Backend          wer bin ich
@@ -81,6 +81,8 @@ Die Prüfung läuft offline — kein Backend-Roundtrip pro Beitritt.
 | `LOCAL` | LAN und Entwicklung. Konten in einer JSON-Datei. |
 | `ANONYMOUS` | Alle sind Gäste. Sperren können nichts bedeuten. Warnt. |
 
+`INTROSPECT` hat eine zweite, begrenzte Form. Gib `DotAuthServer.backbone` den eigenen `DotBackboneClient` des Servers, und er schickt das Token des Spielers an `integration/v1/player/introspect` **als dieser Server** und bekommt statt der Konto-Id den Schlüssel des Spielers im Geltungsbereich dieses Servers zurück: Die Identität ist `site:<key>`, mit dem Schlüssel im Claim `scoped_key`; das ist die eine Kennung, die die Avatar-, Profil- und Statistikrouten der Seite für diesen Server auflösen, und eine, die andere Betreiber nicht korrelieren können. Ungesetzt liest er wie zuvor `/me`. `scoped_only` verweigert einen Beitritt, solange kein Backbone-Client übergeben wurde, statt zurückzufallen, damit ein Spieler, der während des Starts hereingelassen wird, nicht eine Minute lang so und danach anders verschlüsselt ist.
+
 ## Konten ohne Cloud
 
 `allow_local_profiles` erlaubt einer Besucherin, sich ein Konto anzulegen, das
@@ -114,7 +116,8 @@ Plattform, ganz ohne Backend.
   <Param name="DotAuthProvider-Unterklasse">
     `_provider_name()`, `_handles(credential)`, `_authenticate(credential)`,
     `_validate()`. Mit `DotAuthServer.add_provider` registrieren. Hier kommen
-    Steam, Epic, ein Discord-Bot oder dein eigener Dienst hinein.
+    die Identität eines Storefronts, ein Bot einer Chat-Plattform oder dein
+    eigener Dienst hinein.
 
     Halte `_handles` billig und rein strukturell: „Enthält dieses Dictionary mein
     Feld?“ Ein Provider, der dort Netzwerkarbeit macht, macht sie bei jedem

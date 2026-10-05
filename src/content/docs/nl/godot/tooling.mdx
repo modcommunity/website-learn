@@ -15,7 +15,7 @@ keywords:
   - "webexport"
 source:
   - ../game-dev/godot/dot-serve/README.md
-  - ../game-dev/godot/dot-server-setup-test/README.md
+  - ../game-dev/godot/dot-server-deploy/README.md
 ---
 
 [`dot-server`](/learn/godot/addons/dot-server) is diep instelbaar — cvars, flags,
@@ -82,11 +82,11 @@ config, `6` poort bezet. De gegenereerde systemd-unit noemt ze allemaal onder
 
 ## TMC's servertool
 
-`dot-server-setup-test` is waar de collectie samenkomt tot iets dat een
+`dot-server-deploy` is waar de collectie samenkomt tot iets dat een
 servereigenaar met één commando start. Het is een Godot-project dat een
 `dot-server` opstart, zijn configuratie uit `cfg/*.yml` leest, games uit
 `content/` laadt en een browserclient serveert — en het **levert zelf geen game
-mee**.
+mee**. Elke game, de lobby inbegrepen, is een ondertekend [dot-cloud](/learn/godot/addons/dot-cloud)-pakket dat de server vanaf een contentbron installeert en dat elke client bij het verbinden downloadt, zodat de client dezelfde build is ongeacht waarmee hij joint en een nieuwe game geen nieuwe client vraagt.
 
 ```bash
 ./setup.sh              # zoek een runtime, koppel de add-ons, schrijf ./server
@@ -95,7 +95,39 @@ mee**.
 docker compose up -d    # of hetzelfde in een container
 ```
 
-Windows: `setup.bat` (een schil om `setup.ps1`), dan `server.cmd`.
+Windows: `setup.bat` (een schil om `setup.ps1`), dan `.\server.ps1`.
+
+<Callout type="info" title="Het heette vroeger `dot-server-setup-test`">
+Hetzelfde project, een duidelijkere naam. Heb je een oudere checkout of een
+oudere link, dan is het nu
+[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy).
+</Callout>
+
+### Drie scripts die makkelijk door elkaar gehaald worden
+
+```bash
+./play.sh               # een server en de browserclient, op de loopback
+./play.sh playground    # start met een bepaalde game
+./play.sh games         # wat er verder in content/ zit
+./play.sh status
+./play.sh down
+```
+
+`play.sh` is voor een ontwikkelaar die een regel heeft aangepast en het wil zien. Het print een link, bouwt de export opnieuw als die verouderd is, kopieert `embed.html` over de door Godot gegenereerde `index.html` — die welke `?server=` uit de querystring haalt — en **meldt het wanneer een gepubliceerd pakket in `dist/` ouder is dan de gamerepository waaruit het is gebouwd**. De add-ons zijn gesymlinkt en altijd actueel; een pakket is een momentopname, dus het is het enige onderdeel dat veroudert, en een verouderd pakket koppelt netjes aan, draait, en is de game van vorige week.
+
+`demo.sh` is de andere: vijf servers, nginx die TLS afhandelt, een publieke host,
+een apart registreerbaar domein voor de game en een `sudo`-stap om een listener te
+installeren. Goed om het platform aan iemand te laten zien, fout voor een
+wijziging van één regel.
+
+Geen van beide heeft iets te maken met `dev.sh`, de **website**, die helemaal geen
+game start. De twee draaien naast elkaar.
+
+<Callout type="warning" title="`play.sh` is alleen HTTP via de loopback">
+Een HTTPS-pagina mag geen `ws://`-socket openen, dus die vorm werkt daar en nergens
+anders. Een game *binnen* de site inframen is weer iets heel anders en heeft een
+eigen registreerbaar domein nodig.
+</Callout>
 
 ### Wat het een beheerder geeft
 
@@ -104,18 +136,13 @@ Windows: `setup.bat` (een schil om `setup.ps1`), dan `server.cmd`.
   overschrijft nooit een configuratiebestand dat er al is. RCON staat standaard
   uit.
 - **Configuratie in YAML**, per onderwerp opgesplitst — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`. Alles wat
+  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Alles wat
   `dot-server` als consolevariabele aanbiedt, kan daar onder zijn eigen naam in.
 - **Rollen, geen flags.** Het rechtenmodel van dot-server bestaat bewust uit
   flags; `groups.yml` is de vertaling, zodat een beheerder
   `admin: [kick, ban, mute]` schrijft en een speler de flags krijgt.
-- **Games die tijdens het draaien worden geladen.** Een map onder `content/` met
-  een `game.yml` erin is een game, en `changelevel` wisselt ertussen terwijl de
-  spelers verbonden blijven.
-- **De spelers kiezen de volgende game.** `!nominate`, `!rtv`, `!votefor`,
-  `!timeleft`, `!nextmap` over de games in `content/`, via
-  [`dot-vote`](/learn/godot/addons/dot-vote). Elke game krijgt zijn eigen
-  tijdslimiet in zijn eigen `game.yml`.
+- **Games die op naam worden geïnstalleerd.** `--games g2gfast,playground` (of `TMC_GAMES`) haalt bij het opstarten de descriptor en het pakket van elke game op bij de contentbron; `owner/name@version` noemt de gepubliceerde game van iemand anders. Een map onder `content/` met een `game.yml` erin is een game, en `changelevel` wisselt ertussen terwijl de spelers verbonden blijven.
+- **De spelers kiezen de volgende game.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` over de games in `content/`, via [`dot-vote`](/learn/godot/addons/dot-vote). Het voorvoegsel laat het kale `!rtv` over aan een game die over zijn eigen maps stemt. Elke game krijgt zijn eigen tijdslimiet in zijn eigen `game.yml`.
 - **Een browserclient.** `./server export-web` bouwt hem; één export bedient elke
   server, omdat het adres uit `?server=` komt.
 
@@ -123,15 +150,15 @@ Windows: `setup.bat` (een schil om `setup.ps1`), dan `server.cmd`.
 
 ```
 cfg/       wat een beheerder bewerkt
-content/   wat de server serveert
-data/      wat de server schrijft — from_yaml.cfg, admins.json, bans.json, audit.jsonl
+content/   de games die hij aanbiedt — elk een game.yml; de game zelf is een pakket
+data/      wat de server schrijft — from_yaml.cfg, admins.json, bans.json, audit.jsonl, de pakketcache
+dist/      pakketten die vanaf deze machine zijn gepubliceerd, en de index waar servers van installeren
 host/      het opstarten: YAML -> DotServer
-client/    de clientschil. Kent geen enkele game
+client/    de clientschil. Bevat geen game; hij koppelt aan wat de server noemt
 web/       de browserbuild, en de pagina die ?server= uit de URL haalt
 ```
 
-Een container koppelt de eerste twee alleen-lezen en de derde lees-schrijf, en een
-systemd-unit wijst `ReadWritePaths` naar precies één map.
+`cfg/` is wat je bewerkt en `data/` is wat de server schrijft. `content/` wordt geschreven wanneer de server een game installeert, omdat de `game.yml` uit het ondertekende pakket komt; een machine die zijn eigen content meebrengt en niets installeert, kan het alleen-lezen koppelen.
 
 <Callout type="info" title="`data/from_yaml.cfg` is wat jouw YAML geworden is">
 Lees het wanneer een instelling genegeerd lijkt te worden. De YAML is een
@@ -139,9 +166,7 @@ Lees het wanneer een instelling genegeerd lijkt te worden. De YAML is een
 dat bestand is de vertaling.
 </Callout>
 
-Het is ook de enige plek waar drie games in één build worden gecompileerd en
-gewisseld terwijl er spelers op zitten, en de eerste plek waar iets uit deze
-collectie in een browser is geladen.
+Het is ook de plek waar elke game van de collectie als pakket wordt gepubliceerd en gewisseld terwijl er spelers op zitten, en de eerste plek waar iets uit deze collectie in een browser is geladen.
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server)

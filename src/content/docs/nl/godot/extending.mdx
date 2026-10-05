@@ -63,7 +63,11 @@ hebt, vertelt je waar je moet zoeken.
 | Waar bans leven (gedeelde DB, HTTP-dienst) | subklasse van `DotBanStore` op `DotBanManager` |
 | Sitegroepen → serverrechten | `DotAuthAdminSource`, of elk object met `lookup()` / `source_name()` |
 | Serveropdrachten en -gedrag | subklasse van `DotModule`, of `DotConsole.command` |
-| Wat een serverquery over de game meldt | `DotQueryProvider`, of `DotModule.add_query_provider` |
+| Wat een serverquery over de game meldt | subklasse van `DotQueryProvider` op `dot_query_source`, of `DotModule.add_query_provider` |
+| Wat een server bestraft, en hoe ver dat escaleert | `DotSecurityRule`-documenten, in JSON of in code gebouwd |
+| Waar een server banlijsten vandaan leest | `DotBanFeed`-items op `DotBanFeeds`, gekoppeld aan `dot_ban_source` |
+| Of een bewegingsclaim mogelijk is | `DotAntiCheat.movement_reference`, een `Callable` die één tick opnieuw simuleert |
+| Hoe een wereld wordt verlicht, en hoeveel ervan deze machine tekent | `DotLightDocument` en `DotLightProfile`, toegepast door `DotLightRig` |
 | Ergens op reageren of het tegenhouden | `DotEventBus.hook_pre` / `hook_post` |
 | Wat er repliceert, en hoe nauwkeurig | `DotNetVar`-declaraties; `Type.CUSTOM` voor elk type |
 | Simulatie, besturing, berichten | subklassen van `DotNetBehaviour`, `DotNetInput`, `DotNetMessage` |
@@ -195,9 +199,21 @@ Die met **moet** hebben geen bruikbare standaard.
   <Param name="DotBanStore" type="dot-server">
     `_store_name`, **`_load`**, `_put`, `_remove`, `_refresh`, `_writable`.
   </Param>
-  <Param name="DotQueryProvider" type="dot-server">
+  <Param name="DotQueryProvider" type="dot-server-query">
     `_provider_name`, **`_contribute(snapshot)`** — zo publiceert een game zijn
-    eigen toestand in een serverquery.
+    eigen toestand in een serverquery. Het aantal bots bewijst het punt: niets in
+    een serverframework kan dat weten, want een bot verbindt nooit.
+  </Param>
+  <Param name="DotSecurityRule" type="dot-server-security">
+    Een gebeurtenisnaam, een drempel, een venster, een bereik en een ladder van
+    stappen. Geschreven als JSON of in code gebouwd, en
+    `guard.report_session(&"your.event", session)` is genoeg om de eigen
+    gebeurtenis van een game door de hele engine te sturen.
+  </Param>
+  <Param name="DotBanFeed" type="dot-server-security">
+    `url`, `auth`, `token_file`, `list_path`, `on_failure`. Zes authmodi en
+    meerdere lijstvormen, want een blokkadelijst waar je dit niet op kunt richten,
+    kopieer je met de hand naar een bestand, en dan is hij verouderd.
   </Param>
   <Param name="DotUserStore / DotAvatarStore / DotLoadoutStore" type="dot-user, dot-user-avatar, dot-loadout">
     In alle drie dezelfde vorm: **`_fetch`**, `_store`, `_remove`, `_open`,
@@ -221,12 +237,12 @@ Die met **moet** hebben geen bruikbare standaard.
     **`_world_ray`** en verder niets. Het aflopen van de hitboxes, de gelijkspel
     die naar de muur gaat en het herstellen horen bij de basisklasse.
   </Param>
-  <Param name="DotFpsBody / Dot2DBody" type="dot-fps-controller, dot-2d">
+  <Param name="DotFpsBody / Dot2DBody" type="dot-player-controller, dot-2d">
     `sweep` / `move`, `overlaps`, `describe`. De botsingsquery's die de motor
     nodig heeft, met een vlakke analytische implementatie voor determinisme en
     een physics-variant voor echte geometrie.
   </Param>
-  <Param name="DotFpsMoveMode" type="dot-fps-controller">
+  <Param name="DotFpsMoveMode" type="dot-player-controller">
     `_name`, `_enter`, `_exit`, **`_simulate`**, `_uses_crouch`. Een ladder,
     water, een grijphaak — met de botsing en versnelling van de motor zelf.
   </Param>
@@ -337,7 +353,10 @@ dat een van beide kanten de ander importeert.
 
 | Naam | Gepubliceerd door | Geraadpleegd door |
 | --- | --- | --- |
-| `dot_ban_source` | `DotModerationManager` | de toelatingscontrole van `dot-server` |
+| `dot_ban_source` | `DotModerationManager`, en de feeds van `dot-server-security` | de toelatingscontrole van `dot-server` — **beide worden gevraagd, en beide moeten ja zeggen** |
+| `dot_query_host`, `dot_query_stats` | `dot-server-query` | de `attach_query_host`-hook van `dot-server` |
+| `dot_security`, `dot_anticheat`, `dot_security_bans` | `dot-server-security` | zijn eigen consoleopdrachten, en je eigen code |
+| `dot_random_source` | `DotRandomManager`, in `dot-core` | alles wat een reproduceerbare stroom wil |
 | `dot_mute_source` | `DotModerationManager` | `DotVoiceRouter` |
 | `dot_cloud_client` | `DotCloudClient` | de lader van `dot-map`, de gamewissel van `dot-server`, de catalogus van `dot-user-avatar` |
 | `dot_user_manager` | `DotUserManager` | `dot-server`, `dot-platform` |

@@ -15,7 +15,7 @@ keywords:
   - "export web"
 source:
   - ../game-dev/godot/dot-serve/README.md
-  - ../game-dev/godot/dot-server-setup-test/README.md
+  - ../game-dev/godot/dot-server-deploy/README.md
 ---
 
 [`dot-server`](/learn/godot/addons/dot-server) es profundamente configurable —
@@ -82,10 +82,10 @@ generada los lista todos bajo `RestartPreventExitStatus`.
 
 ## La herramienta de servidor de TMC
 
-`dot-server-setup-test` es donde la colección se junta en algo que un dueño de
+`dot-server-deploy` es donde la colección se junta en algo que un dueño de
 servidor arranca con un solo comando. Es un proyecto de Godot que arranca un
 `dot-server`, lee su configuración de `cfg/*.yml`, carga juegos desde `content/`
-y sirve un cliente de navegador — y **no incluye ningún juego propio**.
+y sirve un cliente de navegador — y **no incluye ningún juego propio**. Cada juego, el vestíbulo incluido, es un paquete firmado de [dot-cloud](/learn/godot/addons/dot-cloud) que el servidor instala desde un origen de contenido y que todos los clientes descargan al conectarse, así que el cliente es la misma compilación sea cual sea el juego al que entra y un juego nuevo no necesita una nueva.
 
 ```bash
 ./setup.sh              # busca un runtime, cablea los complementos, escribe ./server
@@ -94,7 +94,39 @@ y sirve un cliente de navegador — y **no incluye ningún juego propio**.
 docker compose up -d    # o lo mismo en un contenedor
 ```
 
-Windows: `setup.bat` (un envoltorio de `setup.ps1`), y luego `server.cmd`.
+Windows: `setup.bat` (un envoltorio de `setup.ps1`), y luego `.\server.ps1`.
+
+<Callout type="info" title="Antes se llamaba `dot-server-setup-test`">
+Es el mismo proyecto, con un nombre más claro. Si tienes una copia antigua o un
+enlace antiguo, ahora es
+[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy).
+</Callout>
+
+### Tres scripts fáciles de confundir
+
+```bash
+./play.sh               # un servidor y el cliente de navegador, en el loopback
+./play.sh playground    # empieza en un juego concreto
+./play.sh games         # qué más hay en content/
+./play.sh status
+./play.sh down
+```
+
+`play.sh` es para un desarrollador que cambió una línea y quiere verla. Imprime un enlace, recompila la exportación cuando está desactualizada, copia `embed.html` sobre el `index.html` que genera Godot — el que toma `?server=` de la cadena de consulta — y **te avisa cuando un paquete publicado en `dist/` es más antiguo que el repositorio del juego a partir del cual se construyó**. Los complementos están enlazados simbólicamente y siempre al día; un paquete es una instantánea, así que es la única parte que se queda obsoleta, y un paquete obsoleto se monta sin problemas, se ejecuta, y es el juego de la semana pasada.
+
+`demo.sh` es el otro: cinco servidores, nginx terminando TLS, un host público,
+un dominio registrable aparte para el juego y un paso con `sudo` para instalar un
+oyente. Es lo correcto para enseñar la plataforma a alguien, y lo incorrecto para
+un cambio de una línea.
+
+Ninguno de los dos tiene nada que ver con `dev.sh`, que es el **sitio web** y no
+arranca ningún juego. Los dos funcionan a la vez.
+
+<Callout type="warning" title="`play.sh` es solo HTTP en el loopback">
+Una página HTTPS no puede abrir un socket `ws://`, así que esa forma funciona
+ahí y en ningún otro sitio. Enmarcar un juego *dentro* del sitio es otra cosa
+distinta y necesita su propio dominio registrable.
+</Callout>
 
 ### Lo que le da a un operador
 
@@ -103,19 +135,14 @@ Windows: `setup.bat` (un envoltorio de `setup.ps1`), y luego `server.cmd`.
   Nunca sobrescribe un archivo de configuración que ya exista. RCON viene
   apagado.
 - **Configuración en YAML**, separada por temas — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`. Cualquier
+  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Cualquier
   cosa que `dot-server` exponga como variable de consola puede ir ahí con su
   propio nombre.
 - **Roles, no flags.** El modelo de permisos de dot-server son flags, a
   propósito; `groups.yml` es la traducción, así que un operador escribe
   `admin: [kick, ban, mute]` y un jugador recibe los flags.
-- **Juegos cargados en tiempo de ejecución.** Un directorio bajo `content/` con
-  un `game.yml` dentro es un juego, y `changelevel` cambia entre ellos con los
-  jugadores todavía conectados.
-- **Los jugadores eligen el siguiente juego.** `!nominate`, `!rtv`, `!votefor`,
-  `!timeleft`, `!nextmap` sobre los juegos de `content/`, a través de
-  [`dot-vote`](/learn/godot/addons/dot-vote). Cada juego tiene su propio límite
-  de tiempo en su propio `game.yml`.
+- **Juegos instalados por nombre.** `--games g2gfast,playground` (o `TMC_GAMES`) descarga al arrancar el descriptor y el paquete de cada juego desde el origen de contenido; `owner/name@version` nombra el juego publicado por otra persona. Un directorio bajo `content/` con un `game.yml` dentro es un juego, y `changelevel` cambia entre ellos con los jugadores todavía conectados.
+- **Los jugadores eligen el siguiente juego.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` sobre los juegos de `content/`, a través de [`dot-vote`](/learn/godot/addons/dot-vote). El prefijo deja el `!rtv` a secas para un juego que vote sus propios mapas. Cada juego tiene su propio límite de tiempo en su propio `game.yml`.
 - **Un cliente de navegador.** `./server export-web` lo compila; una sola
   exportación sirve a todos los servidores, porque la dirección viene de
   `?server=`.
@@ -124,16 +151,15 @@ Windows: `setup.bat` (un envoltorio de `setup.ps1`), y luego `server.cmd`.
 
 ```
 cfg/       lo que edita un operador
-content/   lo que sirve el servidor
-data/      lo que escribe el servidor — from_yaml.cfg, admins.json, bans.json, audit.jsonl
+content/   los juegos que ofrece — un game.yml cada uno; el juego en sí es un paquete
+data/      lo que escribe el servidor — from_yaml.cfg, admins.json, bans.json, audit.jsonl, la caché de paquetes
+dist/      paquetes publicados desde esta máquina, y el índice desde el que instalan los servidores
 host/      el arranque: YAML -> DotServer
-client/    el armazón del cliente. No sabe nada de ningún juego
+client/    el armazón del cliente. No contiene ningún juego; monta lo que el servidor nombra
 web/       la compilación de navegador, y la página que toma ?server= de la URL
 ```
 
-Un contenedor monta los dos primeros en solo lectura y el tercero en lectura y
-escritura, y una unidad de systemd apunta `ReadWritePaths` a exactamente un
-directorio.
+`cfg/` es lo que editas y `data/` es lo que escribe el servidor. `content/` se escribe cuando el servidor instala un juego, porque el `game.yml` sale del paquete firmado; una máquina que lleva su propio contenido y no instala nada puede montarlo en solo lectura.
 
 <Callout type="info" title="`data/from_yaml.cfg` es en qué se convirtió tu YAML">
 Léelo cuando parezca que un ajuste se ignora. El YAML es una **superficie sobre
@@ -141,9 +167,7 @@ el vocabulario propio de dot-server**, no un segundo vocabulario, y ese archivo
 es la traducción.
 </Callout>
 
-También es el único sitio donde tres juegos se compilan en un mismo binario y se
-alternan con jugadores conectados, y el primer lugar donde algo de esta colección
-se cargó en un navegador.
+También es donde cada juego de la colección se publica como paquete y se alterna con jugadores conectados, y el primer lugar donde algo de esta colección se cargó en un navegador.
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server)

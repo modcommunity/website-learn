@@ -72,21 +72,41 @@ Dat volgt uit hoe ze gebruikt worden: wie een speedruntimer wil, moet
 
 Elk project behalve `dot-core` heeft `dot-core` nodig om überhaupt te *openen*,
 en de games hebben elke add-on nodig die ze gebruiken. Die links staan in
-`.gitignore`, want een gebruiker kopieert de mappen in plaats daarvan:
+`.gitignore`, want een gebruiker kopieert de mappen in plaats daarvan — en een
+verse clone opent dus pas nadat iets ze heeft gemaakt.
+
+**Maak ze niet met de hand.** `dot-bootstrap` kloont elke repository en koppelt
+elke add-on die elk project nodig heeft:
 
 ```bash
-cd dot-cloud   # of welk add-onproject dan ook
-ln -s ../../dot-core/addons/dot_core addons/dot_core
+git clone https://github.com/modcommunity/dot-bootstrap.git
+cd dot-bootstrap
+./bootstrap.sh              # kloon wat ontbreekt, pull wat er is, koppel alles
+./bootstrap.sh --links      # doe alleen de links opnieuw
+./bootstrap.sh --status     # branch, dirty, unpushed, per repository
+./bootstrap.sh --check      # komt projects.tsv nog overeen met de schijf?
+./bootstrap.sh --content-keys   # een contentondertekeningssleutel, zodat deze machine pakketten kan publiceren
 ```
 
-```bash
-cd game-arena
-for pair in dot_core:dot-core dot_net:dot-net dot_server:dot-server \
-            dot_fps_controller:dot-fps-controller dot_combat:dot-combat \
-            dot_loadout:dot-loadout dot_match:dot-match dot_ui:dot-ui; do
-  ln -s "../../${pair##*:}/addons/${pair%%:*}" "addons/${pair%%:*}"
-done
-```
+Het bevat geen lijst met projecten en geen lijst van wat elk nodig heeft: de
+projecten komen uit `projects.tsv`, en de add-ons van een project worden gelezen
+uit **de eigen `.gitignore` van dat project**, uit de regels `/addons/<naam>` —
+de enige plek die niet kan verouderen, want de repository die een afhankelijkheid
+erbij krijgt, is de repository die de link moet negeren. De versie ervoor had vier
+manifesten en die waren uit de pas gelopen tot 19 van de 33 repositories die de
+collectie destijds had; één run koppelt nu bijna driehonderd mappen over
+achtenvijftig ervan.
+
+`--content-keys` is de ene modus die niet over repositories gaat:
+[dot-cloud](/learn/godot/addons/dot-cloud) weigert een niet-ondertekend manifest,
+dus een pakket publiceren vraagt een privésleutel, en een privésleutel is het ene
+wat een clone nooit kan meedragen. Het maakt er een aan en laat
+`dot-server-deploy/client/content.json` ernaar wijzen — waardoor dat gecommitte
+bestand lokaal gewijzigd is, met opzet, en daarom is het opt-in.
+
+[Aan de slag](/learn/godot/getting-started) is de hele walkthrough, inclusief wat
+Windows in plaats daarvan doet (het kopieert de mappen, omdat Godot een junction
+niet volgt).
 
 [`dot-serve`](/learn/godot/tooling) heeft hier niets van nodig: het is een
 shellscript en vindt tijdens het draaien zelf een Godot-binary.
