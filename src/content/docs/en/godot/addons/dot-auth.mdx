@@ -79,10 +79,10 @@ Verification is offline — no backbone round trip per join.
 | --- | --- |
 | `TICKET` | Public servers. The flow above. |
 | `INTROSPECT` | First-party servers only — the operator holds a live account credential. Warns at startup. |
-
-`INTROSPECT` has a second, scoped form. Hand `DotAuthServer.backbone` the server's own `DotBackboneClient` and it posts the player's token to `integration/v1/player/introspect` **as that server**, and gets back the player's key in that server's scope instead of their account id: the identity is `site:<key>` with the key in the `scoped_key` claim, which is the one identifier the site's avatar, profile and stats routes resolve for that server, and one other operators cannot correlate. Unset, it reads `/me` as before. `scoped_only` refuses a join while no backbone client has been handed over rather than falling back, so a player let in during boot is not keyed one way for a minute and another way after.
 | `LOCAL` | LAN and development. Accounts in a JSON file. |
 | `ANONYMOUS` | Everyone is a guest. Bans cannot mean anything. Warns. |
+
+`INTROSPECT` has a second, scoped form. Hand `DotAuthServer.backbone` the server's own `DotBackboneClient` and it posts the player's token to `integration/v1/player/introspect` **as that server**, and gets back the player's key in that server's scope instead of their account id: the identity is `site:<key>` with the key in the `scoped_key` claim, which is the one identifier the site's avatar, profile and stats routes resolve for that server, and one other operators cannot correlate. Unset, it reads `/me` as before. `scoped_only` refuses a join while no backbone client has been handed over rather than falling back, so a player let in during boot is not keyed one way for a minute and another way after.
 
 ## Accounts with no cloud
 
