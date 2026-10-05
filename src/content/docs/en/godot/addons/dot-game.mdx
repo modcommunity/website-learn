@@ -117,6 +117,10 @@ had no question to ask:
 | `_peer_can_receive(peer)` and `send_backlog(peer)` | Hold the chat backlog for a client that builds its scene *after* it is seated — a line sent before then is a "Node not found". |
 | `DotGameModule._can_tick()` | Skip the tick, asked before the tick counter moves — for instance while a game change has freed the world. |
 
+### Telling the server which map you are on
+
+A server listing — A2S, DQP and the backbone's stats report — prints a map. Only the game knows what it calls one (a course, an arena from a rotation, a round's layout), so the module says it: call `report_map("surf_mesa")` whenever your map changes, and `report_map("")` to clear it. A game that never calls it is listed under its own display name, which is right for a game with one map. The server forgets the map whenever a game unloads, so report it on every change, not once at load. On a server too old to take a map the call returns `false` and logs one line; nothing breaks.
+
 ## What is deliberately not in it
 
 **No rules.** Whether a round has ended, what a team is, what the objective is,
