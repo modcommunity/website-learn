@@ -9,9 +9,10 @@ import { SITE_URL } from '../../lib/site'
  * Scoped to `/learn` rather than living at the domain root, because
  * website-processing owns `/robots.txt` and `/sitemap.xml` — the three sites
  * share one domain, and two builds cannot both claim that path. Reference this
- * one from the root sitemap index (or from `robots.txt`) in website-processing:
+ * one from the root sitemap index (or from `robots.txt`) of whichever host
+ * serves the docs — in production that is the docs host:
  *
- *     Sitemap: https://moddingcommunity.com/learn/sitemap.xml
+ *     Sitemap: https://docs.moddingcommunity.com/learn/sitemap.xml
  *
  * Every page is emitted once per locale with a full `hreflang` set pointing at
  * its eight siblings plus an `x-default`. Without those, the nine copies of a

@@ -25,9 +25,10 @@ INTERNAL_PORT=3000
 # ---- Build-time site configuration (src/layouts/Layout.astro) --------------
 # All optional. The values shown are the defaults the pages fall back to.
 
-# This build's OWN origin — canonical, hreflang, Open Graph and the sitemap.
+# This build's OWN origin (default https://docs.moddingcommunity.com, production) — canonical, hreflang, Open Graph and the sitemap.
 # On a docs-subdomain deploy that is the docs host, not the main site: it
 # describes the pages this build serves, which is what a canonical URL is for.
+# A /learn-on-the-main-domain deploy sets https://moddingcommunity.com here.
 # PUBLIC_URL=https://docs.moddingcommunity.com
 
 # The main domain — where website-city (/mods, /servers, /login) and

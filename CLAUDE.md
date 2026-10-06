@@ -27,13 +27,20 @@ website-processing needs the same change.**
 
 ## Where it is mounted, and why there is no `base`
 
-The docs live at `/learn` on the main domain:
+**Production serves the docs on their own host, `docs.moddingcommunity.com`**, under
+the same `/learn` paths (`moddingcommunity.com/learn` is a 404 there, by design):
 
 ```
-https://moddingcommunity.com/learn
-https://moddingcommunity.com/learn/api/content/authentication
-https://moddingcommunity.com/es/learn/api/content/authentication
+https://docs.moddingcommunity.com/learn/
+https://docs.moddingcommunity.com/learn/api/content/authentication/
+https://docs.moddingcommunity.com/es/learn/api/content/authentication/
 ```
+
+The build defaults describe that deploy: `PUBLIC_URL` (canonical, hreflang, sitemap)
+defaults to the docs host, and production sets `PUBLIC_MAIN_URL` so the shared chrome
+links back to the main domain (see "If the docs get their own origin" below). The repo
+can still be mounted at `/learn` on the main domain — set `PUBLIC_URL` to the main
+origin and leave `PUBLIC_MAIN_URL` unset — and the rest of this section is why that works.
 
 **Do not add `base: '/learn'` to `astro.config.mjs`.** `base` is a single static
 prefix and would put the locale *inside* it — `/learn/es/api` — while
@@ -101,7 +108,7 @@ because website-processing owns `/robots.txt` and `/sitemap.xml` at the domain
 root. Reference it from that repo's robots.txt:
 
 ```
-Sitemap: https://moddingcommunity.com/learn/sitemap.xml
+Sitemap: https://docs.moddingcommunity.com/learn/sitemap.xml
 ```
 
 `src/pages/learn/search/[locale].json.ts` also lives under that prefix, which

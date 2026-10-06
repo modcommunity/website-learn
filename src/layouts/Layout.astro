@@ -7,6 +7,7 @@ import SiteSidebar from "../components/SiteSidebar";
 import SiteFooter from "../components/SiteFooter";
 import CornerLauncher from "../components/CornerLauncher";
 import { LOCALES, localizeUrl, stripLocale, type LocaleT } from "../i18n/config";
+import { SITE_URL } from "../lib/site";
 
 import PlausibleAnalytics from "../components/helper/PlausibleAnalytics.astro";
 import UmamiAnalytics from "../components/helper/UmamiAnalytics.astro";
@@ -60,7 +61,7 @@ const title = titleMeta ?? import.meta.env.PUBLIC_TITLE ?? "The Modding Communit
 const titleMain = titleMainMeta ?? import.meta.env.PUBLIC_TITLE_MAIN ?? "Documentation - The Modding Community"
 const favIcon = import.meta.env.PUBLIC_FAV_ICON ?? "/favicon.ico"
 const socialMediaImg = import.meta.env.PUBLIC_SOCIAL_MEDIA_IMAGE ?? "/images/banner.png"
-const url = import.meta.env.PUBLIC_URL ?? "https://moddingcommunity.com"
+const url = SITE_URL
 
 // Canonical + hreflang. Every locale serves the same page at its own prefix, so
 // without these the 9 copies compete as duplicate content and every page claims

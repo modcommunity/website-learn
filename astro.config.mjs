@@ -20,7 +20,7 @@ export default defineConfig({
      * every per-deploy URL the pages actually render (canonical, hreflang,
      * Open Graph) already reads `PUBLIC_URL` at runtime in `Layout.astro`.
      */
-    site: 'https://moddingcommunity.com',
+    site: 'https://docs.moddingcommunity.com',
 
     /*
      * NO `base: '/learn'`.

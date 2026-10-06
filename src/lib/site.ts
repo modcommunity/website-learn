@@ -8,8 +8,14 @@
  * pages this build serves, which is what a canonical URL is for. The links that
  * leave for the app are governed by {@link MAIN_URL} below instead. Setting
  * this one and expecting the header to follow is the mistake it invites.
+ *
+ * The default is the docs host because that is where production serves them: a
+ * build with no `.env` is the production build, and until 2026-10-06 that build
+ * told every search engine its pages' canonical copies were
+ * `moddingcommunity.com/learn/...`, which 404. A `/learn`-on-the-main-domain
+ * deploy sets `PUBLIC_URL=https://moddingcommunity.com`.
  */
-export const SITE_URL: string = import.meta.env.PUBLIC_URL ?? 'https://moddingcommunity.com'
+export const SITE_URL: string = import.meta.env.PUBLIC_URL ?? 'https://docs.moddingcommunity.com'
 
 /**
  * The origin every link in the shell that ISN'T a docs page points at — the
