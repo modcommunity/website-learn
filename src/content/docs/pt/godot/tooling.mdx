@@ -30,7 +30,7 @@ precisa de `bash` e de um binário do Godot 4.7+.
 
 ```bash
 ./install.sh                 # cria ligações em ~/.local/bin
-PREFIX=/usr/local/bin sudo ./install.sh
+sudo ./install.sh --prefix /usr/local/bin
 ```
 
 ```bash
@@ -77,7 +77,7 @@ servidor.
 
 Os códigos de saída têm significado, para que um supervisor distinga uma má
 configuração de uma queda: `2` uso, `3` sem Godot, `4` sem projeto, `5`
-configuração inválida, `6` porta ocupada. A unidade systemd gerada lista-os todos
+configuração inválida, `6` porta ocupada. A unidade systemd gerada lista do `3` ao `6`
 em `RestartPreventExitStatus`.
 
 ## A ferramenta de servidor da TMC
@@ -112,7 +112,7 @@ antiga, agora é o
 ./play.sh down
 ```
 
-O `play.sh` é para um programador que mudou uma linha e quer vê-la. Imprime uma ligação, reconstrói a exportação quando está desatualizada, copia o `embed.html` por cima do `index.html` gerado pelo Godot — o que lê `?server=` da query string — e **avisa-o quando um pacote publicado em `dist/` é mais antigo do que o repositório do jogo a partir do qual foi construído**. Os complementos são ligações simbólicas e estão sempre atuais; um pacote é uma fotografia, por isso é a única parte que fica desatualizada, e um pacote desatualizado monta sem erros, corre, e é o jogo da semana passada.
+O `play.sh` é para um programador que mudou uma linha e quer vê-la. Imprime uma ligação, reconstrói a exportação quando está desatualizada, copia o `embed.html` — a página que lê `?server=` da query string — para a build, ao lado do `index.html` gerado pelo Godot, e **avisa-o quando um pacote publicado em `dist/` é mais antigo do que o repositório do jogo a partir do qual foi construído**. Os complementos são ligações simbólicas e estão sempre atuais; um pacote é uma fotografia, por isso é a única parte que fica desatualizada, e um pacote desatualizado monta sem erros, corre, e é o jogo da semana passada.
 
 O `demo.sh` é o outro: cinco servidores, o nginx a terminar o TLS, um anfitrião
 público, um domínio registável separado para o jogo e um passo com `sudo` para
@@ -132,14 +132,14 @@ completamente e precisa do seu próprio domínio registável.
 
 - **Um comando para arrancar.** O `setup.sh` encontra um runtime do Godot, liga
   os complementos, escreve um `cfg/` comentado e escreve `./server`. Nunca
-  sobrescreve um ficheiro de configuração que já exista. O RCON vem desligado.
+  sobrescreve um ficheiro de configuração que já exista. O RCON vem ligado, com uma palavra-passe gerada e apenas em loopback.
 - **Configuração em YAML**, dividida por assunto — `server.yml`, `net.yml`,
   `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Tudo o que
   o `dot-server` expõe como variável de consola pode ir para lá com o seu próprio
   nome.
 - **Papéis, não flags.** O modelo de permissões do dot-server é feito de flags, de
   propósito; o `groups.yml` é a tradução, por isso um operador escreve
-  `admin: [kick, ban, mute]` e um jogador recebe as flags.
+  `permissions: [kick, ban, mute]` num grupo `admin` e um jogador recebe as flags.
 - **Jogos instalados pelo nome.** `--games g2gfast,playground` (ou `TMC_GAMES`) vai buscar o descritor e o pacote de cada jogo à origem de conteúdo no arranque; `owner/name@version` nomeia o jogo publicado por outra pessoa. Uma pasta dentro de `content/` com um `game.yml` lá dentro é um jogo, e o `changelevel` troca entre eles com os jogadores ainda ligados.
 - **Os jogadores escolhem o jogo seguinte.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` sobre os jogos em `content/`, através do [`dot-vote`](/learn/godot/addons/dot-vote). O prefixo deixa o `!rtv` simples para um jogo que vote nos seus próprios mapas. Cada jogo tem o seu próprio limite de tempo no seu próprio `game.yml`.
 - **Um cliente de navegador.** `./server export-web` constrói-o; uma única

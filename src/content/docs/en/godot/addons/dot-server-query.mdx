@@ -177,6 +177,8 @@ framework can know it — a bot is a game concept and the server never sees one
 connect — so it reaches A2S's bot byte, DQP's `info.bots` and the backbone
 stats report only through a provider.
 
+**The map is the game's to say, too.** `info.map` and A2S's map field are dot-server's `DotGameManager.reported_map()`: the map the running game reported with `set_current_map`, or the game's display name when it reported none. Reporting a map calls `invalidate()` on the query source, which drops the cached snapshot so the next answer is rebuilt with the new map.
+
 ## Statistics, optionally
 
 `DotQueryStats` bridges [dot-stats](/learn/godot/addons/dot-stats) without

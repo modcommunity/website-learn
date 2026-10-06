@@ -71,7 +71,7 @@ func _game_load() -> DotResult:
 
 The identity layer `_make_identity()` returns is **not** this addon's: it is [dot-platform](/learn/godot/addons/dot-platform)'s `DotPlatformIdentity`, because every type it builds is dot-platform's dependency and none is this one's. A game returns one configured with its avatar schema, and with it on the module loads dot-platform's own module beside it.
 
-**What uses it:** mg-buses-from-hell (the first), mg-smash-copter, game-simple-lobby, and the starter game in dot-game-template. Their modules run to about ninety lines against the hand-written games' 837 to 1,816, and their services layers to about sixty against 557 to 718. game-playground's services subclass `DotGameServices`; arena, g2gfast and hungario still carry their own copies.
+**What uses it:** mg-buses-from-hell (the first), mg-smash-copter, game-simple-lobby, and the starter game in dot-game-template. The starter's module is 55 lines; the three games' modules run to 505 to 1,070 lines and their services layers to 429 to 495. game-playground's services subclass `DotGameServices`; arena, g2gfast and hungario still carry their own copies.
 
 ## The services layer
 

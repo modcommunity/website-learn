@@ -29,7 +29,7 @@ source:
 
 ```bash
 ./install.sh                 # 在 ~/.local/bin 里建软链
-PREFIX=/usr/local/bin sudo ./install.sh
+sudo ./install.sh --prefix /usr/local/bin
 ```
 
 ```bash
@@ -68,7 +68,7 @@ dotserve -- +sv_cheats 1 +map dm_arena
 | `--web` / `--ws-port N` | 同时监听浏览器客户端。默认是 `--port` + 1。 |
 
 退出码是有含义的，好让守护进程分得清配置错误和崩溃：`2` 用法错误、`3` 没有 Godot、
-`4` 没有项目、`5` 配置有误、`6` 端口被占用。生成的 systemd unit 会把它们全部列在
+`4` 没有项目、`5` 配置有误、`6` 端口被占用。生成的 systemd unit 会把 `3` 到 `6` 列在
 `RestartPreventExitStatus` 下。
 
 ## TMC 的服务器工具
@@ -102,7 +102,7 @@ Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `.\server.ps1`。
 ```
 
 `play.sh` 是给改了一行代码、想看看效果的开发者用的。它会打印一个链接，在导出过期时重新构建导出，
-把 `embed.html` 复制到 Godot 生成的 `index.html` 上（后者从查询字符串里读取 `?server=`），
+把 `embed.html`（从查询字符串里读取 `?server=` 的那个页面）复制进构建目录，放在 Godot 生成的 `index.html` 旁边，
 并且**在 `dist/` 里已发布的资源包比它构建来源的游戏仓库更旧时告诉你**。插件是软链接，永远是最新的；
 资源包是快照，所以它是唯一会过期的部分，而过期的资源包照样能干净地挂载、运行，只是上周的游戏。
 
@@ -119,12 +119,12 @@ HTTPS 页面不能打开 `ws://` 套接字，所以这种形态只在这里可�
 ### 它给服主的东西
 
 - **一条命令就能启动。** `setup.sh` 会找到 Godot 运行时、接好插件、写出一份带注释的
-  `cfg/`，并生成 `./server`。它绝不覆盖已经存在的配置文件。RCON 默认是关的。
+  `cfg/`，并生成 `./server`。它绝不覆盖已经存在的配置文件。RCON 默认是开的，密码自动生成，且只允许回环地址连接。
 - **配置写在 YAML 里**，按主题拆开——`server.yml`、`net.yml`、`rcon.yml`、
   `auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`、`security.yml`、`log.yml`。凡是 `dot-server` 以控制台
   变量形式暴露出来的东西，都能用它自己的名字写进去。
 - **是角色，不是 flag。** dot-server 的权限模型刻意是 flag；`groups.yml` 就是那层翻译，
-  于是服主写 `admin: [kick, ban, mute]`，玩家就拿到对应的 flag。
+  于是服主在 `admin` 组下写 `permissions: [kick, ban, mute]`，玩家就拿到对应的 flag。
 - **按名字安装游戏。** `--games g2gfast,playground`（或 `TMC_GAMES`）会在启动时从内容源获取每个游戏的描述文件和资源包；`owner/name@version` 指的是别人发布的游戏。`content/` 下任何一个含有 `game.yml` 的目录就是一个游戏，`changelevel` 能在玩家仍然在线的情况下切换它们。
 - **下一局玩什么由玩家决定。** 对 `content/` 里的游戏使用 `!game_nominate`、`!game_rtv`、`!game_vote`、`!game_timeleft`、`!game_next`，走的是 [`dot-vote`](/learn/godot/addons/dot-vote)。这个前缀把不带前缀的 `!rtv` 留给自己对地图投票的游戏。每个游戏在自己的 `game.yml` 里有自己的时间限制。
 - **一个浏览器客户端。** `./server export-web` 负责构建；一次导出就能服务所有服务器，

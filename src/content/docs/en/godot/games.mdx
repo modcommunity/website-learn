@@ -215,6 +215,8 @@ the replication that makes another player's weapon look right on your screen.
 The art is Kenney's Blaster Kit with melee from the Weapon Pack and Survival
 Kit — all CC0, all vendored, nothing to download.
 
+Shots are seen and heard with no code: `ZeeShotFx` draws a tracer, a muzzle flash and an impact, and `ZeeWeaponSound` plays a report per weapon class, synthesized on first use (a game can put a real recording in front of any of them). `rig.view_punch()` is the recoil for the camera, which a first-person game hands to [`dot-player-controller`](/learn/godot/addons/dot-player-controller)'s `DotFpsView.external_angles`.
+
 ## dot-game-template
 
 **Where a new game starts.** Not one of the eight: it lives with the addons, under [`modcommunity`](https://github.com/modcommunity/dot-game-template), because it is what a third-party developer copies. It is **Coin Grab**, a small networked 2D game on [`dot-game`](/learn/godot/addons/dot-game) — predicted, server-authoritative, and written without `class_name` so it works as a delivered pack from the first commit. `tools/rename.sh` makes it yours. On a `v*` tag its release workflow attaches the game as a `-pack.zip`, and the site signs and publishes that as `<your site username>/<repository>`, which is the name a server installs it by. The server tool mounts its packaged release on every check, so the template is verified the way a stranger's game would be.

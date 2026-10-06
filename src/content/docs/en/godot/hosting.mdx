@@ -100,7 +100,7 @@ wrong *and* I have been telling people to connect for ten minutes".
 ./play.sh down
 ```
 
-It prints a link. `play.sh` rebuilds the web export when it is out of date, puts the page that reads `?server=` in place of Godot's generated one, and warns when a published pack in `dist/` is older than the game repository it was built from — the one part of the tree that goes stale, and a stale pack mounts cleanly, runs, and is last week's game. Re-run `./server pack <id>` when it says so.
+It prints a link. `play.sh` rebuilds the web export when it is out of date, puts the page that reads `?server=` (`embed.html`) into the build beside Godot's generated one, and warns when a published pack in `dist/` is older than the game repository it was built from — the one part of the tree that goes stale, and a stale pack mounts cleanly, runs, and is last week's game. Re-run `./server pack <id>` when it says so.
 
 <Callout type="warning" title="Loopback HTTP only">
 An HTTPS page may not open a `ws://` socket. `play.sh` works on `127.0.0.1` and
@@ -165,13 +165,11 @@ mentions a setting from a newer version is worse than ignoring it.
 
 <Params>
   <Param name="net_port" type="net.yml">
-    The game port, `6070` out of the box. This is what players connect to and
+    The game port, `6064` out of the box. This is what players connect to and
     what your firewall has to allow.
   </Param>
   <Param name="net_bind_ip" type="net.yml">
-    `127.0.0.1` out of the box, which is correct behind a reverse proxy and
-    wrong for a server the internet should reach directly. Set it to `0.0.0.0`
-    or to the interface you mean.
+    `0.0.0.0` out of the box; `setup.sh` sets `127.0.0.1` when you put nginx in front, which is correct behind a reverse proxy and wrong for a server the internet should reach directly. Set it to `0.0.0.0` or to the interface you mean.
   </Param>
   <Param name="net_public_ip" type="net.yml">
     Only needed behind NAT. It goes into the join line and the listing; nothing
@@ -206,7 +204,8 @@ an operator writes a role and a player gets the flags:
 
 ```yaml
 groups:
-  admin: [kick, ban, mute, changemap, chat, vote]
+  admin:
+    permissions: [kick, ban, mute, changemap, chat, vote]
 ```
 
 ```yaml
@@ -258,8 +257,7 @@ documented on the property of the same name, and **enums are written by name**
 
 ## RCON
 
-RCON ships **off**; `cfg/rcon.yml` says how to turn it on, and the password is
-generated once and printed once.
+RCON is on and loopback-only out of the box: `setup.sh` writes a generated password into `cfg/rcon.yml` once and prints it once, `rcon_allowed` ships as `127.0.0.1`, and an empty password turns the listener off.
 
 `--rcon-password` is refused outright: argv is readable by every other process
 on the machine and ends up in pasted bug reports, which is why configuration

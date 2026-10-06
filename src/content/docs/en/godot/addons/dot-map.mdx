@@ -64,6 +64,13 @@ await session.change_to(&"surf_beginner")
 The second map is **delivered**: its scene lives inside a pack that is fetched
 and mounted before the scene is loaded.
 
+A game whose maps are published one pack per map (dot-ci's `release-maps.yml`) lists them in its descriptor's `maps:` as pinned `<owner>/<map id>@<version>` keys, and [`dot-server`](/learn/godot/addons/dot-server) hands them back as `DotGameManager.current_maps()`. `DotMapCatalogue.add_delivered(key, scene)` turns each into a delivered map, with the last segment of the content id as the id a player types (`DotMapDef.from_content_key` underneath):
+
+```gdscript
+for key in server.games.current_maps():
+    catalogue.add_delivered(key, "map.tscn")
+```
+
 ## Rotation, time limit and voting
 
 ```gdscript
@@ -139,7 +146,7 @@ somebody else has.
     `on_timeout_fn` decides what to do about a straggler.
   </Param>
   <Param name="DotMapSyncClient.accept_unknown_maps">
-    What a client will load on a host's say-so. Off is the safe default. A host
+    What a client will load on a host's say-so. On by default, and safe because a host
     may say *which* map, never what the map is: a map the client does not have
     must be delivered content. A game whose maps are data read by one scene in
     its own build lists that scene in `trusted_template_scenes`, and every

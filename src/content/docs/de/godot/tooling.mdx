@@ -30,7 +30,7 @@ Das einzige Stück der Sammlung, das kein Godot-Addon ist: ein Shell-Skript, das
 
 ```bash
 ./install.sh                 # verlinkt nach ~/.local/bin
-PREFIX=/usr/local/bin sudo ./install.sh
+sudo ./install.sh --prefix /usr/local/bin
 ```
 
 ```bash
@@ -78,7 +78,7 @@ Konfiguration des Servers.
 Die Exit-Codes sind aussagekräftig, damit ein Supervisor eine Fehlkonfiguration
 von einem Absturz unterscheiden kann: `2` Benutzung, `3` kein Godot, `4` kein
 Projekt, `5` fehlerhafte Konfiguration, `6` Port belegt. Die erzeugte
-systemd-Unit listet sie alle unter `RestartPreventExitStatus`.
+systemd-Unit listet `3` bis `6` unter `RestartPreventExitStatus`.
 
 ## TMCs Serverwerkzeug
 
@@ -115,8 +115,7 @@ Dasselbe Projekt, klarerer Name. Wenn du einen älteren Checkout oder einen
 
 `play.sh` ist für Entwickler, die eine Zeile geändert haben und sie ansehen
 wollen. Es gibt einen Link aus, baut den Export neu, wenn er veraltet ist,
-kopiert `embed.html` über das von Godot erzeugte `index.html` — jenes, das
-`?server=` aus dem Query-String liest — und **sagt dir, wenn ein veröffentlichtes
+kopiert `embed.html` — die Seite, die `?server=` aus dem Query-String liest — in den Build neben das von Godot erzeugte `index.html` und **sagt dir, wenn ein veröffentlichtes
 Paket in `dist/` älter ist als das Spiel-Repository, aus dem es gebaut wurde**.
 Die Addons sind per Symlink eingebunden und immer aktuell; ein Paket ist eine
 Momentaufnahme und daher der einzige Teil, der veraltet, und ein veraltetes Paket
@@ -141,14 +140,14 @@ anderes und braucht eine eigene registrierbare Domain.
 - **Ein Befehl zum Starten.** `setup.sh` findet eine Godot-Runtime, verdrahtet
   die Addons, schreibt ein kommentiertes `cfg/` und schreibt `./server`. Eine
   bereits vorhandene Konfigurationsdatei wird nie überschrieben. RCON kommt
-  ausgeschaltet.
+  eingeschaltet, mit erzeugtem Passwort und nur über Loopback.
 - **Konfiguration in YAML**, nach Themen getrennt — `server.yml`, `net.yml`,
   `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Alles, was
   `dot-server` als Konsolenvariable anbietet, kann dort unter seinem eigenen
   Namen stehen.
 - **Rollen statt Flags.** Das Rechtemodell von dot-server besteht bewusst aus
   Flags; `groups.yml` ist die Übersetzung, sodass eine Betreiberin
-  `admin: [kick, ban, mute]` schreibt und ein Spieler die Flags bekommt.
+  `permissions: [kick, ban, mute]` unter einer Gruppe `admin` schreibt und ein Spieler die Flags bekommt.
 - **Spiele werden per Name installiert.** `--games g2gfast,playground` (oder `TMC_GAMES`) holt beim Start Descriptor und Paket jedes Spiels vom Content-Ursprung; `owner/name@version` benennt das veröffentlichte Spiel von jemand anderem. Ein Verzeichnis unter `content/` mit einer `game.yml` darin ist ein Spiel, und `changelevel` wechselt zwischen ihnen, während die Spieler verbunden bleiben.
 - **Die Spieler wählen das nächste Spiel.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` über die Spiele in `content/`, per [`dot-vote`](/learn/godot/addons/dot-vote). Das Präfix überlässt das bloße `!rtv` einem Spiel, das über seine eigenen Karten abstimmt. Jedes Spiel hat sein eigenes Zeitlimit in seiner eigenen `game.yml`.
 - **Ein Browser-Client.** `./server export-web` baut ihn; ein Export bedient jeden

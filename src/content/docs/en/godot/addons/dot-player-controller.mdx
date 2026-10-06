@@ -61,7 +61,7 @@ ever seeing a keyboard.
 ```gdscript
 var intent := DotPlayerIntent.make(Vector2(0, 1), DotPlayerIntent.Btn.JUMP, tick)
 intent.view_yaw = look.yaw
-controller.drive(intent, delta)
+controller.simulate(intent, delta)
 ```
 
 `diff_from(previous_buttons)` fills in `pressed` and `released`, because a jump
@@ -153,7 +153,7 @@ can override in the inspector.
 | `DotFpsMotor` | The simulation. Deterministic, no engine globals, no input reads. |
 | `DotFpsBody` | The collision queries the motor needs. `DotFpsPhysicsBody` for real geometry, `DotFpsFlatBody` for tests. |
 | `DotFpsController` | The node. Drives the motor, writes to the scene, resizes the collider. |
-| `DotFpsView` | Camera, pitch, crouch height, speed FOV. Cosmetic only, runs at frame rate. |
+| `DotFpsView` | Camera, pitch, crouch height, speed FOV. Cosmetic only, runs at frame rate. `external_offset` eases a prediction correction into the eye; `external_angles` (degrees: pitch, yaw, roll) adds a weapon's view punch to the camera without touching the simulated aim. |
 | `DotFpsSampler` | Devices to commands. The only thing that reads the keyboard. |
 | `DotFpsTouchSampler` | Commands from touch, for phones and the browser. No art, no layout. |
 | `DotFpsNetSync` | What to replicate and at what precision, without importing `dot-net`. |
@@ -195,7 +195,7 @@ not actually achieve. Ask the tunables when laying out gaps and ledges.
 
 ### Where a game plugs in
 
-Four hooks, none of which needs a fork. The first three are part of the
+Five hooks, none of which needs a fork. The first three are part of the
 simulation, so all three replicate and survive a prediction replay.
 
 <Params>
@@ -304,7 +304,7 @@ and writes a `CharacterBody3D` or a `CharacterBody2D` found through the player.
 ```gdscript
 class MyController extends DotPlayerController:
     func _apply_intent(intent: DotPlayerIntent, delta: float) -> void:
-        var body := player_body() as CharacterBody3D
+        var body := player().body() as CharacterBody3D
         body.velocity = look.move_direction(intent.move) * 6.0
         body.velocity.y = _fall
         body.move_and_slide()

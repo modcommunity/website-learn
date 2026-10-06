@@ -30,7 +30,7 @@ qui a besoin de `bash` et d'un binaire Godot 4.7+.
 
 ```bash
 ./install.sh                 # crée des liens dans ~/.local/bin
-PREFIX=/usr/local/bin sudo ./install.sh
+sudo ./install.sh --prefix /usr/local/bin
 ```
 
 ```bash
@@ -78,7 +78,7 @@ configuration du serveur.
 
 Les codes de sortie ont un sens, pour qu'un superviseur distingue une mauvaise
 configuration d'un plantage : `2` usage, `3` pas de Godot, `4` pas de projet,
-`5` mauvaise config, `6` port occupé. L'unité systemd générée les liste tous sous
+`5` mauvaise config, `6` port occupé. L'unité systemd générée liste `3` à `6` sous
 `RestartPreventExitStatus`.
 
 ## L'outil serveur de TMC
@@ -115,9 +115,7 @@ lien, il s'appelle désormais
 ```
 
 `play.sh` est pour le développeur qui a changé une ligne et veut la voir. Il
-affiche un lien, reconstruit l'export quand il est périmé, copie `embed.html` par-dessus
-l'`index.html` généré par Godot — celui qui prend `?server=` dans la chaîne de
-requête — et **vous prévient quand un pack publié dans `dist/` est plus ancien que
+affiche un lien, reconstruit l'export quand il est périmé, copie `embed.html` — la page qui prend `?server=` dans la chaîne de requête — dans le build, à côté de l'`index.html` généré par Godot, et **vous prévient quand un pack publié dans `dist/` est plus ancien que
 le dépôt du jeu dont il est issu**. Les modules sont des liens symboliques et
 toujours à jour ; un pack est un instantané, c'est donc la seule partie qui se
 périme, et un pack périmé se monte proprement, tourne, et est le jeu de la semaine
@@ -141,14 +139,14 @@ chose et exige son propre domaine enregistrable.
 
 - **Une commande pour démarrer.** `setup.sh` trouve un runtime Godot, câble les
   modules, écrit un `cfg/` commenté et écrit `./server`. Il n'écrase jamais un
-  fichier de configuration existant. RCON est livré désactivé.
+  fichier de configuration existant. RCON est livré activé, avec un mot de passe généré et en loopback seulement.
 - **Configuration en YAML**, découpée par sujet — `server.yml`, `net.yml`,
   `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Tout ce
   que `dot-server` expose en variable de console peut y figurer sous son propre
   nom.
 - **Des rôles, pas des flags.** Le modèle de permissions de dot-server est fait
   de flags, délibérément ; `groups.yml` est la traduction, donc un opérateur
-  écrit `admin: [kick, ban, mute]` et un joueur reçoit les flags.
+  écrit `permissions: [kick, ban, mute]` sous un groupe `admin` et un joueur reçoit les flags.
 - **Des jeux installés par nom.** `--games g2gfast,playground` (ou `TMC_GAMES`)
   récupère au démarrage le descripteur et le pack de chaque jeu depuis l'origine
   de contenu ; `owner/name@version` désigne le jeu publié par quelqu'un d'autre. Un

@@ -97,7 +97,7 @@ because the list can be half a minute old, and then:
    refuses, because the player asked to be where their friend is (the party's
    refusal is kept in the result as `partyRefused`), or
 3. refuses with `friends.join.deny.notFriend`, `.offline`, `.notJoinable` or
-   `.unsupported` — the last when the game supplied neither function.
+   `.unsupported` — the last when the game can reach neither their party nor their server.
 
 A presence carries the site's server **id**; turning it into an address is
 `connect_fn`'s job, usually through [dot-browser](/learn/godot/addons/dot-browser).

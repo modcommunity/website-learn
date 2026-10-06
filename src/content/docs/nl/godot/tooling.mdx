@@ -30,7 +30,7 @@ Het enige stuk van de collectie dat geen Godot-add-on is: een shellscript dat
 
 ```bash
 ./install.sh                 # maakt links in ~/.local/bin
-PREFIX=/usr/local/bin sudo ./install.sh
+sudo ./install.sh --prefix /usr/local/bin
 ```
 
 ```bash
@@ -77,7 +77,7 @@ van de server.
 
 De exitcodes hebben betekenis, zodat een supervisor een misconfiguratie van een
 crash kan onderscheiden: `2` gebruik, `3` geen Godot, `4` geen project, `5` foute
-config, `6` poort bezet. De gegenereerde systemd-unit noemt ze allemaal onder
+config, `6` poort bezet. De gegenereerde systemd-unit noemt `3` tot en met `6` onder
 `RestartPreventExitStatus`.
 
 ## TMC's servertool
@@ -113,7 +113,7 @@ oudere link, dan is het nu
 ./play.sh down
 ```
 
-`play.sh` is voor een ontwikkelaar die een regel heeft aangepast en het wil zien. Het print een link, bouwt de export opnieuw als die verouderd is, kopieert `embed.html` over de door Godot gegenereerde `index.html` — die welke `?server=` uit de querystring haalt — en **meldt het wanneer een gepubliceerd pakket in `dist/` ouder is dan de gamerepository waaruit het is gebouwd**. De add-ons zijn gesymlinkt en altijd actueel; een pakket is een momentopname, dus het is het enige onderdeel dat veroudert, en een verouderd pakket koppelt netjes aan, draait, en is de game van vorige week.
+`play.sh` is voor een ontwikkelaar die een regel heeft aangepast en het wil zien. Het print een link, bouwt de export opnieuw als die verouderd is, kopieert `embed.html` — de pagina die `?server=` uit de querystring haalt — naar de build, naast de door Godot gegenereerde `index.html`, en **meldt het wanneer een gepubliceerd pakket in `dist/` ouder is dan de gamerepository waaruit het is gebouwd**. De add-ons zijn gesymlinkt en altijd actueel; een pakket is een momentopname, dus het is het enige onderdeel dat veroudert, en een verouderd pakket koppelt netjes aan, draait, en is de game van vorige week.
 
 `demo.sh` is de andere: vijf servers, nginx die TLS afhandelt, een publieke host,
 een apart registreerbaar domein voor de game en een `sudo`-stap om een listener te
@@ -134,13 +134,13 @@ eigen registreerbaar domein nodig.
 - **Eén commando om te starten.** `setup.sh` zoekt een Godot-runtime, koppelt de
   add-ons, schrijft een becommentarieerde `cfg/` en schrijft `./server`. Het
   overschrijft nooit een configuratiebestand dat er al is. RCON staat standaard
-  uit.
+  aan, met een gegenereerd wachtwoord en alleen via loopback.
 - **Configuratie in YAML**, per onderwerp opgesplitst — `server.yml`, `net.yml`,
   `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Alles wat
   `dot-server` als consolevariabele aanbiedt, kan daar onder zijn eigen naam in.
 - **Rollen, geen flags.** Het rechtenmodel van dot-server bestaat bewust uit
   flags; `groups.yml` is de vertaling, zodat een beheerder
-  `admin: [kick, ban, mute]` schrijft en een speler de flags krijgt.
+  `permissions: [kick, ban, mute]` onder een groep `admin` schrijft en een speler de flags krijgt.
 - **Games die op naam worden geïnstalleerd.** `--games g2gfast,playground` (of `TMC_GAMES`) haalt bij het opstarten de descriptor en het pakket van elke game op bij de contentbron; `owner/name@version` noemt de gepubliceerde game van iemand anders. Een map onder `content/` met een `game.yml` erin is een game, en `changelevel` wisselt ertussen terwijl de spelers verbonden blijven.
 - **De spelers kiezen de volgende game.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` over de games in `content/`, via [`dot-vote`](/learn/godot/addons/dot-vote). Het voorvoegsel laat het kale `!rtv` over aan een game die over zijn eigen maps stemt. Elke game krijgt zijn eigen tijdslimiet in zijn eigen `game.yml`.
 - **Een browserclient.** `./server export-web` bouwt hem; één export bedient elke
