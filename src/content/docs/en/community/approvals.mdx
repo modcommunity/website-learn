@@ -1,0 +1,56 @@
+---
+title: Approvals
+description: Content that waits for a moderator or an owner before anybody else sees it — what can be held, who decides, and where you see it.
+order: 35
+keywords:
+  - "approval queue"
+  - "held"
+  - "pending"
+  - "submitted for approval"
+  - "dangerous files"
+  - "executable"
+source:
+  - ../website-city/docs/approvals.md
+  - ../website-city/src/lib/approval
+  - ../website-city/src/types/approval
+---
+
+Some new content is **held** until somebody approves it: a moderator, the owner of the app it is filed under, or the owner of the item it was written on. A held post is saved and visible to you, its author, but to nobody else until it is approved. When you post something that is held, the site says **Submitted for approval** rather than leaving you to wonder where it went.
+
+## What can be held
+
+| What | Held by |
+| --- | --- |
+| A new app on the TMC Gaming Platform | The site, by default. An app gets its own top-level address, so it is looked at first. |
+| Assets, mods, servers, communities, collections, groups | The site, or the app the item is filed under. |
+| Comments, reviews, gallery uploads, bug reports and replies, feedback, discussion posts, questions | The site, the app, or **the owner of the item they are written on** — a perk of the item owner's role (Supporter and above). |
+| Releases | Game releases on apps that review them, and **any release carrying a dangerous file** (below). |
+
+Edits to something already published are not held again, and nobody is held by their own app or item: an owner never waits for themselves, and moderators are never held.
+
+## Who decides
+
+A request can need one or both of two sides:
+
+- **The moderators**, when the site's own policy holds it, when the app it belongs to has no owner, or when a file matched the site-wide dangerous list.
+- **The owner** of the app or item whose policy held it. Anybody who can edit that app or item can decide for it.
+
+A moderator's approval covers both sides, so a moderator can push anything through. An owner's approval covers only the owner's side. Either side rejecting rejects the request, and the author is told why.
+
+## Dangerous files
+
+Executables and other risky file types can be listed — once for the whole site, and separately per app. A release carrying one is held instead of refused, and every part of a file name counts (`setup.exe.txt` is an executable), including the files **inside** an archive once it has been indexed. A file on the site-wide list needs a moderator; a file on an app's own list needs that app's owner (or a moderator, if the app has none).
+
+## Where you see it
+
+- **Your approvals** (`/approvals`): what is waiting for you to review, what you submitted and where it stands, and your settings — which kinds of content your apps and your items hold.
+- **Moderation → Approvals**: the moderators' queue and the site-wide policy, beside the other [moderation](/learn/community/moderation) queues.
+- A held item's own page shows a banner with **Approve** and **Reject** to whoever can decide it, and held comments and reviews are marked **Not public** for their author.
+
+Every decision is in the moderation log, and the author gets a notification either way.
+
+<Related>
+- [Moderation](/learn/community/moderation)
+- [Reporting](/learn/community/reporting)
+- [Apps](/learn/content/apps)
+</Related>
