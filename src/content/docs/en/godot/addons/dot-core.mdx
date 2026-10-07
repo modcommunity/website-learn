@@ -51,7 +51,7 @@ godot --headless --path . res://examples/capability_report.tscn
 | `DotConfig` | Layered configuration: exported defaults < file < environment < command line, with reflective key discovery and secret-key protection. |
 | `DotRegistry` / `DotRegistryBus` | Name-based lookup, and the signals a static class cannot declare. |
 | `DotScheduler` / `DotJob` | Long work in slices. Worker threads where available, a per-frame time budget where not. |
-| `DotTransport` | Swappable multiplayer transport. `DotTransportAuto` picks between WebSocket and ENet, and logs why. |
+| `DotTransport` | Swappable multiplayer transport. `DotTransportDual` serves browsers over WebSocket and native clients over ENet in one server; `DotTransportAuto` picks one of the two for a client, and logs why. |
 | `DotHttp` | An `HTTPRequest`-based client with retries, jittered backoff, `Retry-After`, range-resumed downloads and connection pooling. |
 | `DotLog` / `DotLogBus` / `DotLogSink` | Levelled, channelled logging with structured fields, rotating files and UDP forwarding. [`dot-log`](/learn/godot/addons/dot-log) is the sink layer for everything beyond a file. |
 | `DotPaths` | Path sanitisation that *refuses* traversal rather than cleaning it, atomic writes, and web filesystem flushing. |
@@ -259,16 +259,13 @@ is code.
 
 ## Transports
 
-`DotTransportAuto` is the default and picks for you. The choice is not a
-preference:
-
 - **A browser has no UDP**, and `ENetMultiplayerPeer` is absent from the web
   template — so `DotTransportENet` reaches ENet through `ClassDB.instantiate`
   and `Object.call`, never by name. A script that so much as *mentions* the
   identifier fails to compile on a web export.
-- **One listening socket speaks one protocol.** A server that wants browser
-  clients listens on WebSocket, and then *all* its clients do.
-  `require_web_clients` defaults to `true` for that reason.
+- **One listening socket speaks one protocol, so a server for both audiences listens twice.** `DotTransportDual` puts WebSocket on TCP and ENet on UDP (the same port number by default) behind one `MultiplayerPeer`, so browsers and native clients play in the same match and nothing above the transport knows which a peer came in on. It is dot-server's default. If this build has no ENet, or the UDP port is taken, it serves WebSocket only and logs a warning rather than failing to start.
+- **The UDP port can be shared with the query protocols.** A2S and DQP answer on the game port too, and ENet cannot share a socket with them, so `DotUdpDemux` owns the port: a query goes to its handler and everything else is relayed to ENet on loopback, with the client's real address kept for bans and rate limits.
+- **A client uses one transport.** `DotTransportAuto` picks WebSocket in a browser and when `require_web_clients` is set (the default, for projects that have not decided); dot-server's client link tries ENet first on a native build and falls back to WebSocket.
 
 <Callout type="info" title="`DotWeb.is_secure_context()` is not &quot;the page is HTTPS&quot;">
 A browser treats `http://localhost` and `http://127.0.0.1` as trustworthy
