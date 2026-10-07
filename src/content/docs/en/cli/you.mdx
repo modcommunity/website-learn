@@ -1,0 +1,67 @@
+---
+title: Signed in as you
+description: tmc auth app-login — sign in the way the desktop app does, then manage friends, parties, presence, installs, subscriptions, reviews and leaderboards from a shell.
+navTitle: tmc as you
+order: 15
+badge: new
+keywords:
+  - "app-login"
+  - "device login"
+  - "friends"
+  - "party"
+  - "presence"
+  - "installs"
+  - "subscriptions"
+  - "leaderboard"
+  - "stats"
+  - "reviews write"
+source:
+  - ../tmc-cli/src/tmc_cli/commands/appuser_cmd.py
+  - ../tmc-cli/src/tmc_cli/app_api.py
+  - ../tmc-cli/README.md
+  - src/app/api/app/v1
+  - src/types/app-api/contract.ts
+---
+
+A content key (`tmc auth login`) lets `tmc` create and edit your items. Everything that is about **you** — your friends, your parties, what you are playing, your installs and subscriptions, your reviews, your place on a leaderboard — is the per-user half of the [App API](/learn/api/app), and it needs an **app-user session** instead. `tmc` gets one the same way the desktop app does: it prints a link and a code, you approve it in a browser where you are signed in, and the session is saved in your profile beside any content key.
+
+```bash
+tmc auth app-login               # prints the link and code, waits for you to approve
+tmc auth app-login --browser     # …and opens the link
+tmc auth app-whoami              # who the session is
+tmc auth app-logout              # ends the session on the site, then forgets it
+```
+
+## What you can do with it
+
+```bash
+tmc friends list                 # with what each is doing
+tmc friends requests | add USER | accept ID | decline ID | cancel ID | remove USER
+tmc presence get USER...         # friends only
+tmc presence set in_game --server 12 --joinable --detail "practice round"
+tmc party mine [--members]
+tmc party create --app 3 --name "Tonight" --max-users 8
+tmc party invite PARTY USER... | invites | accept INVITE | decline INVITE
+tmc party join PARTY [--password …] | leave PARTY | kick PARTY USER [--ban]
+tmc party ready PARTY [--not] | start PARTY [--server 12]
+tmc installs list | create --app 3 --name Main | update ID … | delete ID
+tmc installs items add|set|remove INSTALL mod 42 [--enable|--disable] [--order N]
+tmc subscriptions list | add mod 42 | remove mod 42
+tmc subscriptions prefs mod 42 --no-auto-update --paused
+tmc reviews write mod 42 --rating 5 --content "Works great"
+tmc reviews vote REVIEW up|down|clear | delete REVIEW
+tmc stats top 3 kills --limit 10 # a leaderboard, with your own rank
+tmc stats me 3 | defs 3
+```
+
+`tmc reviews` (plural) writes as you; `tmc review` is still the content API's review type. A review the site [holds for approval](/learn/community/approvals) says so.
+
+<Callout type="info" title="How the session is kept">
+The access token lasts an hour and is renewed with the refresh token automatically — at most once per command, when it has expired or the site answers `401`. If that fails too, the command says so and the session is dropped; run `app-login` again. The session is stored in your profile file (readable by you alone), is tied to the address that issued it, and is never sent to another `--base-url`. `TMC_APP_TOKEN` supplies an access token directly for a CI job; nothing is stored or renewed then.
+</Callout>
+
+<Related>
+- [The App API](/learn/api/app) — what these commands call
+- [The public catalogue](/learn/cli/catalog) — the half that needs no session
+- [Parties](/learn/parties)
+</Related>
