@@ -11,11 +11,9 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
-  - "game-simple-lobby"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "zee-dot-weapons"
-  - "salon"
   - "deathmatch"
   - "bac à sable"
 source:
@@ -24,7 +22,7 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Huit projets accompagnent la collection — cinq jeux de référence, deux
+Sept projets accompagnent la collection — quatre jeux de référence, deux
 minijeux et un pack d'armes — et ce ne sont pas des démonstrations. La suite de
 tests de chaque module l'exécute avec les autres absents, donc les jonctions
 entre eux n'existent que dans un jeu, et un chemin de code qu'une seule forme de
@@ -34,7 +32,7 @@ Ils vivent sous [`gamemann`](https://github.com/gamemann) plutôt que sous
 l'organisation qui héberge les modules ; voir [la vue d'ensemble](/learn/godot)
 pour comprendre pourquoi ce partage est une règle.
 
-**Chacun d'eux est livré, pas intégré.** Chaque jeu, le salon compris, est publié
+**Chacun d'eux est livré, pas intégré.** Chaque jeu est publié
 sous forme de pack [`dot-cloud`](/learn/godot/addons/dot-cloud) signé ; un
 serveur installe ceux qu'on lui dit de proposer, et le client d'un joueur
 télécharge le pack à sa connexion. L'enveloppe cliente ne contient aucun jeu : c'est
@@ -176,20 +174,6 @@ g2g_zone_mark          // puis sur l'autre
 g2g_zone stage main 1
 g2g_zone_save
 ```
-
-## game-simple-lobby
-
-**Un salon.** Une petite salle 2D avec du chat, une liste des présents et des
-avis d'arrivée et de départ — ce qu'un serveur fait tourner quand il ne fait rien
-d'autre, et la plus petite chose qui éprouve encore l'admission, l'appartenance,
-la réplication, la prédiction et le chat.
-
-Un serveur sans jeu chargé est une chose légitime à faire tourner et `dot-server`
-l'a toujours permis ; ce qui manquait, c'était quelque chose à regarder, et un
-joueur qui se connecte et ne voit rien ne peut pas distinguer cela d'un serveur
-cassé. C'est aussi le jeu qu'un client navigateur générique télécharge en
-premier — sous forme de pack, comme tous les autres, car un salon intégré au
-client est un salon qui exige un nouveau client pour changer.
 
 ## mg-smash-copter
 

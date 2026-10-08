@@ -11,11 +11,9 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
-  - "game-simple-lobby"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "zee-dot-weapons"
-  - "lobby"
   - "deathmatch"
   - "sandbox"
 source:
@@ -24,7 +22,7 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Oito projetos acompanham a coleção — cinco jogos de referência, dois minijogos e
+Sete projetos acompanham a coleção — quatro jogos de referência, dois minijogos e
 um pacote de armas — e não são demonstrações. O conjunto de testes de cada
 complemento corre-o com os outros ausentes, por isso as junções entre eles só
 existem dentro de um jogo, e um caminho de código que só uma forma de instalação
@@ -34,7 +32,7 @@ Vivem sob [`gamemann`](https://github.com/gamemann) e não sob a organização e
 que estão os complementos; veja [a visão geral](/learn/godot) para saber porque é
 que a separação é uma regra.
 
-**Todos eles são entregues, não embutidos.** Cada jogo, o lobby incluído, é publicado como um pacote [`dot-cloud`](/learn/godot/addons/dot-cloud) assinado; um servidor instala os que lhe mandam oferecer, e o cliente de um jogador descarrega o pacote quando se liga. O invólucro do cliente não contém jogo nenhum, por isso é a mesma compilação seja a que for que se ligue, e um jogo novo chega aos jogadores sem um cliente novo. É também por isso que cada jogo aqui referencia os seus próprios scripts por caminho e não por `class_name`: os globais `class_name` de um pacote montado nunca são registados, pelo que um jogo escrito da outra maneira monta, carrega as suas cenas, e não corre código nenhum seu.
+**Todos eles são entregues, não embutidos.** Cada jogo é publicado como um pacote [`dot-cloud`](/learn/godot/addons/dot-cloud) assinado; um servidor instala os que lhe mandam oferecer, e o cliente de um jogador descarrega o pacote quando se liga. O invólucro do cliente não contém jogo nenhum, por isso é a mesma compilação seja a que for que se ligue, e um jogo novo chega aos jogadores sem um cliente novo. É também por isso que cada jogo aqui referencia os seus próprios scripts por caminho e não por `class_name`: os globais `class_name` de um pacote montado nunca são registados, pelo que um jogo escrito da outra maneira monta, carrega as suas cenas, e não corre código nenhum seu.
 
 <Callout type="info" title="É aqui que estão os erros">
 Pôr os complementos de jogabilidade num só processo encontrou sete erros, seis
@@ -161,18 +159,6 @@ g2g_zone_mark          // e no outro
 g2g_zone stage main 1
 g2g_zone_save
 ```
-
-## game-simple-lobby
-
-**Um lobby.** Uma pequena sala 2D com conversa, uma lista de presentes e avisos de
-entrada e saída — o que um servidor corre quando não está a correr mais nada, e a
-coisa mais pequena que ainda exercita admissão, pertença, replicação, previsão e
-conversa.
-
-Um servidor sem jogo carregado é uma coisa legítima de se correr e o `dot-server`
-sempre o permitiu; o que não havia era algo para olhar, e um jogador que se liga e
-não vê nada não consegue distinguir isso de um servidor avariado. É também o jogo
-que um cliente de navegador genérico descarrega primeiro — como pacote, tal como todos os outros, porque um lobby embutido no cliente é um lobby que precisa de um cliente novo para mudar.
 
 ## mg-smash-copter
 

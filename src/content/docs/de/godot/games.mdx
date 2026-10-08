@@ -11,11 +11,9 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
-  - "game-simple-lobby"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "zee-dot-weapons"
-  - "Lobby"
   - "Deathmatch"
   - "Sandbox"
 source:
@@ -24,7 +22,7 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Acht Projekte werden zusammen mit der Sammlung ausgeliefert — fünf Referenzspiele,
+Sieben Projekte werden zusammen mit der Sammlung ausgeliefert — vier Referenzspiele,
 zwei Minispiele und ein Waffenpaket — und sie sind keine Demonstrationen. Die
 Testsuite jedes Addons führt dieses Addon ohne die anderen aus, also existieren
 die Verbindungen zwischen ihnen nur in einem Spiel, und ein Codepfad, den nur
@@ -34,7 +32,7 @@ Sie liegen unter [`gamemann`](https://github.com/gamemann) und nicht unter der
 Organisation, in der die Addons liegen; warum die Trennung eine Regel ist, steht
 in [der Übersicht](/learn/godot).
 
-**Jedes davon wird ausgeliefert, nicht eingebaut.** Jedes Spiel, die Lobby eingeschlossen, wird als signiertes [`dot-cloud`](/learn/godot/addons/dot-cloud)-Paket veröffentlicht; ein Server installiert die, die er anbieten soll, und der Client eines Spielers lädt das Paket herunter, wenn er beitritt. Die Client-Shell enthält überhaupt kein Spiel, also ist sie derselbe Build, womit auch immer sie sich verbindet, und ein neues Spiel erreicht die Spieler ohne neuen Client. Deshalb verweist hier auch jedes Spiel auf seine eigenen Skripte über den Pfad statt über `class_name`: Die `class_name`-Globals eines eingehängten Pakets werden nie registriert, sodass ein anders geschriebenes Spiel sich einhängt, seine Szenen lädt und keine Zeile seines Codes ausführt.
+**Jedes davon wird ausgeliefert, nicht eingebaut.** Jedes Spiel wird als signiertes [`dot-cloud`](/learn/godot/addons/dot-cloud)-Paket veröffentlicht; ein Server installiert die, die er anbieten soll, und der Client eines Spielers lädt das Paket herunter, wenn er beitritt. Die Client-Shell enthält überhaupt kein Spiel, also ist sie derselbe Build, womit auch immer sie sich verbindet, und ein neues Spiel erreicht die Spieler ohne neuen Client. Deshalb verweist hier auch jedes Spiel auf seine eigenen Skripte über den Pfad statt über `class_name`: Die `class_name`-Globals eines eingehängten Pakets werden nie registriert, sodass ein anders geschriebenes Spiel sich einhängt, seine Szenen lädt und keine Zeile seines Codes ausführt.
 
 <Callout type="info" title="Hier stecken die Fehler">
 Die Gameplay-Addons in einen Prozess zu bringen, fand sieben Fehler — sechs davon
@@ -162,19 +160,6 @@ g2g_zone_mark          // und auf die andere
 g2g_zone stage main 1
 g2g_zone_save
 ```
-
-## game-simple-lobby
-
-**Eine Lobby.** Ein kleiner 2D-Raum mit Chat, einer Anwesenheitsliste und
-Beitritts- und Abschiedsmeldungen — das, was ein Server ausführt, wenn er sonst
-nichts ausführt, und das Kleinste, das noch Zutritt, Mitgliedschaft, Replikation,
-Vorhersage und Chat beansprucht.
-
-Ein Server ohne geladenes Spiel ist etwas völlig Legitimes, und `dot-server` hat
-das immer unterstützt; was fehlte, war etwas zum Anschauen — und wer sich
-verbindet und nichts sieht, kann das nicht von einem kaputten Server
-unterscheiden. Es ist außerdem das Spiel, das ein generischer Browser-Client
-zuerst herunterlädt — als Paket, wie jedes andere, denn eine in den Client eingebaute Lobby ist eine Lobby, die zur Änderung einen neuen Client braucht.
 
 ## mg-smash-copter
 

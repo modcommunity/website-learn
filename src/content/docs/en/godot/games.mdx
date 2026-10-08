@@ -12,11 +12,9 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
-  - "game-simple-lobby"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "zee-dot-weapons"
-  - "lobby"
   - "deathmatch"
   - "sandbox"
 source:
@@ -25,7 +23,7 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Eight projects ship alongside the collection — five reference games, two
+Seven projects ship alongside the collection — four reference games, two
 minigames and a weapons pack — and they are not demonstrations. Every addon's
 own suite runs that addon with the others absent, so the joins between them
 exist only in a game, and a code path that only one deployment shape reaches is
@@ -35,7 +33,7 @@ They live under [`gamemann`](https://github.com/gamemann) rather than under the
 organisation the addons are in; see [the overview](/learn/godot)
 for why the split is a rule.
 
-**Every one of them is delivered, not built in.** Each game, the lobby included, is published as a signed [`dot-cloud`](/learn/godot/addons/dot-cloud) pack; a server installs the ones it is told to offer, and a player's client downloads the pack when it joins. The client shell contains no game at all, so it is the same build whatever it connects to, and a new game reaches players without a new client. That is also why every game here references its own scripts by path rather than by `class_name`: a mounted pack's `class_name` globals are never registered, so a game written the other way mounts, loads its scenes, and runs none of its code.
+**Every one of them is delivered, not built in.** Each game is published as a signed [`dot-cloud`](/learn/godot/addons/dot-cloud) pack; a server installs the ones it is told to offer, and a player's client downloads the pack when it joins. The client shell contains no game at all, so it is the same build whatever it connects to, and a new game reaches players without a new client. That is also why every game here references its own scripts by path rather than by `class_name`: a mounted pack's `class_name` globals are never registered, so a game written the other way mounts, loads its scenes, and runs none of its code.
 
 <Callout type="info" title="This is where the bugs are">
 Putting the gameplay addons through one process found seven bugs, six of them in
@@ -152,17 +150,6 @@ g2g_zone_mark          // and the other
 g2g_zone stage main 1
 g2g_zone_save
 ```
-
-## game-simple-lobby
-
-**A lobby.** A small 2D room with chat, a roster and join/leave notices — what a
-server runs when it is not running anything else, and the smallest thing that
-still exercises admission, membership, replication, prediction and chat.
-
-A server with no game loaded is a legitimate thing to run and `dot-server` has
-always supported it; what it did not have was anything to look at, and a player
-who connects and sees nothing cannot tell that from a broken server. It is also
-the game a generic browser client shell downloads first — as a pack, like every other, because a lobby built into the client is a lobby that needs a new client to change.
 
 ## mg-smash-copter
 

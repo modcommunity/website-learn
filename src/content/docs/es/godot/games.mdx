@@ -12,11 +12,9 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
-  - "game-simple-lobby"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "zee-dot-weapons"
-  - "vestíbulo"
   - "deathmatch"
   - "sandbox"
 source:
@@ -25,7 +23,7 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Ocho proyectos acompañan a la colección — cinco juegos de referencia, dos
+Siete proyectos acompañan a la colección — cuatro juegos de referencia, dos
 minijuegos y un paquete de armas — y no son demostraciones. El conjunto de
 pruebas de cada complemento lo ejecuta con los demás ausentes, así que las
 uniones entre ellos existen solo dentro de un juego, y un camino de código que
@@ -36,7 +34,7 @@ Viven bajo [`gamemann`](https://github.com/gamemann) y no bajo la organización
 donde están los complementos; consulta [la visión general](/learn/godot) para ver
 por qué esa separación es una regla.
 
-**Ninguno está integrado: todos se entregan.** Cada juego, el vestíbulo incluido, se publica como un paquete firmado de [`dot-cloud`](/learn/godot/addons/dot-cloud); un servidor instala los que se le indica que ofrezca, y el cliente del jugador descarga el paquete al unirse. El shell del cliente no contiene ningún juego, así que es la misma compilación sea cual sea aquello a lo que se conecta, y un juego nuevo llega a los jugadores sin un cliente nuevo. Por eso cada juego de aquí referencia sus propios scripts por ruta y no por `class_name`: los globales `class_name` de un paquete montado nunca se registran, de modo que un juego escrito al revés se monta, carga sus escenas y no ejecuta nada de su código.
+**Ninguno está integrado: todos se entregan.** Cada juego se publica como un paquete firmado de [`dot-cloud`](/learn/godot/addons/dot-cloud); un servidor instala los que se le indica que ofrezca, y el cliente del jugador descarga el paquete al unirse. El shell del cliente no contiene ningún juego, así que es la misma compilación sea cual sea aquello a lo que se conecta, y un juego nuevo llega a los jugadores sin un cliente nuevo. Por eso cada juego de aquí referencia sus propios scripts por ruta y no por `class_name`: los globales `class_name` de un paquete montado nunca se registran, de modo que un juego escrito al revés se monta, carga sus escenas y no ejecuta nada de su código.
 
 <Callout type="info" title="Aquí es donde están los fallos">
 Poner juntos los complementos de jugabilidad en un mismo proceso encontró siete
@@ -163,18 +161,6 @@ g2g_zone_mark          // y en la otra
 g2g_zone stage main 1
 g2g_zone_save
 ```
-
-## game-simple-lobby
-
-**Un vestíbulo.** Una sala 2D pequeña con chat, una lista de presentes y avisos de
-entrada y salida — lo que un servidor ejecuta cuando no ejecuta nada más, y la
-cosa más pequeña que aún ejercita admisión, pertenencia, replicación, predicción y
-chat.
-
-Un servidor sin juego cargado es algo legítimo de ejecutar y `dot-server` siempre
-lo ha admitido; lo que no tenía era algo que mirar, y un jugador que se conecta y
-no ve nada no puede distinguir eso de un servidor roto. También es el juego que
-un cliente genérico de navegador descarga primero — como paquete, igual que todos los demás, porque un vestíbulo integrado en el cliente es un vestíbulo que necesita un cliente nuevo para cambiar.
 
 ## mg-smash-copter
 

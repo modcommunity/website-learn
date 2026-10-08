@@ -11,11 +11,9 @@ keywords:
   - "game-hungario"
   - "game-playground"
   - "game-g2gfast"
-  - "game-simple-lobby"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "zee-dot-weapons"
-  - "lobby"
   - "deathmatch"
   - "sandbox"
 source:
@@ -24,7 +22,7 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Acht projecten worden met de collectie meegeleverd — vijf referentiegames, twee
+Zeven projecten worden met de collectie meegeleverd — vier referentiegames, twee
 minigames en een wapenpakket — en het zijn geen demonstraties. De testsuite van
 elke add-on draait die add-on met de andere afwezig, dus de verbindingen ertussen
 bestaan alleen in een game, en een codepad dat maar één uitrolvorm bereikt, is een
@@ -34,7 +32,7 @@ Ze staan onder [`gamemann`](https://github.com/gamemann) en niet onder de
 organisatie waar de add-ons in zitten; zie [het overzicht](/learn/godot) voor
 waarom die splitsing een regel is.
 
-**Elk ervan wordt geleverd, niet ingebouwd.** Elke game, de lobby inbegrepen, wordt gepubliceerd als een ondertekend [`dot-cloud`](/learn/godot/addons/dot-cloud)-pakket; een server installeert degene die hij moet aanbieden, en de client van een speler downloadt het pakket bij het joinen. De clientschil bevat helemaal geen game, dus het is dezelfde build ongeacht waarmee hij verbindt, en een nieuwe game bereikt spelers zonder nieuwe client. Daarom verwijst elke game hier naar zijn eigen scripts met een pad in plaats van met `class_name`: de `class_name`-globals van een aangekoppeld pakket worden nooit geregistreerd, dus een game die op de andere manier is geschreven koppelt aan, laadt zijn scènes, en draait geen van zijn code.
+**Elk ervan wordt geleverd, niet ingebouwd.** Elke game wordt gepubliceerd als een ondertekend [`dot-cloud`](/learn/godot/addons/dot-cloud)-pakket; een server installeert degene die hij moet aanbieden, en de client van een speler downloadt het pakket bij het joinen. De clientschil bevat helemaal geen game, dus het is dezelfde build ongeacht waarmee hij verbindt, en een nieuwe game bereikt spelers zonder nieuwe client. Daarom verwijst elke game hier naar zijn eigen scripts met een pad in plaats van met `class_name`: de `class_name`-globals van een aangekoppeld pakket worden nooit geregistreerd, dus een game die op de andere manier is geschreven koppelt aan, laadt zijn scènes, en draait geen van zijn code.
 
 <Callout type="info" title="Hier zitten de bugs">
 De gameplay-add-ons door één proces halen leverde zeven bugs op, zes daarvan in
@@ -161,17 +159,6 @@ g2g_zone_mark          // en op de andere
 g2g_zone stage main 1
 g2g_zone_save
 ```
-
-## game-simple-lobby
-
-**Een lobby.** Een kleine 2D-ruimte met chat, een deelnemerslijst en meldingen van
-komen en gaan — wat een server draait als hij verder niets draait, en het kleinste
-dat nog toelating, lidmaatschap, replicatie, voorspelling en chat beproeft.
-
-Een server zonder geladen game is iets volstrekt legitiems en `dot-server` heeft
-dat altijd ondersteund; wat ontbrak was iets om naar te kijken, en wie verbindt en
-niets ziet, kan dat niet onderscheiden van een kapotte server. Het is ook de game
-die een generieke browserclient als eerste downloadt — als pakket, net als elke andere, want een lobby die in de client is ingebouwd, is een lobby waarvoor je een nieuwe client nodig hebt om hem te wijzigen.
 
 ## mg-smash-copter
 
