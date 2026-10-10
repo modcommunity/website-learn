@@ -221,7 +221,7 @@ function Param({
  * `@2xl` / `@4xl`, not `md` / `lg` — this renders inside the article column,
  * which is narrower than the viewport by the docs rail plus the shared icon
  * rail. Viewport breakpoints here produce three columns in a space wide enough
- * for two, which is the exact bug website-processing's CLAUDE.md documents.
+ * for two, which is the exact bug website-processing's docs/layout.md documents.
  */
 function Cards({ children }: { children: ReactNode }) {
     return (

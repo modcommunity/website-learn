@@ -62,7 +62,7 @@ import { useSignedIn } from '../lib/auth-hint'
  * button.
  *
  * VIEWPORT VARIANTS ARE CORRECT HERE, unlike everywhere else in this repo (see
- * CLAUDE.md, "Responsive layout"). The rule there is that `<main>`'s width and
+ * docs/layout.md, "Container queries"). The rule there is that `<main>`'s width and
  * the viewport's differ by the sidebar, so a viewport breakpoint fires at the
  * wrong moment. This block is `fixed` and lives OUTSIDE `<main>`, in no
  * container at all: the space it has to lay out in really is the viewport.

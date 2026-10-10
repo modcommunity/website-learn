@@ -1,6 +1,6 @@
 // Horizontal-overflow audit: every built page, every language, every width.
 //
-// CLAUDE.md specifies this check and names 1024 and 1100 as "the
+// docs/layout.md specifies this check and names 1024 and 1100 as "the
 // sidebar-transition widths where this class of bug lives, and the ones nobody
 // tests by hand". It lived in /tmp for two runs and was re-derived each time;
 // it belongs here.

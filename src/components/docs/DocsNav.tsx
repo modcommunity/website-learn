@@ -19,7 +19,7 @@ import { track } from '../../lib/umami'
  *
  * Everything here is sized with container queries (`@4xl:`), not `lg:`, because
  * this sits inside `<main>`, whose width already differs from the viewport's by
- * the shared icon rail. See website-processing's CLAUDE.md for the full story —
+ * the shared icon rail. See website-processing's docs/layout.md for the full story —
  * it is the same trap, and the docs shell has two more columns to get wrong.
  */
 export default function DocsNav({

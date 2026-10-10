@@ -60,7 +60,7 @@ URLs all assume it.
 Translations are optional overlays at `src/content/docs/<locale>/<same path>`;
 a page with no translation renders the English body behind a notice.
 
-See [CLAUDE.md](./CLAUDE.md) for the frontmatter schema, the MDX component set,
+See [docs/README.md](./docs/README.md) for the frontmatter schema, the MDX component set,
 the layout rules, and the conventions the existing pages follow.
 
 ## Deployment
@@ -75,7 +75,7 @@ error_page 404 /learn/404/index.html;
 The docs publish their own sitemap at `/learn/sitemap.xml` — website-processing
 owns the domain root, so reference it from that repo's `robots.txt`.
 
-There is deliberately no Astro `base` — see [CLAUDE.md](./CLAUDE.md) for why.
+There is deliberately no Astro `base` — see [docs/deployment.md](./docs/deployment.md) for why.
 
 ## Licence
 
