@@ -13,7 +13,16 @@ keywords:
   - "game-g2gfast"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
+  - "game-zombie-zone"
+  - "game-hide-n-seek"
+  - "mg-wipeout"
+  - "mg-deathrun"
+  - "mg-prop-hunt"
+  - "mg-look-at-me"
+  - "mg-dangerous-delivery"
   - "zee-dot-weapons"
+  - "zed-dot-weapons"
+  - "dot-bot"
   - "deathmatch"
   - "bac à sable"
 source:
@@ -25,15 +34,9 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Sept projets accompagnent la collection — quatre jeux de référence, deux
-minijeux et un pack d'armes — et ce ne sont pas des démonstrations. La suite de
-tests de chaque module l'exécute avec les autres absents, donc les jonctions
-entre eux n'existent que dans un jeu, et un chemin de code qu'une seule forme de
-déploiement atteint est un chemin de code que rien n'a exécuté.
+Treize jeux accompagnent la collection — six jeux complets et sept minijeux — avec deux packs d'armes et les dépôts de cartes que plusieurs d'entre eux chargent, et ce ne sont pas des démonstrations. La suite de tests de chaque module l'exécute avec les autres absents, donc les jonctions entre eux n'existent que dans un jeu, et un chemin de code qu'une seule forme de déploiement atteint est un chemin de code que rien n'a exécuté.
 
-Ils vivent sous [`gamemann`](https://github.com/gamemann) plutôt que sous
-l'organisation qui héberge les modules ; voir [la vue d'ensemble](/learn/godot)
-pour comprendre pourquoi ce partage est une règle.
+Ils vivent sous [`zees-games`](https://github.com/zees-games) plutôt que sous l'organisation qui héberge les modules ; voir [la vue d'ensemble](/learn/godot) pour comprendre pourquoi ce partage est une règle.
 
 **Chacun d'eux est livré, pas intégré.** Chaque jeu est publié
 sous forme de pack [`dot-cloud`](/learn/godot/addons/dot-cloud) signé ; un
@@ -60,17 +63,18 @@ jeu : un anneau [`dot-replay`](/learn/godot/addons/dot-replay) sur chaque serveu
 (`replay save` à la console, et le hash d'un clip joint à chaque expulsion et
 chaque bannissement), et un client [`dot-friends`](/learn/godot/addons/dot-friends)
 à côté du client de groupe dans l'enveloppe cliente exportée, qui se désactive
-tant que les routes d'amis du site ne sont pas déployées. Aucun jeu ne lie ni
+pour la session quand le site répond 404 à ses routes d'amis. Aucun jeu ne lie ni
 l'un ni l'autre.
+
+Les bots sont l'autre point commun à la plupart d'entre eux. Neuf jeux remplissent les places vides avec des joueurs issus de `dot-bot`, le cerveau de bots de la famille (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell et mg-dangerous-delivery), et tous acceptent à la console ses préréglages `bot_difficulty` : `easy`, `medium` (par défaut), `hard` et `nightmare`, chacun un lot de réglages `bot_*` individuels.
 
 ## game-arena
 
-**Un deathmatch d'arène en 3D texturé en dev. Le jeu de référence.** Il existe
+**Un jeu de tir d'arène en 3D texturé en dev. Le jeu de référence.** Il existe
 pour prouver que les modules se composent, pour montrer à quoi ressemblent les
 ponts, et pour être ce dont on copie un nouveau jeu.
 
-Utilise `dot-core`, `dot-player-controller`, `dot-combat`, `dot-loadout`,
-`dot-match`, `dot-ui`, `dot-server` et `dot-net`.
+Sept modes (chacun pour soi, deathmatch par équipes, un mode de horde appelé `siege`, roi de la colline, capture du drapeau, gun game et snipers seulement) sur trois cartes intégrées, `dm_box`, `dm_atrium` et `dm_pit`, plus les cartes de surf de combat de `g2gfast-maps`. Presque toute la famille tourne ici dans un seul processus : `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-loadout`, `dot-match`, `dot-team`, `dot-spawn`, `dot-objective`, `dot-npc` pour la horde, `dot-props`, `dot-bot`, `dot-ui`, `dot-menu`, `dot-net` et `dot-server`, avec le chat, la voix, la modération, les statistiques et les succès à côté.
 
 Quatre fichiers comptent, et la raison pour laquelle chacun est dans le *jeu*
 plutôt que dans un module est toujours la même :
@@ -83,20 +87,14 @@ plutôt que dans un module est toujours la même :
 - **`game/arena_player.gd`** — déplacement, armes, santé et boîtes de collision
   sur un même corps. Tous les modules disent que ce câblage appartient au jeu,
   parce qu'un module qui le ferait dicterait une forme de scène.
-- **`game/arena_game.gd`** — la couture. Six modules, chacun correct seul ; voici
-  les cinquante lignes où une élimination de combat devient un score de partie et
-  une réapparition de partie devient un équipement.
-- **`game/arena_module.gd`** — le seul fichier qui nomme `dot-server`. Une
-  quarantaine de lignes, et c'est toute l'intégration au serveur dédié.
+- **`game/arena_game.gd`** — la couture. dot-match ne sait rien des dégâts, dot-combat rien du score, dot-loadout rien des armes ; c'est ici qu'une élimination de combat devient un score de partie et qu'une réapparition de partie devient un équipement. Il ne nomme jamais `dot-server`, si bien qu'un serveur d'écoute, un test et un serveur dédié font tourner le même jeu.
+- **`game/arena_module.gd`** — l'intégration au serveur dédié. Avec `game/arena_services.gd` à côté, c'est le seul code qui nomme `dot-server`.
 
-Quatre armes, parce que ce sont quatre réponses véritablement différentes à
-« comment je réduis la distance », et qu'un deathmatch avec moins n'a qu'une seule
-bonne réponse. Les équipements sont deux armes sur un budget de six points —
-quatre nombres au lieu d'une énumération.
+Les armes sont les vingt-sept de [`zee-dot-weapons`](#zee-dot-weapons), et aucune n'est définie dans le jeu. Un équipement, choisi sur B, tient en cinq emplacements (corps à corps, principale, secondaire, lancée, accessoire) sur un budget de sept points : un fusil, un pistolet, une grenade et une armure tiennent avec un point de reste, et une arme lourde avec une armure non, parce que c'est la combinaison à laquelle personne ne sait répondre. Le propriétaire d'un serveur peut restreindre le choix, ou imposer un même kit à tous, avec les cvars `mp_loadout_*`.
 
 ```bash
 godot --headless --path . res://examples/headless_match.tscn   # un deathmatch entier
-godot --headless --path . res://examples/headless_net.tscn     # serveur + client, 20% de perte
+godot --headless --path . res://examples/headless_net.tscn     # un serveur, deux clients, un paquet sur cinq perdu
 godot --headless --path . res://examples/dedicated.tscn        # un vrai DotServer
 ```
 
@@ -104,12 +102,11 @@ godot --headless --path . res://examples/dedicated.tscn        # un vrai DotServ
 
 **Un jeu d'arène où l'on grandit en mangeant, avec un avatar juché sur le
 monstre.** Le premier client jouable de la collection, le premier jeu avec du
-netcode qui marche sur une vraie socket, et le seul endroit où la moitié gameplay
-et la moitié identité tournent ensemble.
+netcode qui marche sur une vraie socket, et le premier endroit où la moitié gameplay
+et la moitié identité ont tourné ensemble.
 
 Utilise `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
-`dot-user-avatar`, `dot-loadout`, `dot-platform` et `dot-cloud` — tout sauf
-`dot-player-controller` et `dot-combat`. Un seul pack porte cinq modes — classic, frenzy, gauntlet, warrens et reef — chacun avec son propre `game.yml` sur le même contenu.
+`dot-user-avatar`, `dot-loadout`, `dot-platform`, `dot-cloud` et `dot-bot`, et aucun des modules de déplacement ou de combat 3D. Un seul pack porte six modes — classic, frenzy, gauntlet, warrens, reef et shallows — chacun avec son propre `game.yml` sur le même contenu.
 
 C'est aussi **le chemin le plus court vers la colonne navigateur** : petit, sans
 besoin de threads, il éprouve toutes les contraintes du navigateur sans rien
@@ -121,17 +118,10 @@ cross-origin sur chaque réponse et casse tous les embeds tiers de la page.
 
 ## game-playground
 
-**Un bac à sable dans la forme classique du bac à sable physique.** Maintenez Q
-pour un menu de quatorze objets, quatre PNJ scriptés et trois armes ; cliquez sur
-l'un d'eux et il est à vous. Un pistolet physique qui tient et gèle, un pistolet
-gravitationnel qui propulse. Trois cartes, un serveur dédié, vingt commandes de
-console, et un parcours de saut à neuf plateformes sur la piste bonus de
-`pg_lobby` — parce qu'un parcours de saut n'est pas un genre de déplacement, et
-que c'est ce qui dit que [`dot-timer`](/learn/godot/addons/dot-timer) n'est pas un
-truc réservé au surf et au bunny-hop.
+**Un bac à sable dans la forme classique du bac à sable physique.** Maintenez Q pour un menu d'objets, de PNJ (certains armés), d'armes, de modes de l'outil et de vos constructions sauvegardées ; cliquez sur l'un d'eux et il est à vous. Un pistolet physique qui tient, gèle et ramasse les joueurs ; un pistolet gravitationnel qui propulse ; un pistolet outil qui redimensionne, peint, soude, attache par des cordes, relie des boutons à des portes et plus encore. Les constructions se sauvegardent et se chargent depuis le menu (une pièce soudée seule y figure comme **objet personnalisé**), les objets peuvent être cassables, se tenir sur un objet mobile vous emporte, et le mode créatif écarte un bâtisseur du chemin de tous. Des cartes intégrées (un bac à sable avec des parcours chronométrés sur ses pistes bonus, une carte de surf, une carte de bunny-hop, une carte générée) plus des cartes personnalisées livrées sous forme de documents JSON depuis `game-playground-maps`. Les parcours chronométrés sont ce qui dit que [`dot-timer`](/learn/godot/addons/dot-timer) n'est pas un truc réservé au surf et au bunny-hop : un parcours de saut n'est pas un genre de déplacement.
 
-Utilise `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`,
-`dot-leaderboard`, `dot-ui` et `dot-server`.
+Utilise `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`, `dot-npc`, `dot-vehicle`, `dot-inventory`,
+`dot-leaderboard`, `dot-ui`, `dot-server`, et `zee-dot-weapons` pour les armes.
 
 <Callout type="warning" title="Les entités et les armes sont des scripts nommés par CHEMIN">
 Pas par `class_name`. Un pack `dot-cloud` monté ne peut pas enregistrer de
@@ -178,6 +168,18 @@ g2g_zone stage main 1
 g2g_zone_save
 ```
 
+## game-zombie-zone
+
+**Le jeu de tir de zombies coopératif.** Une équipe de survivants traverse une carte d'exode d'un abri au suivant, ou une équipe plus grande tient une carte de survie derrière des barricades face à des vagues de la horde. Les zombies sont des PNJ [`dot-npc`](/learn/godot/addons/dot-npc), côté serveur seulement et répliqués, envoyés par [`dot-npc-ai-director`](/learn/godot/addons/dot-npc-ai-director) plutôt qu'au hasard, avec onze sortes d'infectés spéciaux qui ont chacun un tour dans leur sac. Les zombies lâchent des caisses qui font quelque chose d'aléatoire à l'ouverture, bon ou très mauvais, et le tir ami est activé. Les cartes viennent de `zombie-zone-maps` : une campagne de trois cartes et les cartes de survie.
+
+Utilise `dot-npc`, `dot-npc-ai`, `dot-npc-ai-director`, `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-bot` et `dot-game`, et c'est le jeu qui porte les deux packs d'armes, [`zee-dot-weapons`](#zee-dot-weapons) et [`zed-dot-weapons`](#zed-dot-weapons).
+
+## game-hide-n-seek
+
+**Cache-cache.** La plupart des joueurs se cachent, sous leurs propres avatars dans le bleu des cachés ; un chercheur pour huit joueurs compte les yeux bandés, puis part à la chasse. Un contact attrape (un serveur peut le remplacer par le fait d'être gardé en vue, ou accepter les deux), et chaque caché attrapé devient un chercheur là où il se trouve, si bien que la chasse grossit au fil de la manche. Les portes s'ouvrent et se ferment sur E, et une porte fermée est un mur pour les corps, la vue et le toucher. Onze cartes viennent de `hide-n-seek-maps`. Il a été construit à partir de mg-prop-hunt, déguisements et armes retirés.
+
+Utilise `dot-player-controller`, `dot-player-char`, `dot-team`, `dot-match`, `dot-props`, `dot-bot` et `dot-game`.
+
 ## mg-smash-copter
 
 **Un minijeu dont l'antagoniste est le sol.** Deux à six équipes se tiennent sur
@@ -193,8 +195,7 @@ l'enregistrement des tirs, `dot-match` pour la manche et les camps,
 `zee-dot-weapons` pour les vingt-sept armes avec lesquelles se joue la seconde
 moitié. `dot-spectate`, `dot-audio`, `dot-stats` et `dot-achievements` sont venus
 plus tard — c'est un dernier-debout, et un joueur éliminé n'avait rien à
-regarder. Il refuse `dot-settings` par écrit : son client n'a aucun écran où en
-mettre un.
+regarder. `dot-settings` a suivi, pour les options du client, avec celle du champ de vision qu'un serveur peut borner.
 
 ## mg-buses-from-hell
 
@@ -206,12 +207,42 @@ tout le jeu.
 
 Utilise `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
 `dot-player-controller`, `dot-net` et `dot-game`, plus `dot-spectate`,
-`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings` et `dot-fx` (pour les
-barils explosifs). Il a délié `dot-spawn`, `dot-team` et `dot-physics`, chacun
+`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings`, `dot-fx` (pour les
+barils explosifs) et `dot-bot` pour les remplaçants. Il a délié `dot-spawn`, `dot-team` et `dot-physics`, chacun
 nommé et jamais utilisé. C'est aussi le projet chez qui
 [dot-entity](/learn/godot/addons/dot-entity) a trouvé une fuite : un compteur
 `_next_entity_id` sans aucun `forget()`, qui laissait un `DotHealth` par joueur
 ayant jamais rejoint, chacun pointant vers un nœud libéré.
+
+## mg-wipeout
+
+**Des parcours d'obstacles au-dessus de l'eau.** Bras balayeurs, grosses boules, rondins qui roulent, marteaux oscillants et sols qui se dérobent ; une chute renvoie le joueur à son dernier point de contrôle. Si deux camps ou plus arrivent au bout, ils se battent en un duel final dans une arène tirée au hasard, avec des objets à lancer au pistolet gravitationnel et des armes posées au sol. Un obstacle est une fonction pure du tick, donc un parcours est envoyé une seule fois sous forme de document et la prédiction du client s'accorde avec le serveur sur chaque bras sans un octet de plus. Onze parcours et cinq arènes viennent de `mg-wipeout-maps`.
+
+Utilise `dot-props`, `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-bot`, `dot-game` et `zee-dot-weapons`.
+
+## mg-deathrun
+
+**Un long parcours de pièges.** La plupart des joueurs le courent ; des activateurs, tirés au sort à chaque manche, se tiennent sur une passerelle à côté avec un bouton pour chaque piège. Celui qui atteint l'arrivée reçoit une arme, et le premier arrivé appelle les activateurs pour régler l'affaire. Un piège est une fonction pure du tick et du tick où son bouton a été enclenché, donc une pression est un seul événement et la prédiction d'un coureur le porte exactement comme le fait le serveur. Trois parcours viennent de `mg-deathrun-maps`, et un parcours d'entraînement est intégré.
+
+Utilise `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-team`, `dot-game` et `zee-dot-weapons`, avec des bots nommés d'après le répertoire de `dot-bot`.
+
+## mg-prop-hunt
+
+**Se cacher en mobilier.** La plupart des joueurs sont des objets : ils regardent quelque chose sur la carte et le deviennent ; les autres sont des chasseurs, les yeux bandés pendant que les objets se cachent, puis disposant de quelques minutes pour les trouver, et payant en santé chaque vrai meuble sur lequel ils tirent. Un déguisement est une coque autant qu'une apparence (le `DotPropDisguise` de [`dot-props`](/learn/godot/addons/dot-props)), et le bandeau est réel sur le réseau : un objet qui se cache n'est dans l'instantané d'aucun chasseur. Quatre cartes (une école, une maison avec piscine, un bureau et les bois) viennent de `mg-prop-hunt-maps`, et une maison d'entraînement est intégrée.
+
+Utilise `dot-props`, `dot-team`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-bot`, `dot-game` et `zee-dot-weapons`.
+
+## mg-look-at-me
+
+**Un petit jeu d'horreur.** Les joueurs avancent dans une maison sombre, sur trente-deux niveaux, pendant que des sorcières arpentent ses pièces ; être vu remplit une jauge, donc le but est de trouver ce qui ouvre la porte suivante avant que l'une d'elles ne vous regarde trop longtemps. Les portes sont par joueur par défaut (un serveur peut les partager), si bien que chacun fait chaque niveau lui-même et que le serveur n'a jamais à s'arrêter.
+
+Utilise `dot-player-controller`, `dot-player-char`, `dot-net` et `dot-game`.
+
+## mg-dangerous-delivery
+
+**Des camions sur des routes de montagne sans garde-fous.** Conduisez un camion chargé sous la neige, la pluie, le vent et les chutes de pierres et livrez la cargaison à un dépôt ; un trajet plus dur paie davantage, et l'argent achète des camions plus gros et des améliorations. Personne ne marche : un joueur est son camion, le châssis à roues de [`dot-vehicle`](/learn/godot/addons/dot-vehicle) lié sans le transfert de siège. La météo appartient à la montagne plutôt qu'à un trajet, donc tous ceux qui sont sur le même col roulent sous la même neige.
+
+Utilise `dot-vehicle`, `dot-net`, `dot-bot` (les remplaçants conduisent au niveau `bot_difficulty`) et `dot-game`.
 
 ## zee-dot-weapons
 
@@ -226,19 +257,13 @@ l'air juste sur votre écran. Les visuels viennent du Blaster Kit de Kenney, ave
 le corps à corps du Weapon Pack et du Survival Kit — tout en CC0, tout inclus,
 rien à télécharger.
 
+## zed-dot-weapons
+
+**Un second pack d'armes, par-dessus le premier.** Quatorze armes de plus à l'allure réaliste (deux pistolets, un Uzi, un pistolet-mitrailleur tactique, deux fusils à pompe, un fusil de chasse, une mitrailleuse, un lance-grenades, un lance-roquettes et un lance-flammes) et les armes de jet dont a besoin un jeu de zombies coopératif : un cocktail Molotov, une bombe artisanale et un bocal de bile, étiquetés pour qu'un jeu sache ce que chacun fait à l'atterrissage. C'est du contenu seulement : il s'enregistre dans le catalogue, les visuels et les sons de zee-dot-weapons, si bien qu'un seul rig porte les deux packs. Il a été fait pour game-zombie-zone, et tout jeu bâti sur zee-dot-weapons peut l'embarquer.
+
 ## dot-game-template
 
-**Là où commence un nouveau jeu.** Pas l'un des huit : il vit avec les modules,
-sous [`modcommunity`](https://github.com/modcommunity/dot-game-template), parce
-que c'est ce que copie un développeur tiers. C'est **Coin Grab**, un petit jeu 2D
-en réseau sur [`dot-game`](/learn/godot/addons/dot-game) — prédit, autoritaire
-côté serveur, et écrit sans `class_name` pour fonctionner comme pack livré dès le
-premier commit. `tools/rename.sh` le rend vôtre. Sur un tag `v*`, son workflow de
-publication joint le jeu sous forme de `-pack.zip`, et le site le signe et le
-publie sous `<votre nom d'utilisateur du site>/<dépôt>`, qui est le nom sous
-lequel un serveur l'installe. L'outil serveur monte sa version empaquetée à chaque
-vérification, si bien que le modèle est vérifié comme le serait le jeu d'un
-inconnu.
+**Là où commence un nouveau jeu.** Pas l'un des treize : il vit avec les modules, sous [`modcommunity`](https://github.com/modcommunity/dot-game-template), parce que c'est ce que copie un développeur tiers. C'est **Coin Grab**, un petit jeu 2D en réseau sur [`dot-game`](/learn/godot/addons/dot-game) — prédit, autoritaire côté serveur, et écrit sans `class_name` pour fonctionner comme pack livré dès le premier commit. `tools/rename.sh` le rend vôtre. Sur un tag `v*`, son workflow de publication joint le jeu sous forme de `-pack.zip`, et le site le signe et le publie sous `<votre nom d'utilisateur du site>/<dépôt>`, qui est le nom sous lequel un serveur l'installe. L'outil serveur monte sa version empaquetée à chaque vérification, si bien que le modèle est vérifié comme le serait le jeu d'un inconnu.
 
 ## Leçons pour vos propres ponts
 

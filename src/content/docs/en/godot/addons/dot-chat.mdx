@@ -116,7 +116,7 @@ stale.
 
 ## Commands
 
-A line starting with `!` or `/` is never broadcast. It arrives as a signal:
+A line starting with `!` or `/` is not broadcast. It arrives as a signal, and one nobody claims is dropped unless `DotChatRules.broadcast_unknown_commands` is on:
 
 ```gdscript
 router.command_entered.connect(func(peer, command, args, raw):
@@ -125,9 +125,7 @@ router.command_entered.connect(func(peer, command, args, raw):
         vote.rock_the_vote(peer))
 ```
 
-That is how [dot-server](/learn/godot/addons/dot-server)'s chat commands and
-[dot-vote](/learn/godot/addons/dot-vote)'s `!rtv` reach a player without either
-addon knowing this one exists.
+That is how a game hands `!rtv` to [dot-vote](/learn/godot/addons/dot-vote) without either addon knowing the other exists. [dot-server](/learn/godot/addons/dot-server)'s own commands do not come through here: its chat manager turns a prefixed line into a console command itself, before the line reaches this router, so a game running both hooks dot-server's `player_command` event as well.
 
 <Related>
 - [dot-moderation](/learn/godot/addons/dot-moderation) — gags, and who they apply to

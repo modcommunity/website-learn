@@ -85,7 +85,7 @@ conexión.
 | `LOCAL` | Red local y desarrollo. Cuentas en un archivo JSON. |
 | `ANONYMOUS` | Todo el mundo es invitado. Los vetos no pueden significar nada. Avisa. |
 
-`INTROSPECT` tiene una segunda forma, con ámbito. Entrega a `DotAuthServer.backbone` el `DotBackboneClient` propio del servidor y enviará el token del jugador a `integration/v1/player/introspect` **como ese servidor**, y recibirá la clave del jugador en el ámbito de ese servidor en lugar de su id de cuenta: la identidad es `site:<key>` con la clave en el claim `scoped_key`, que es el único identificador que las rutas de avatar, perfil y estadísticas del sitio resuelven para ese servidor, y uno que otros operadores no pueden correlacionar. Sin configurar, lee `/me` como antes. `scoped_only` rechaza una unión mientras no se haya entregado ningún cliente de backbone en lugar de recurrir a la alternativa, de modo que un jugador admitido durante el arranque no queda con una clave durante un minuto y con otra después.
+`INTROSPECT` tiene una segunda forma, con ámbito. Entrega a `DotAuthServer.backbone` el `DotBackboneClient` propio del servidor y enviará el token del jugador a `integration/v1/player/introspect` **como ese servidor**, y recibirá la clave del jugador en el ámbito de ese servidor en lugar de su id de cuenta: la identidad es `tmc:<key>` con la clave en el claim `scoped_key`, que es el único identificador que las rutas de avatar, perfil y estadísticas del sitio resuelven para ese servidor, y uno que otros operadores no pueden correlacionar. Sin configurar, lee `/me` como antes. `scoped_only` rechaza una unión mientras no se haya entregado ningún cliente de backbone en lugar de recurrir a la alternativa, de modo que un jugador admitido durante el arranque no queda con una clave durante un minuto y con otra después.
 
 ## Cuentas sin nube
 
@@ -148,17 +148,17 @@ completa, sin infraestructura ninguna.
     usando solo endpoints ya existentes, así que desplegar el flujo de tickets no
     exige ningún cambio en la infraestructura.
   </Param>
+  <Param name="DotAuthSessionReporter">
+    Con `single_session` activado, el emisor niega a un jugador un ticket para un segundo servidor mientras está en otro. Esto es lo que le dice quién llegó y quién se fue: cada `session_report_interval_sec` envía la lista completa de jugadores del servidor al emisor en `session_report_url`, autenticada con la `session_report_key` propia de cada servidor, y quien no aparece se ha ido. `DotAuthServer` lo construye por sí mismo cuando `session_report_url` está configurada. Un servidor que no informa nada retiene a sus jugadores durante `session_lease_sec` después de su ticket y luego los libera.
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
-    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
-    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
-    `encrypt_token_store`, `web_handoff`.
+    `strategy`, `server_id`, `ticket_ttl_sec`, `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`, `single_session`, `session_lease_sec`, `session_report_url`, `session_report_key`, `auth_attempts_per_minute`, `encrypt_token_store`. `allowed_server_ids` y `tickets_per_minute` se configuran en `DotAuthIssuer`, y `web_handoff` en `DotAuthClient`.
   </Param>
   <Param name="Señales">
     `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
     `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
     `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
-    `profile_recognised`.
+    `profile_recognised`, `reported`.
   </Param>
 </Params>
 

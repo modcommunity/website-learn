@@ -72,7 +72,7 @@ configuration.
 | `--print-config` | Print the resolved configuration, and exit. |
 | `--install-service [NAME]` | Print a systemd unit for this invocation. |
 | `--restart` | Restart on a crash, with exponential backoff to a 60-second cap. |
-| `--web` / `--ws-port N` | Also listen for browser clients. Defaults to `--port` + 1. |
+| `--web` | Also listen for browser clients, over WebSocket on the game port itself (TCP beside the native clients' UDP). `--ws-port` is accepted from older unit files and ignored. |
 
 Exit codes are meaningful, so a supervisor can tell a misconfiguration from a
 crash: `2` usage, `3` no Godot, `4` no project, `5` bad config, `6` port in use.
@@ -132,7 +132,7 @@ needs its own registrable domain.
   addons, writes a commented `cfg/`, and writes `./server`. It never overwrites
   a config file that already exists. RCON ships on with a generated password, loopback only.
 - **Configuration in YAML**, split by subject — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Anything
+  `rcon.yml`, `auth.yml`, `groups.yml`, `permissions.yml`, `vote.yml`, `content.yml`, `security.yml`, `log.yml`, `replay.yml`, `party.yml`, `matchmaking.yml`, `admin_menu.yml`, `loading.yml`. Anything
   `dot-server` exposes as a console variable can go in them under its own name.
 - **Roles, not flags.** dot-server's permission model is flags, deliberately;
   `groups.yml` is the translation, so an operator writes

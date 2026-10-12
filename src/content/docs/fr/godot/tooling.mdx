@@ -74,7 +74,7 @@ configuration du serveur.
 | `--print-config` | Affiche la configuration résolue, et sort. |
 | `--install-service [NOM]` | Affiche une unité systemd pour cette invocation. |
 | `--restart` | Redémarre après un plantage, avec un recul exponentiel plafonné à 60 secondes. |
-| `--web` / `--ws-port N` | Écoute aussi les clients navigateur. Par défaut `--port` + 1. |
+| `--web` | Écoute aussi les clients navigateur, en WebSocket sur le port du jeu lui-même (TCP à côté de l'UDP des clients natifs). `--ws-port` est accepté pour les anciens fichiers d'unité et ignoré. |
 
 Les codes de sortie ont un sens, pour qu'un superviseur distingue une mauvaise
 configuration d'un plantage : `2` usage, `3` pas de Godot, `4` pas de projet,
@@ -141,7 +141,7 @@ chose et exige son propre domaine enregistrable.
   modules, écrit un `cfg/` commenté et écrit `./server`. Il n'écrase jamais un
   fichier de configuration existant. RCON est livré activé, avec un mot de passe généré et en loopback seulement.
 - **Configuration en YAML**, découpée par sujet — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Tout ce
+  `rcon.yml`, `auth.yml`, `groups.yml`, `permissions.yml`, `vote.yml`, `content.yml`, `security.yml`, `log.yml`, `replay.yml`, `party.yml`, `matchmaking.yml`, `admin_menu.yml`, `loading.yml`. Tout ce
   que `dot-server` expose en variable de console peut y figurer sous son propre
   nom.
 - **Des rôles, pas des flags.** Le modèle de permissions de dot-server est fait

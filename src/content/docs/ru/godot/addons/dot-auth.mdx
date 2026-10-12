@@ -85,7 +85,7 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 | `LOCAL` | Локальная сеть и разработка. Учётные записи в файле JSON. |
 | `ANONYMOUS` | Все — гости. Баны ничего не значат. Предупреждает. |
 
-У `INTROSPECT` есть вторая, ограниченная форма. Передайте `DotAuthServer.backbone` собственный `DotBackboneClient` сервера, и он отправит токен игрока на `integration/v1/player/introspect` **от имени этого сервера**, получив в ответ ключ игрока в области этого сервера вместо id его аккаунта: идентичность — `site:<key>`, а ключ лежит в утверждении `scoped_key`; это единственный идентификатор, который маршруты аватаров, профиля и статистики сайта разрешают для этого сервера, и другие операторы не могут его сопоставить. Если не задано, читается `/me`, как раньше. `scoped_only` отказывает во входе, пока клиент backbone не передан, вместо того чтобы откатываться назад, так что игрок, впущенный во время загрузки, не получает одного ключа на минуту и другого потом.
+У `INTROSPECT` есть вторая, ограниченная форма. Передайте `DotAuthServer.backbone` собственный `DotBackboneClient` сервера, и он отправит токен игрока на `integration/v1/player/introspect` **от имени этого сервера**, получив в ответ ключ игрока в области этого сервера вместо id его аккаунта: идентичность — `tmc:<key>`, а ключ лежит в утверждении `scoped_key`; это единственный идентификатор, который маршруты аватаров, профиля и статистики сайта разрешают для этого сервера, и другие операторы не могут его сопоставить. Если не задано, читается `/me`, как раньше. `scoped_only` отказывает во входе, пока клиент backbone не передан, вместо того чтобы откатываться назад, так что игрок, впущенный во время загрузки, не получает одного ключа на минуту и другого потом.
 
 ## Учётные записи без облака
 
@@ -148,17 +148,17 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
     самостоятельно, используя только уже существующие точки бэкенда, так что для
     запуска потока с билетами менять бэкенд не нужно.
   </Param>
+  <Param name="DotAuthSessionReporter">
+    При включённом `single_session` издатель отказывает игроку в билете на второй сервер, пока тот находится на другом. Именно этот компонент сообщает ему, кто пришёл и кто ушёл: каждые `session_report_interval_sec` он отправляет издателю по адресу `session_report_url` полный список игроков сервера, подписанный ключом `session_report_key`, выданным этому серверу, и кого в списке нет, тот ушёл. `DotAuthServer` создаёт его сам, когда задан `session_report_url`. Сервер, который ничего не сообщает, удерживает игроков в течение `session_lease_sec` после билета, а затем отпускает.
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
-    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
-    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
-    `encrypt_token_store`, `web_handoff`.
+    `strategy`, `server_id`, `ticket_ttl_sec`, `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`, `single_session`, `session_lease_sec`, `session_report_url`, `session_report_key`, `auth_attempts_per_minute`, `encrypt_token_store`. `allowed_server_ids` и `tickets_per_minute` задаются у `DotAuthIssuer`, а `web_handoff` у `DotAuthClient`.
   </Param>
   <Param name="Сигналы">
     `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
     `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
     `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
-    `profile_recognised`.
+    `profile_recognised`, `reported`.
   </Param>
 </Params>
 

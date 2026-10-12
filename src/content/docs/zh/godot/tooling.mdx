@@ -65,7 +65,7 @@ dotserve -- +sv_cheats 1 +map dm_arena
 | `--print-config` | 打印解析后的配置，然后退出。 |
 | `--install-service [名称]` | 为这次调用打印一份 systemd unit。 |
 | `--restart` | 崩溃后重启，采用指数退避，上限 60 秒。 |
-| `--web` / `--ws-port N` | 同时监听浏览器客户端。默认是 `--port` + 1。 |
+| `--web` | 同时监听浏览器客户端，通过游戏端口本身上的 WebSocket（TCP，与原生客户端的 UDP 并列）。`--ws-port` 仍会被旧的 unit 文件接受，但会被忽略。 |
 
 退出码是有含义的，好让守护进程分得清配置错误和崩溃：`2` 用法错误、`3` 没有 Godot、
 `4` 没有项目、`5` 配置有误、`6` 端口被占用。生成的 systemd unit 会把 `3` 到 `6` 列在
@@ -121,7 +121,7 @@ HTTPS 页面不能打开 `ws://` 套接字，所以这种形态只在这里可�
 - **一条命令就能启动。** `setup.sh` 会找到 Godot 运行时、接好插件、写出一份带注释的
   `cfg/`，并生成 `./server`。它绝不覆盖已经存在的配置文件。RCON 默认是开的，密码自动生成，且只允许回环地址连接。
 - **配置写在 YAML 里**，按主题拆开——`server.yml`、`net.yml`、`rcon.yml`、
-  `auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`、`security.yml`、`log.yml`。凡是 `dot-server` 以控制台
+  `auth.yml`、`groups.yml`、`permissions.yml`、`vote.yml`、`content.yml`、`security.yml`、`log.yml`、`replay.yml`、`party.yml`、`matchmaking.yml`、`admin_menu.yml`、`loading.yml`。凡是 `dot-server` 以控制台
   变量形式暴露出来的东西，都能用它自己的名字写进去。
 - **是角色，不是 flag。** dot-server 的权限模型刻意是 flag；`groups.yml` 就是那层翻译，
   于是服主在 `admin` 组下写 `permissions: [kick, ban, mute]`，玩家就拿到对应的 flag。

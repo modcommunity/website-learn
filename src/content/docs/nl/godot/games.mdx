@@ -13,7 +13,16 @@ keywords:
   - "game-g2gfast"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
+  - "game-zombie-zone"
+  - "game-hide-n-seek"
+  - "mg-wipeout"
+  - "mg-deathrun"
+  - "mg-prop-hunt"
+  - "mg-look-at-me"
+  - "mg-dangerous-delivery"
   - "zee-dot-weapons"
+  - "zed-dot-weapons"
+  - "dot-bot"
   - "deathmatch"
   - "sandbox"
 source:
@@ -25,15 +34,9 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-Zeven projecten worden met de collectie meegeleverd — vier referentiegames, twee
-minigames en een wapenpakket — en het zijn geen demonstraties. De testsuite van
-elke add-on draait die add-on met de andere afwezig, dus de verbindingen ertussen
-bestaan alleen in een game, en een codepad dat maar één uitrolvorm bereikt, is een
-codepad dat niets heeft gedraaid.
+Dertien games worden met de collectie meegeleverd — zes volledige games en zeven minigames — met twee wapenpakketten en de maprepositories die meerdere ervan laden, en het zijn geen demonstraties. De testsuite van elke add-on draait die add-on met de andere afwezig, dus de verbindingen ertussen bestaan alleen in een game, en een codepad dat maar één uitrolvorm bereikt, is een codepad dat niets heeft gedraaid.
 
-Ze staan onder [`gamemann`](https://github.com/gamemann) en niet onder de
-organisatie waar de add-ons in zitten; zie [het overzicht](/learn/godot) voor
-waarom die splitsing een regel is.
+Ze staan onder [`zees-games`](https://github.com/zees-games) en niet onder de organisatie waar de add-ons in zitten; zie [het overzicht](/learn/godot) voor waarom die splitsing een regel is.
 
 **Elk ervan wordt geleverd, niet ingebouwd.** Elke game wordt gepubliceerd als een ondertekend [`dot-cloud`](/learn/godot/addons/dot-cloud)-pakket; een server installeert degene die hij moet aanbieden, en de client van een speler downloadt het pakket bij het joinen. De clientschil bevat helemaal geen game, dus het is dezelfde build ongeacht waarmee hij verbindt, en een nieuwe game bereikt spelers zonder nieuwe client. Daarom verwijst elke game hier naar zijn eigen scripts met een pad in plaats van met `class_name`: de `class_name`-globals van een aangekoppeld pakket worden nooit geregistreerd, dus een game die op de andere manier is geschreven koppelt aan, laadt zijn scènes, en draait geen van zijn code.
 
@@ -50,17 +53,17 @@ Twee add-ons worden voor **elke** game gebouwd door
 een [`dot-replay`](/learn/godot/addons/dot-replay)-ring op elke server
 (`replay save` in de console, en de hash van een clip wordt bij elke kick en ban
 bewaard), en een [`dot-friends`](/learn/godot/addons/dot-friends)-client naast de
-partyclient in de geëxporteerde clientschil, die zichzelf uitschakelt totdat de
-vriendenroutes van de site zijn uitgerold. Geen enkele game linkt er zelf naar.
+partyclient in de geëxporteerde clientschil, die zichzelf voor de sessie uitschakelt wanneer de site zijn vriendenroutes met een 404 beantwoordt. Geen enkele game linkt er zelf naar.
+
+Bots zijn het andere dat de meeste ervan delen. Negen games vullen lege plekken met spelers van `dot-bot`, het botbrein van de familie (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell en mg-dangerous-delivery), en alle nemen de `bot_difficulty`-presets ervan aan in de console: `easy`, `medium` (de standaard), `hard` en `nightmare`, elk een bundel afzonderlijke `bot_*`-instellingen.
 
 ## game-arena
 
-**Een 3D-arena-deathmatch met dev-textures. De referentiegame.** Hij bestaat om
+**Een 3D-arenashooter met dev-textures. De referentiegame.** Hij bestaat om
 te bewijzen dat de add-ons samenwerken, om te laten zien hoe de bruggen eruitzien,
 en om datgene te zijn waar een nieuwe game van wordt overgeschreven.
 
-Gebruikt `dot-core`, `dot-player-controller`, `dot-combat`, `dot-loadout`,
-`dot-match`, `dot-ui`, `dot-server` en `dot-net`.
+Zeven modi (free-for-all, teamdeathmatch, een hordemodus genaamd `siege`, king of the hill, capture the flag, gun game en alleen snipers) op drie ingebouwde maps, `dm_box`, `dm_atrium` en `dm_pit`, plus de combat-surfmaps uit `g2gfast-maps`. Het grootste deel van de familie draait hier in één proces: `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-loadout`, `dot-match`, `dot-team`, `dot-spawn`, `dot-objective`, `dot-npc` voor de horde, `dot-props`, `dot-bot`, `dot-ui`, `dot-menu`, `dot-net` en `dot-server`, met chat, voice, moderatie, statistieken en achievements ernaast.
 
 Vier bestanden doen ertoe, en de reden dat elk ervan in de *game* zit en niet in
 een add-on is steeds dezelfde:
@@ -73,20 +76,14 @@ een add-on is steeds dezelfde:
 - **`game/arena_player.gd`** — beweging, wapens, gezondheid en hitboxes op één
   body. Elke add-on zegt dat deze bedrading bij de game hoort, want een add-on die
   het zou doen, dicteert een scèneopbouw.
-- **`game/arena_game.gd`** — de naad. Zes add-ons, elk op zichzelf correct; dit
-  zijn de vijftig regels waar een kill uit combat een matchscore wordt en een
-  respawn uit match een loadout.
-- **`game/arena_module.gd`** — het enige bestand dat `dot-server` noemt. Zo'n
-  veertig regels, en dat is de hele integratie met de dedicated server.
+- **`game/arena_game.gd`** — de naad. dot-match weet niets van schade, dot-combat niets van scores, dot-loadout niets van wapens; hier wordt een kill uit combat een matchscore en een respawn uit match een loadout. Het noemt `dot-server` nooit, dus een listen-server, een test en een dedicated server draaien allemaal dezelfde game.
+- **`game/arena_module.gd`** — de integratie met de dedicated server. Samen met `game/arena_services.gd` ernaast is het de enige code die `dot-server` noemt.
 
-Vier wapens, omdat het vier echt verschillende antwoorden zijn op "hoe overbrug ik
-afstand", en een deathmatch met minder maar één juist antwoord heeft. Loadouts
-zijn twee wapens op een budget van zes punten — vier getallen in plaats van een
-opsomming.
+De wapens zijn alle zevenentwintig van [`zee-dot-weapons`](#zee-dot-weapons), en geen ervan is in de game gedefinieerd. Een loadout, gekozen met B, bestaat uit vijf slots (melee, primair, secundair, werpwapen, gear) op een budget van zeven punten: een geweer, een pistool, een granaat en een harnas passen met een punt over, en een zwaar wapen met een harnas niet, omdat dat de combinatie is waar niemand een antwoord op heeft. Een serverbeheerder kan de keuze beperken, of voor iedereen één kit vastzetten, met de `mp_loadout_*`-cvars.
 
 ```bash
 godot --headless --path . res://examples/headless_match.tscn   # een hele deathmatch
-godot --headless --path . res://examples/headless_net.tscn     # server + client, 20% verlies
+godot --headless --path . res://examples/headless_net.tscn     # één server, twee clients, één pakket op de vijf verloren
 godot --headless --path . res://examples/dedicated.tscn        # een echte DotServer
 ```
 
@@ -94,12 +91,11 @@ godot --headless --path . res://examples/dedicated.tscn        # een echte DotSe
 
 **Een arenagame waarin je groeit door te eten, met een avatar op het monster.** De
 eerste speelbare client van de collectie, de eerste game met werkende netcode over
-een echte socket, en de enige plek waar de gameplayhelft en de identiteitshelft
-samen draaien.
+een echte socket, en de eerste plek waar de gameplayhelft en de identiteitshelft
+samen draaiden.
 
 Gebruikt `dot-2d`, `dot-net`, `dot-server`, `dot-match`, `dot-ui`,
-`dot-user-avatar`, `dot-loadout`, `dot-platform` en `dot-cloud` — alles behalve
-`dot-player-controller` en `dot-combat`. Eén pakket bevat vijf modi — classic, frenzy, gauntlet, warrens en reef — elk met een eigen `game.yml` over dezelfde content.
+`dot-user-avatar`, `dot-loadout`, `dot-platform`, `dot-cloud` en `dot-bot`, en geen van de 3D-beweging- of combat-add-ons. Eén pakket bevat zes modi — classic, frenzy, gauntlet, warrens, reef en shallows — elk met een eigen `game.yml` over dezelfde content.
 
 Het is ook **de kortste route naar de browserkolom**: klein, heeft geen threads
 nodig, en het beproeft elke browserbeperking zonder dat er iets anders tussen
@@ -111,17 +107,10 @@ derden op de pagina sloopt.
 
 ## game-playground
 
-**Een sandbox in de klassieke physics-sandboxvorm.** Houd Q ingedrukt voor een
-menu met veertien props, vier gescripte NPC's en drie wapens; klik er een aan en
-hij is van jou. Een physics gun die vasthoudt en bevriest, een gravity gun die
-wegschiet. Drie maps, een dedicated server, twintig consoleopdrachten, en een
-springparcours van negen platforms op het bonustraject van `pg_lobby` — omdat een
-springparcours geen bewegingsgenre is, en omdat het laat zien dat
-[`dot-timer`](/learn/godot/addons/dot-timer) niet alleen iets voor surf en
-bunny-hop is.
+**Een sandbox in de klassieke physics-sandboxvorm.** Houd Q ingedrukt voor een menu met props, NPC's (sommige gewapend), wapens, toolgun-modi en je opgeslagen bouwwerken; klik er een aan en hij is van jou. Een physics gun die vasthoudt, bevriest en spelers oppakt; een gravity gun die wegschiet; een toolgun die schaalt, verft, last, touwen spant, knoppen aan deuren koppelt en meer. Bouwwerken worden vanuit het menu opgeslagen en geladen (een gelast stuk staat in de lijst als **custom prop**), props kunnen breekbaar zijn, op een bewegende prop staan neemt je mee, en de creatieve modus houdt een bouwer uit ieders weg. Ingebouwde maps (een sandbox met tijdbanen op de bonustrajecten, een surfmap, een bhop-map, een gegenereerde) plus eigen maps die als JSON-documenten uit `game-playground-maps` worden geleverd. De tijdbanen laten zien dat [`dot-timer`](/learn/godot/addons/dot-timer) niet alleen iets voor surf en bunny-hop is: een springparcours is geen bewegingsgenre.
 
-Gebruikt `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`,
-`dot-leaderboard`, `dot-ui` en `dot-server`.
+Gebruikt `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`, `dot-npc`, `dot-vehicle`, `dot-inventory`,
+`dot-leaderboard`, `dot-ui`, `dot-server`, en `zee-dot-weapons` voor de wapens.
 
 <Callout type="warning" title="Entiteiten en wapens zijn scripts die bij PAD worden genoemd">
 Niet bij `class_name`. Een aangekoppeld `dot-cloud`-pakket kan geen
@@ -163,6 +152,18 @@ g2g_zone stage main 1
 g2g_zone_save
 ```
 
+## game-zombie-zone
+
+**De coöperatieve zombieshooter.** Een team overlevenden steekt een exoduskaart over van de ene schuilplaats naar de volgende, of een groter team houdt een overlevingskaart achter barricades vast door golven van de horde heen. De zombies zijn [`dot-npc`](/learn/godot/addons/dot-npc)-NPC's, alleen op de server en gerepliceerd, binnengestuurd door [`dot-npc-ai-director`](/learn/godot/addons/dot-npc-ai-director) in plaats van willekeurig, met elf soorten speciaal geïnfecteerden die elk één truc hebben. Zombies laten kisten vallen die iets willekeurigs doen als je ze opent, goed of heel slecht, en friendly fire staat aan. De maps komen uit `zombie-zone-maps`: een campagne van drie maps en de overlevingsmaps.
+
+Gebruikt `dot-npc`, `dot-npc-ai`, `dot-npc-ai-director`, `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-bot` en `dot-game`, en het is de game die beide wapenpakketten draagt, [`zee-dot-weapons`](#zee-dot-weapons) en [`zed-dot-weapons`](#zed-dot-weapons).
+
+## game-hide-n-seek
+
+**Verstoppertje.** De meeste spelers verstoppen zich, als hun eigen avatar in het blauw van de verstoppers; voor elke acht spelers telt één zoeker geblinddoekt af en gaat dan zoeken. Een aanraking vangt (een server kan het in plaats daarvan laten gelden als in beeld gehouden worden, of allebei), en elke gevangen verstopper wordt een zoeker waar hij staat, zodat de jacht groeit naarmate de ronde vordert. Deuren gaan open en dicht met E, en een gesloten deur is een muur voor lichamen, zicht en aanraking. Elf maps komen uit `hide-n-seek-maps`. Hij is gebouwd uit mg-prop-hunt met de vermommingen en wapens eruit gehaald.
+
+Gebruikt `dot-player-controller`, `dot-player-char`, `dot-team`, `dot-match`, `dot-props`, `dot-bot` en `dot-game`.
+
 ## mg-smash-copter
 
 **Een minigame waarvan de tegenstander de vloer is.** Twee tot zes teams staan op
@@ -177,8 +178,7 @@ Eerste en derde persoon. Gebruikt `dot-props` voor alles wat het kanon gooit,
 `dot-game` voor de serverbedrading, en `zee-dot-weapons` voor de zevenentwintig
 wapens waarmee de tweede helft wordt uitgevochten. `dot-spectate`, `dot-audio`,
 `dot-stats` en `dot-achievements` kwamen later — het is laatste-team-overeind, en
-een uitgeschakelde speler had niets om naar te kijken. Hij weigert `dot-settings`
-op schrift: zijn client heeft geen scherm om er een op te zetten.
+een uitgeschakelde speler had niets om naar te kijken. `dot-settings` volgde, voor de opties van de client, met de gezichtsveldoptie die een server mag begrenzen.
 
 ## mg-buses-from-hell
 
@@ -189,12 +189,42 @@ hij breekt kratten en duwt ze weg. Dat is het hele spel.
 
 Gebruikt `dot-props`, `dot-vehicle`, `dot-combat`, `dot-match`,
 `dot-player-controller`, `dot-net` en `dot-game`, plus `dot-spectate`,
-`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings` en `dot-fx` (voor de
-exploderende vaten). Hij ontkoppelde `dot-spawn`, `dot-team` en `dot-physics`, elk
+`dot-audio`, `dot-stats`, `dot-achievements`, `dot-settings`, `dot-fx` (voor de
+exploderende vaten) en `dot-bot` voor de invallers. Hij ontkoppelde `dot-spawn`, `dot-team` en `dot-physics`, elk
 genoemd en nooit gebruikt. Het is ook het project waarin
 [dot-entity](/learn/godot/addons/dot-entity) een lek vond: een
 `_next_entity_id`-teller zonder enige `forget()`, waardoor er een `DotHealth` bleef
 staan voor elke speler die ooit had gejoind, elk wijzend naar een vrijgegeven node.
+
+## mg-wipeout
+
+**Hindernisbanen boven water.** Zwaaiende armen, grote ballen, rollende boomstammen, slingerende hamers en vloeren die wegvallen; een val stuurt een speler terug naar zijn laatste checkpoint. Als twee of meer kanten de finish halen, vechten ze een laatste gevecht uit in een willekeurige arena met props om met de gravity gun te gooien en wapens die op de vloer liggen. Een hindernis is een pure functie van de tick, dus een baan wordt één keer als document verstuurd en de clientvoorspelling is het met de server eens over elke arm zonder nog een byte. Elf banen en vijf arena's komen uit `mg-wipeout-maps`.
+
+Gebruikt `dot-props`, `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-bot`, `dot-game` en `zee-dot-weapons`.
+
+## mg-deathrun
+
+**Eén lange baan vol vallen.** De meeste spelers rennen hem; activators, elke ronde opnieuw getrokken, staan op een looppad ernaast met een knop voor elke val. Wie het einde haalt, krijgt een wapen in handen, en de eerste die er is roept de activators naar beneden om het uit te vechten. Een val is een pure functie van de tick en de tick waarop zijn knop aanging, dus een druk op de knop is één gebeurtenis en de eigen voorspelling van een renner draagt hem precies zoals de server dat doet. Drie banen komen uit `mg-deathrun-maps`, en een oefenbaan is ingebouwd.
+
+Gebruikt `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-team`, `dot-game` en `zee-dot-weapons`, met bots die uit de pool van `dot-bot` hun naam krijgen.
+
+## mg-prop-hunt
+
+**Verstop je als meubilair.** De meeste spelers zijn props, die naar iets op de map kijken en dat worden; de rest zijn jagers, geblinddoekt terwijl de props zich verstoppen en daarna een paar minuten de tijd om ze te vinden, waarbij ze met gezondheid betalen voor elk echt meubelstuk dat ze beschieten. Een vermomming is een romp en een uiterlijk ([`dot-props`](/learn/godot/addons/dot-props)' `DotPropDisguise`), en de blinddoek is echt op de draad: een verstopte prop staat in geen enkele snapshot van een jager. Vier maps (een school, een huis met zwembad, een kantoor en het bos) komen uit `mg-prop-hunt-maps`, en een oefenhuis is ingebouwd.
+
+Gebruikt `dot-props`, `dot-team`, `dot-combat`, `dot-weapon`, `dot-match`, `dot-bot`, `dot-game` en `zee-dot-weapons`.
+
+## mg-look-at-me
+
+**Een kleine horrorgame.** Spelers banen zich een weg door een donker huis, tweeëndertig niveaus diep, terwijl heksen door de kamers lopen; gezien worden vult een meter, dus het werk is vinden wat de volgende deur opent voordat een van hen te lang naar je kijkt. Deuren zijn standaard per speler (een server kan ze delen), dus iedereen doet elk niveau zelf en de server hoeft nooit te eindigen.
+
+Gebruikt `dot-player-controller`, `dot-player-char`, `dot-net` en `dot-game`.
+
+## mg-dangerous-delivery
+
+**Trucks over bergwegen zonder vangrails.** Rijd een beladen truck door sneeuw, regen, wind en vallend gesteente en lever de lading af bij een depot; een zwaardere rit levert meer op, en het geld koopt grotere trucks en upgrades. Niemand loopt: een speler is zijn truck, het wielenchassis van [`dot-vehicle`](/learn/godot/addons/dot-vehicle) gebonden zonder de zitplaatsoverdracht. Het weer hoort bij de berg en niet bij een rit, dus iedereen op dezelfde pas rijdt door dezelfde sneeuw.
+
+Gebruikt `dot-vehicle`, `dot-net`, `dot-bot` (de invallers rijden op `bot_difficulty`) en `dot-game`.
 
 ## zee-dot-weapons
 
@@ -208,9 +238,15 @@ de replicatie die ervoor zorgt dat het wapen van een andere speler er op jouw
 scherm goed uitziet. De art is Kenney's Blaster Kit met melee uit de Weapon Pack
 en Survival Kit — allemaal CC0, allemaal meegeleverd, niets te downloaden.
 
+Schoten worden zonder code gezien en gehoord: `ZeeShotFx` tekent een tracer, een mondingsvlam en een inslag, en `ZeeWeaponSound` speelt per wapenklasse een knal af, bij het eerste gebruik gesynthetiseerd (een game kan er een echte opname voor zetten). `rig.view_punch()` is de terugslag voor de camera, die een eerstepersoonsgame doorgeeft aan `DotFpsView.external_angles` van [`dot-player-controller`](/learn/godot/addons/dot-player-controller).
+
+## zed-dot-weapons
+
+**Een tweede wapenpakket, bovenop het eerste.** Veertien extra wapens met een realistische look (twee pistolen, een Uzi, een tactische SMG, twee shotguns, een jachtgeweer, een machinegeweer, een granaatwerper, een raketwerper en een vlammenwerper) en de werpwapens die een coöperatieve zombiegame nodig heeft: een molotov, een pijpbom en een galpot, getagd zodat een game weet wat elk doet als het landt. Het is alleen content: het registreert zich in de catalogus, de art en de geluiden van zee-dot-weapons, zodat één rig beide pakketten draagt. Het is gemaakt voor game-zombie-zone, en elke game op zee-dot-weapons kan het meenemen.
+
 ## dot-game-template
 
-**Waar een nieuwe game begint.** Niet een van de acht: hij leeft bij de add-ons, onder [`modcommunity`](https://github.com/modcommunity/dot-game-template), omdat een externe ontwikkelaar hem kopieert. Het is **Coin Grab**, een kleine netwerk-2D-game op [`dot-game`](/learn/godot/addons/dot-game) — voorspeld, server-autoritatief, en zonder `class_name` geschreven zodat hij vanaf de eerste commit als geleverd pakket werkt. `tools/rename.sh` maakt hem de jouwe. Bij een `v*`-tag voegt zijn releaseworkflow de game toe als `-pack.zip`, en de site ondertekent en publiceert dat als `<je sitegebruikersnaam>/<repository>`, de naam waarmee een server het installeert. De servertool koppelt zijn verpakte release bij elke controle aan, zodat de template wordt geverifieerd zoals de game van een vreemde dat zou worden.
+**Waar een nieuwe game begint.** Niet een van de dertien: hij leeft bij de add-ons, onder [`modcommunity`](https://github.com/modcommunity/dot-game-template), omdat een externe ontwikkelaar hem kopieert. Het is **Coin Grab**, een kleine netwerk-2D-game op [`dot-game`](/learn/godot/addons/dot-game) — voorspeld, server-autoritatief, en zonder `class_name` geschreven zodat hij vanaf de eerste commit als geleverd pakket werkt. `tools/rename.sh` maakt hem de jouwe. Bij een `v*`-tag voegt zijn releaseworkflow de game toe als `-pack.zip`, en de site ondertekent en publiceert dat als `<je sitegebruikersnaam>/<repository>`, de naam waarmee een server het installeert. De servertool koppelt zijn verpakte release bij elke controle aan, zodat de template wordt geverifieerd zoals de game van een vreemde dat zou worden.
 
 ## Lessen voor je eigen bruggen
 

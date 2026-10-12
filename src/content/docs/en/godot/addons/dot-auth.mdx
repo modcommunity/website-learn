@@ -85,7 +85,7 @@ Verification is offline — no backbone round trip per join.
 | `LOCAL` | LAN and development. Accounts in a JSON file. |
 | `ANONYMOUS` | Everyone is a guest. Bans cannot mean anything. Warns. |
 
-`INTROSPECT` has a second, scoped form. Hand `DotAuthServer.backbone` the server's own `DotBackboneClient` and it posts the player's token to `integration/v1/player/introspect` **as that server**, and gets back the player's key in that server's scope instead of their account id: the identity is `site:<key>` with the key in the `scoped_key` claim, which is the one identifier the site's avatar, profile and stats routes resolve for that server, and one other operators cannot correlate. Unset, it reads `/me` as before. `scoped_only` refuses a join while no backbone client has been handed over rather than falling back, so a player let in during boot is not keyed one way for a minute and another way after.
+`INTROSPECT` has a second, scoped form. Hand `DotAuthServer.backbone` the server's own `DotBackboneClient` and it posts the player's token to `integration/v1/player/introspect` **as that server**, and gets back the player's key in that server's scope instead of their account id: the identity is `tmc:<key>` with the key in the `scoped_key` claim, which is the one identifier the site's avatar, profile and stats routes resolve for that server, and one other operators cannot correlate. Unset, it reads `/me` as before. `scoped_only` refuses a join while no backbone client has been handed over rather than falling back, so a player let in during boot is not keyed one way for a minute and another way after.
 
 ## Accounts with no cloud
 
@@ -148,17 +148,17 @@ with no backbone at all.
     existing backbone endpoints, so no backbone change is needed to deploy the
     ticket flow.
   </Param>
+  <Param name="DotAuthSessionReporter">
+    With `single_session` on, the issuer refuses a player a ticket for a second server while they are on another. This is what tells it who arrived and who left: every `session_report_interval_sec` it posts the server's whole roster to the issuer at `session_report_url`, authenticated with the per-server `session_report_key`, and absent means gone. `DotAuthServer` builds one itself when `session_report_url` is set. A server that reports nothing holds its players for `session_lease_sec` after their ticket and then lets them go.
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
-    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
-    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
-    `encrypt_token_store`, `web_handoff`.
+    `strategy`, `server_id`, `ticket_ttl_sec`, `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`, `single_session`, `session_lease_sec`, `session_report_url`, `session_report_key`, `auth_attempts_per_minute`, `encrypt_token_store`. `allowed_server_ids` and `tickets_per_minute` are set on `DotAuthIssuer`, `web_handoff` on `DotAuthClient`.
   </Param>
   <Param name="Signals">
     `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
     `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
     `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
-    `profile_recognised`.
+    `profile_recognised`, `reported`.
   </Param>
 </Params>
 

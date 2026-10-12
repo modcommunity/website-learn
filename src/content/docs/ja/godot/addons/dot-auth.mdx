@@ -83,7 +83,7 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 | `LOCAL` | LAN と開発用。アカウントは JSON ファイルに。 |
 | `ANONYMOUS` | 全員ゲスト。BAN は何の意味も持てません。警告します。 |
 
-`INTROSPECT` には、スコープ付きの 2 つ目の形があります。`DotAuthServer.backbone` にそのサーバー自身の `DotBackboneClient` を渡すと、プレイヤーのトークンを **そのサーバーとして** `integration/v1/player/introspect` に投げ、アカウント id の代わりに、そのサーバーのスコープでのプレイヤーのキーを受け取ります。身元は `site:<key>` で、キーは `scoped_key` クレームに入ります。これはサイトのアバター、プロフィール、統計のルートがそのサーバーに対して解決する唯一の識別子で、他の運営者が突き合わせることはできません。未設定なら、従来どおり `/me` を読みます。`scoped_only` は、バックボーンクライアントが渡されるまでの参加を、フォールバックせずに拒否します。起動中に入れたプレイヤーが、1 分間は一方のキーで、その後は別のキーで扱われることがないようにするためです。
+`INTROSPECT` には、スコープ付きの 2 つ目の形があります。`DotAuthServer.backbone` にそのサーバー自身の `DotBackboneClient` を渡すと、プレイヤーのトークンを **そのサーバーとして** `integration/v1/player/introspect` に投げ、アカウント id の代わりに、そのサーバーのスコープでのプレイヤーのキーを受け取ります。身元は `tmc:<key>` で、キーは `scoped_key` クレームに入ります。これはサイトのアバター、プロフィール、統計のルートがそのサーバーに対して解決する唯一の識別子で、他の運営者が突き合わせることはできません。未設定なら、従来どおり `/me` を読みます。`scoped_only` は、バックボーンクライアントが渡されるまでの参加を、フォールバックせずに拒否します。起動中に入れたプレイヤーが、1 分間は一方のキーで、その後は別のキーで扱われることがないようにするためです。
 
 ## クラウド無しのアカウント
 
@@ -145,17 +145,17 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
     秘密鍵を必要とする唯一のコンポーネント。既存のエンドポイントだけを使って単体で
     動くので、チケット方式の導入にバックボーン側の変更は要りません。
   </Param>
+  <Param name="DotAuthSessionReporter">
+    `single_session` を有効にすると、発行者は別のサーバーにいるプレイヤーに 2 台目のサーバーへのチケットを出しません。誰が来て誰が去ったかを発行者に伝えるのがこれです。`session_report_interval_sec` ごとにサーバーの全プレイヤー一覧を `session_report_url` の発行者へ送り、サーバーごとの `session_report_key` で認証します。一覧にいないプレイヤーは去ったものとみなされます。`session_report_url` が設定されていれば `DotAuthServer` が自分で作ります。何も報告しないサーバーは、チケット発行から `session_lease_sec` の間プレイヤーを保持し、その後解放します。
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`、`server_id`、`allowed_server_ids`、`ticket_ttl_sec`、
-    `ticket_leeway_sec`、`ticket_replay_memory_sec`、`allow_guests`、
-    `single_session`、`tickets_per_minute`、`auth_attempts_per_minute`、
-    `encrypt_token_store`、`web_handoff`。
+    `strategy`、`server_id`、`ticket_ttl_sec`、`ticket_leeway_sec`、`ticket_replay_memory_sec`、`allow_guests`、`single_session`、`session_lease_sec`、`session_report_url`、`session_report_key`、`auth_attempts_per_minute`、`encrypt_token_store`。 `allowed_server_ids` と `tickets_per_minute` は `DotAuthIssuer` に、`web_handoff` は `DotAuthClient` に設定します。
   </Param>
   <Param name="シグナル">
     `device_code_ready`、`awaiting_approval`、`signed_in`、`signed_out`、
     `token_refreshed`、`session_revoked`、`session_conflict`、`authenticated`、
     `rejected`、`ticket_issued`、`request_refused`、`profile_created`、
-    `profile_recognised`。
+    `profile_recognised`、`reported`。
   </Param>
 </Params>
 

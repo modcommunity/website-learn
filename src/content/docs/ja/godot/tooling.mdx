@@ -72,7 +72,7 @@ RCON のリスナー自体が開きません。拒否されるのは、そのま
 | `--print-config` | 解決後の設定を表示して終了します。 |
 | `--install-service [名前]` | この呼び出し用の systemd ユニットを表示します。 |
 | `--restart` | クラッシュ後に再起動します。指数バックオフで最大 60 秒まで。 |
-| `--web` / `--ws-port N` | ブラウザークライアントも待ち受けます。既定は `--port` + 1。 |
+| `--web` | ブラウザークライアントも待ち受けます。ゲームポートそのものの上で WebSocket を使います（ネイティブクライアントの UDP と並んで TCP）。`--ws-port` は古いユニットファイルから受け付けられますが、無視されます。 |
 
 終了コードには意味があり、監視プロセスが設定ミスとクラッシュを区別できます。
 `2` 使い方の誤り、`3` Godot が無い、`4` プロジェクトが無い、`5` 設定が不正、
@@ -137,7 +137,7 @@ HTTPS のページは `ws://` ソケットを開けないため、この形は�
   コメント付きの `cfg/` と `./server` を書き出します。すでにある設定ファイルを
   上書きすることは決してありません。RCON は有効の状態で出荷されます。パスワードは自動生成され、ループバックからのみ接続できます。
 - **設定は YAML**、テーマごとに分割されています。`server.yml`、`net.yml`、
-  `rcon.yml`、`auth.yml`、`groups.yml`、`vote.yml`、`permissions.yml`、`security.yml`、`log.yml`。
+  `rcon.yml`、`auth.yml`、`groups.yml`、`permissions.yml`、`vote.yml`、`content.yml`、`security.yml`、`log.yml`、`replay.yml`、`party.yml`、`matchmaking.yml`、`admin_menu.yml`、`loading.yml`。
   `dot-server` がコンソール変数として公開しているものは、すべてそのままの名前で
   書けます。
 - **フラグではなくロール。** dot-server の権限モデルは意図的にフラグですが、

@@ -84,7 +84,7 @@ Die Prüfung läuft offline — kein Backend-Roundtrip pro Beitritt.
 | `LOCAL` | LAN und Entwicklung. Konten in einer JSON-Datei. |
 | `ANONYMOUS` | Alle sind Gäste. Sperren können nichts bedeuten. Warnt. |
 
-`INTROSPECT` hat eine zweite, begrenzte Form. Gib `DotAuthServer.backbone` den eigenen `DotBackboneClient` des Servers, und er schickt das Token des Spielers an `integration/v1/player/introspect` **als dieser Server** und bekommt statt der Konto-Id den Schlüssel des Spielers im Geltungsbereich dieses Servers zurück: Die Identität ist `site:<key>`, mit dem Schlüssel im Claim `scoped_key`; das ist die eine Kennung, die die Avatar-, Profil- und Statistikrouten der Seite für diesen Server auflösen, und eine, die andere Betreiber nicht korrelieren können. Ungesetzt liest er wie zuvor `/me`. `scoped_only` verweigert einen Beitritt, solange kein Backbone-Client übergeben wurde, statt zurückzufallen, damit ein Spieler, der während des Starts hereingelassen wird, nicht eine Minute lang so und danach anders verschlüsselt ist.
+`INTROSPECT` hat eine zweite, begrenzte Form. Gib `DotAuthServer.backbone` den eigenen `DotBackboneClient` des Servers, und er schickt das Token des Spielers an `integration/v1/player/introspect` **als dieser Server** und bekommt statt der Konto-Id den Schlüssel des Spielers im Geltungsbereich dieses Servers zurück: Die Identität ist `tmc:<key>`, mit dem Schlüssel im Claim `scoped_key`; das ist die eine Kennung, die die Avatar-, Profil- und Statistikrouten der Seite für diesen Server auflösen, und eine, die andere Betreiber nicht korrelieren können. Ungesetzt liest er wie zuvor `/me`. `scoped_only` verweigert einen Beitritt, solange kein Backbone-Client übergeben wurde, statt zurückzufallen, damit ein Spieler, der während des Starts hereingelassen wird, nicht eine Minute lang so und danach anders verschlüsselt ist.
 
 ## Konten ohne Cloud
 
@@ -150,17 +150,17 @@ Plattform, ganz ohne Backend.
     eigenständig und nutzt nur bereits vorhandene Backend-Endpunkte — der
     Ticket-Ablauf lässt sich also ohne jede Backend-Änderung ausrollen.
   </Param>
+  <Param name="DotAuthSessionReporter">
+    Mit `single_session` verweigert der Issuer einem Spieler ein Ticket für einen zweiten Server, solange er auf einem anderen ist. Das hier sagt ihm, wer angekommen und wer gegangen ist: Alle `session_report_interval_sec` schickt es die gesamte Spielerliste des Servers an den Issuer unter `session_report_url`, authentifiziert mit dem serverspezifischen `session_report_key`, und wer fehlt, ist weg. `DotAuthServer` baut ihn selbst, sobald `session_report_url` gesetzt ist. Ein Server, der nichts meldet, hält seine Spieler nach ihrem Ticket für `session_lease_sec` fest und lässt sie dann los.
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
-    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
-    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
-    `encrypt_token_store`, `web_handoff`.
+    `strategy`, `server_id`, `ticket_ttl_sec`, `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`, `single_session`, `session_lease_sec`, `session_report_url`, `session_report_key`, `auth_attempts_per_minute`, `encrypt_token_store`. `allowed_server_ids` und `tickets_per_minute` werden an `DotAuthIssuer` gesetzt, `web_handoff` an `DotAuthClient`.
   </Param>
   <Param name="Signale">
     `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
     `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
     `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
-    `profile_recognised`.
+    `profile_recognised`, `reported`.
   </Param>
 </Params>
 

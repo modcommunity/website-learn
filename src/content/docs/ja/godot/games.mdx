@@ -14,7 +14,16 @@ keywords:
   - "game-g2gfast"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
+  - "game-zombie-zone"
+  - "game-hide-n-seek"
+  - "mg-wipeout"
+  - "mg-deathrun"
+  - "mg-prop-hunt"
+  - "mg-look-at-me"
+  - "mg-dangerous-delivery"
   - "zee-dot-weapons"
+  - "zed-dot-weapons"
+  - "dot-bot"
   - "デスマッチ"
   - "サンドボックス"
 source:
@@ -26,15 +35,9 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-コレクションと並んで 7 つのプロジェクトが公開されています。リファレンスゲーム 4 本、
-ミニゲーム 2 本、武器パック 1 つで、これらはデモではありません。各アドオンの
-テストスイートは他のアドオンが無い状態でそのアドオンを走らせるので、アドオン同士の
-接合はゲームの中にしか存在せず、1 つのデプロイ形態からしか到達しないコードパスは、
-何も実行していないコードパスだからです。
+コレクションと並んで 13 本のゲームが公開されています。本格的なゲーム 6 本とミニゲーム 7 本で、武器パック 2 つと、そのうちいくつかが読み込むマップ用リポジトリが付属します。これらはデモではありません。各アドオンのテストスイートは他のアドオンが無い状態でそのアドオンを走らせるので、アドオン同士の接合はゲームの中にしか存在せず、1 つのデプロイ形態からしか到達しないコードパスは、何も実行していないコードパスだからです。
 
-これらはアドオンが置かれている組織ではなく
-[`gamemann`](https://github.com/gamemann) の下にあります。なぜその分け方がルール
-なのかは[概要](/learn/godot)を参照してください。
+これらはアドオンが置かれている組織ではなく [`zees-games`](https://github.com/zees-games) の下にあります。なぜその分け方がルールなのかは[概要](/learn/godot)を参照してください。
 
 **どれも組み込みではなく、配信されます。** すべてのゲームが、署名された
 [`dot-cloud`](/learn/godot/addons/dot-cloud) パックとして公開されます。サーバーは
@@ -59,17 +62,18 @@ source:
 のリング（コンソールの `replay save`、そしてキックと BAN のたびに記録されるクリップの
 ハッシュ）と、エクスポートされたクライアントシェルでパーティークライアントの隣に
 置かれる [`dot-friends`](/learn/godot/addons/dot-friends) クライアント（サイトの
-フレンド用ルートがデプロイされるまでは自動的にオフになります）です。どのゲームも
+フレンド用ルートに対してサイトが 404 を返すと、そのセッションでは自動的にオフになります）です。どのゲームも
 どちらもリンクしません。
+
+もうひとつ、多くのゲームに共通するのがボットです。9 本のゲームが、ファミリーのボット頭脳である `dot-bot` のプレイヤーで空席を埋めます（game-arena、game-hungario、game-zombie-zone、game-hide-n-seek、mg-prop-hunt、mg-wipeout、mg-deathrun、mg-buses-from-hell、mg-dangerous-delivery）。すべてが、コンソールから `bot_difficulty` のプリセットを受け付けます。`easy`、`medium`（既定）、`hard`、`nightmare` の 4 つで、それぞれ個別の `bot_*` 設定の詰め合わせです。
 
 ## game-arena
 
-**開発用テクスチャーの 3D アリーナ・デスマッチ。リファレンスゲームです。**
+**開発用テクスチャーの 3D アリーナ・シューター。リファレンスゲームです。**
 アドオンが組み合わさることを示し、橋渡しコードがどんな形になるかを見せ、新しい
 ゲームがそこからコピーされる対象になるために存在します。
 
-`dot-core`、`dot-player-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
-`dot-ui`、`dot-server`、`dot-net` を使います。
+7 つのモード（フリーフォーオール、チームデスマッチ、`siege` というホードモード、キング・オブ・ザ・ヒル、キャプチャー・ザ・フラッグ、ガンゲーム、スナイパーのみ）と、組み込みマップ 3 つ（`dm_box`、`dm_atrium`、`dm_pit`）、さらに `g2gfast-maps` の戦闘サーフマップがあります。ここではファミリーの大半が 1 プロセスで動きます。`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-loadout`、`dot-match`、`dot-team`、`dot-spawn`、`dot-objective`、ホードのための `dot-npc`、`dot-props`、`dot-bot`、`dot-ui`、`dot-menu`、`dot-net`、`dot-server` に加え、チャット、ボイス、モデレーション、統計、実績が並びます。
 
 重要なファイルは 4 つで、それぞれがアドオンではなく*ゲーム側*にある理由は毎回
 同じです。
@@ -81,18 +85,14 @@ source:
 - **`game/arena_player.gd`** — 移動、武器、体力、ヒットボックスを 1 つのボディに。
   どのアドオンも「この配線はゲームの仕事だ」と言います。アドオンがやってしまえば
   シーンの形を押し付けることになるからです。
-- **`game/arena_game.gd`** — 継ぎ目。6 つのアドオンはそれぞれ単体では正しく、ここが、
-  戦闘のキルが試合のスコアになり、試合のリスポーンがロードアウトになる 50 行です。
-- **`game/arena_module.gd`** — `dot-server` を名指しする唯一のファイル。約 40 行で、
-  これが専用サーバー統合のすべてです。
+- **`game/arena_game.gd`** — 継ぎ目。dot-match はダメージを知らず、dot-combat はスコアリングを知らず、dot-loadout は武器を知りません。戦闘のキルが試合のスコアになり、試合のリスポーンがロードアウトになるのはここです。`dot-server` を名指しすることは決してないので、リッスンサーバーでも、テストでも、専用サーバーでも、同じゲームが動きます。
+- **`game/arena_module.gd`** — 専用サーバーとの統合部分。隣にある `game/arena_services.gd` と合わせて、`dot-server` を名指しする唯一のコードです。
 
-武器が 4 つなのは、「どうやって距離を詰めるか」への本当に異なる 4 つの答えだから
-です。これより少ないデスマッチには正解が 1 つしかありません。ロードアウトは 6
-ポイント予算で武器 2 丁——列挙ではなく 4 つの数値です。
+武器は [`zee-dot-weapons`](#zee-dot-weapons) の 27 種すべてで、ゲーム内で定義されたものは 1 つもありません。ロードアウトは B で選び、5 つのスロット（近接、プライマリ、セカンダリ、投擲、ギア）を 7 ポイントの予算で組みます。ライフル、ピストル、グレネード、アーマーなら 1 ポイント余りますが、重火器とアーマーの組み合わせは収まりません。誰にも答えの出せない組み合わせだからです。サーバー管理者は `mp_loadout_*` cvar で選択肢を制限したり、全員に同じキットを固定したりできます。
 
 ```bash
 godot --headless --path . res://examples/headless_match.tscn   # デスマッチを丸ごと
-godot --headless --path . res://examples/headless_net.tscn     # サーバー + クライアント、20% パケットロス
+godot --headless --path . res://examples/headless_net.tscn     # サーバー 1 台、クライアント 2 台、パケットの 5 つに 1 つを喪失
 godot --headless --path . res://examples/dedicated.tscn        # 実物の DotServer
 ```
 
@@ -100,11 +100,10 @@ godot --headless --path . res://examples/dedicated.tscn        # 実物の DotSe
 
 **食べて大きくなるアリーナゲーム。操るのは怪物で、その上にアバターが乗っています。**
 コレクション初の遊べるクライアントであり、実ソケット上でネットコードが動いた最初の
-ゲームであり、ゲームプレイ側と身元側が一緒に走る唯一の場所です。
+ゲームであり、ゲームプレイ側と身元側が初めて一緒に走った場所です。
 
 `dot-2d`、`dot-net`、`dot-server`、`dot-match`、`dot-ui`、`dot-user-avatar`、
-`dot-loadout`、`dot-platform`、`dot-cloud` を使います。`dot-player-controller` と
-`dot-combat` 以外すべてです。1 つのパックに 5 つのモード——classic、frenzy、gauntlet、warrens、reef——が入り、それぞれ同じコンテンツの上に独自の `game.yml` を持ちます。
+`dot-loadout`、`dot-platform`、`dot-cloud`、`dot-bot` を使い、3D の移動系・戦闘系アドオンは一切使いません。1 つのパックに 6 つのモード——classic、frenzy、gauntlet、warrens、reef、shallows——が入り、それぞれ同じコンテンツの上に独自の `game.yml` を持ちます。
 
 これは **ブラウザー対応への最短経路**でもあります。小さく、スレッドも不要で、
 ほかに邪魔するものが無い状態でブラウザーの制約をひと通り踏みます。
@@ -116,16 +115,10 @@ godot --headless --path . res://examples/dedicated.tscn        # 実物の DotSe
 
 ## game-playground
 
-**古典的な物理サンドボックスの形をしたサンドボックス。** Q を押しっぱなしにすると
-14 種のプロップ、スクリプト付き NPC 4 体、武器 3 種のメニューが出て、クリックすれば
-自分のものになります。掴んで凍らせるフィジックスガン、吹き飛ばすグラビティガン。
-マップ 3 つ、専用サーバー、コンソールコマンド 20 個、そして `pg_lobby` のボーナス
-トラックにある 9 枚のプラットフォームのジャンプコース——ジャンプコースは移動系
-ジャンルではなく、[`dot-timer`](/learn/godot/addons/dot-timer) が surf と bunny-hop
-専用ではないことを示すものだからです。
+**古典的な物理サンドボックスの形をしたサンドボックス。** Q を押しっぱなしにすると、プロップ、NPC（武装したものもあります）、武器、ツールガンのモード、保存したビルドのメニューが出て、クリックすれば自分のものになります。掴んで凍らせ、プレイヤーも持ち上げられるフィジックスガン、吹き飛ばすグラビティガン、サイズ変更、塗装、溶接、ロープ、ボタンとドアの配線などができるツールガンがあります。ビルドはメニューから保存・読み込みでき（溶接した 1 つのまとまりは**カスタムプロップ**として一覧に載ります）、プロップは壊せるようにでき、動くプロップの上に立てば一緒に運ばれ、クリエイティブモードでは建築者が他の全員の邪魔にならずに済みます。組み込みマップ（ボーナストラックに時間計測コースのあるサンドボックス、サーフマップ、バニーホップマップ、生成されたマップ）に加え、`game-playground-maps` から JSON ドキュメントとして配信されるカスタムマップがあります。時間計測コースは、[`dot-timer`](/learn/godot/addons/dot-timer) が surf と bunny-hop 専用ではないことを示すものです。ジャンプコースは移動系ジャンルではないからです。
 
-`dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
-`dot-ui`、`dot-server` を使います。
+`dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-npc`、`dot-vehicle`、`dot-inventory`、`dot-leaderboard`、
+`dot-ui`、`dot-server` を使い、銃には `zee-dot-weapons` を使います。
 
 <Callout type="warning" title="エンティティと武器はパスで指定されたスクリプトです">
 `class_name` ではありません。マウントされた `dot-cloud` パックは `class_name` の
@@ -166,6 +159,18 @@ g2g_zone stage main 1
 g2g_zone_save
 ```
 
+## game-zombie-zone
+
+**協力プレイのゾンビシューター。** 生存者のチームが脱出マップを避難所から次の避難所へと渡っていくか、より大きなチームがバリケードの後ろでサバイバルマップを守り、ホードの波をしのぎます。ゾンビはサーバー専用でレプリケートされる [`dot-npc`](/learn/godot/addons/dot-npc) の NPC で、ランダムにではなく [`dot-npc-ai-director`](/learn/godot/addons/dot-npc-ai-director) によって送り込まれ、特殊感染者は 11 種類、それぞれ一芸を持っています。ゾンビは開けるとランダムな効果が起きる箱を落とし、良いことも非常に悪いこともあります。フレンドリーファイアは有効です。マップは `zombie-zone-maps` から来ます。3 マップのキャンペーンとサバイバルマップです。
+
+`dot-npc`、`dot-npc-ai`、`dot-npc-ai-director`、`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-bot`、`dot-game` を使い、武器パックは [`zee-dot-weapons`](#zee-dot-weapons) と [`zed-dot-weapons`](#zed-dot-weapons) の両方を載せる唯一のゲームです。
+
+## game-hide-n-seek
+
+**かくれんぼ。** 大半のプレイヤーは隠れる側で、隠れる側の青をまとった自分のアバターの姿です。8 人につき 1 人の鬼が、目隠しをして数えてから探しに出ます。触れると捕まえたことになり（サーバーによっては、視界に入れ続けることで、あるいはそのどちらでもよいことにできます）、捕まった隠れる側はその場で鬼になるので、ラウンドが進むにつれて捜索が広がります。ドアは E で開け閉めでき、閉まったドアは体にも視線にも接触にも壁になります。11 のマップは `hide-n-seek-maps` から来ます。mg-prop-hunt から変装と武器を取り除いて作られました。
+
+`dot-player-controller`、`dot-player-char`、`dot-team`、`dot-match`、`dot-props`、`dot-bot`、`dot-game` を使います。
+
 ## mg-smash-copter
 
 **敵が床そのものであるミニゲーム。** 2〜6 チームが、1 本の柱の上でバランスを取る
@@ -178,8 +183,7 @@ g2g_zone_save
 `dot-player-controller`、`dot-net`、サーバー配線に `dot-game`、後半戦で使う 27 種の
 武器に `zee-dot-weapons` を使います。`dot-spectate`、`dot-audio`、`dot-stats`、
 `dot-achievements` は後から加わりました——最後のチームが残るまで続くゲームなので、
-脱落したプレイヤーには見るものが無かったからです。`dot-settings` は文書で明確に
-拒否しています。クライアントにそれを置く画面が無いためです。
+脱落したプレイヤーには見るものが無かったからです。`dot-settings` はそのあとに加わり、クライアントのオプション用で、視野角の項目はサーバーが上限を制限できます。
 
 ## mg-buses-from-hell
 
@@ -190,12 +194,42 @@ g2g_zone_save
 
 `dot-props`、`dot-vehicle`、`dot-combat`、`dot-match`、`dot-player-controller`、
 `dot-net`、`dot-game` に加え、`dot-spectate`、`dot-audio`、`dot-stats`、
-`dot-achievements`、`dot-settings`、そして（爆発する樽のために）`dot-fx` を使います。
+`dot-achievements`、`dot-settings`、（爆発する樽のために）`dot-fx`、そして代役のための `dot-bot` を使います。
 名前だけ挙げられて一度も使われていなかった `dot-spawn`、`dot-team`、`dot-physics` は
 リンクを外しました。また、[dot-entity](/learn/godot/addons/dot-entity) がリークを
 見つけたプロジェクトでもあります。`forget()` がどこにも無い `_next_entity_id`
 カウンターのせいで、参加したことのあるプレイヤーごとに、解放済みノードを指す
 `DotHealth` が残り続けていました。
+
+## mg-wipeout
+
+**水上の障害物コース。** 回転するアーム、大きな玉、転がる丸太、振り子のハンマー、抜け落ちる床があり、落ちたプレイヤーは最後のチェックポイントに戻されます。2 つ以上のサイドがゴールすると、ランダムなアリーナで最後の決戦になり、グラビティガンで投げられるプロップと、床に落ちている武器で戦います。障害物はティックの純粋関数なので、コースはドキュメントとして一度送るだけで済み、クライアント予測はすべてのアームについて追加のバイトなしにサーバーと一致します。11 のコースと 5 つのアリーナは `mg-wipeout-maps` から来ます。
+
+`dot-props`、`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-bot`、`dot-game`、`zee-dot-weapons` を使います。
+
+## mg-deathrun
+
+**罠だらけの長い 1 本のコース。** 大半のプレイヤーが走り、毎ラウンド新しく選ばれるアクティベーターは、コースの脇の通路に立って、罠ごとにボタンを持ちます。ゴールに着いた者は武器を渡され、最初に着いた者がアクティベーターを呼び下ろして決着をつけます。罠は、ティックと、そのボタンが押されたティックの純粋関数なので、押下は 1 つのイベントで済み、ランナー自身の予測はサーバーとまったく同じように働きます。3 つのコースは `mg-deathrun-maps` から来ており、練習用のコースが組み込まれています。
+
+`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-team`、`dot-game`、`zee-dot-weapons` を使い、ボットの名前は `dot-bot` のプールから付けられます。
+
+## mg-prop-hunt
+
+**家具になって隠れる。** 大半のプレイヤーはプロップで、マップ上の何かを見て、それになります。残りはハンター、プロップが隠れている間は目隠しをされ、その後数分間で探し出しますが、本物の家具を撃つたびに体力で代償を払います。変装は見た目だけでなく当たり判定の形でもあり（[`dot-props`](/learn/godot/addons/dot-props) の `DotPropDisguise`）、目隠しはネットワーク上でも本物です。隠れているプロップは、どのハンターのスナップショットにも入りません。4 つのマップ（学校、プールのある家、オフィス、森）は `mg-prop-hunt-maps` から来ており、練習用の家が組み込まれています。
+
+`dot-props`、`dot-team`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-bot`、`dot-game`、`zee-dot-weapons` を使います。
+
+## mg-look-at-me
+
+**小さなホラーゲーム。** プレイヤーは暗い家の中を 32 レベルの深さまで進み、その部屋々々を魔女が歩き回ります。見られるとメーターが溜まっていくので、魔女に長く見つめられる前に、次のドアを開けるものを見つけるのが仕事です。ドアは既定ではプレイヤーごと（サーバーは共有にできます）なので、全員が自分で全レベルを遊び、サーバーが終わる必要はありません。
+
+`dot-player-controller`、`dot-player-char`、`dot-net`、`dot-game` を使います。
+
+## mg-dangerous-delivery
+
+**ガードレールの無い山道を行くトラック。** 荷を積んだトラックで雪、雨、風、落石の中を走り抜け、荷を車庫に届けます。難しい運搬ほど報酬が高く、そのお金でより大きなトラックと改造が買えます。歩く人はいません。プレイヤーはトラックそのもので、[`dot-vehicle`](/learn/godot/addons/dot-vehicle) の車輪付きシャーシを、座席の受け渡し無しでバインドしたものです。天気は 1 回の運搬ではなく山に属しているので、同じ峠にいる全員が同じ雪の中を走ります。
+
+`dot-vehicle`、`dot-net`、`dot-bot`（代役は `bot_difficulty` で運転します）、`dot-game` を使います。
 
 ## zee-dot-weapons
 
@@ -208,9 +242,13 @@ g2g_zone_save
 Kenney の Blaster Kit に、Weapon Pack と Survival Kit の近接武器を加えたもの——すべて
 CC0 で、すべて同梱されており、ダウンロードするものはありません。
 
+## zed-dot-weapons
+
+**最初のパックの上に載る、2 つ目の武器パック。** 現実の見た目をした武器がさらに 14 種（ピストル 2 丁、Uzi、タクティカル SMG、ショットガン 2 丁、狩猟用ライフル、マシンガン、グレネードランチャー、ロケットランチャー、火炎放射器）と、協力プレイのゾンビゲームに必要な投擲物（火炎瓶、パイプ爆弾、胆汁の瓶）が入っており、投擲物にはタグが付いているので、着弾したときに何が起きるかをゲームが判断できます。中身だけのパックで、zee-dot-weapons のカタログ、アート、サウンドに登録されるため、1 つのリグが両方のパックを載せられます。game-zombie-zone のために作られましたが、zee-dot-weapons を使うどのゲームでも載せられます。
+
 ## dot-game-template
 
-**新しいゲームの出発点。** 8 つのうちのひとつではありません。サードパーティーの
+**新しいゲームの出発点。** 13 本のうちのひとつではありません。サードパーティーの
 開発者がコピーするものなので、アドオンと同じ
 [`modcommunity`](https://github.com/modcommunity/dot-game-template) の下にあります。
 これは [`dot-game`](/learn/godot/addons/dot-game) 上に作られた小さなネットワーク対応

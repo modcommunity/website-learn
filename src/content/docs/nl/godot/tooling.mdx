@@ -73,7 +73,7 @@ van de server.
 | `--print-config` | Print de opgeloste configuratie, en stopt. |
 | `--install-service [NAAM]` | Print een systemd-unit voor deze aanroep. |
 | `--restart` | Herstart na een crash, met exponentiële backoff tot maximaal 60 seconden. |
-| `--web` / `--ws-port N` | Luistert ook naar browserclients. Standaard `--port` + 1. |
+| `--web` | Luistert ook naar browserclients, via WebSocket op de gamepoort zelf (TCP naast de UDP van de native clients). `--ws-port` wordt uit oudere unitbestanden geaccepteerd en genegeerd. |
 
 De exitcodes hebben betekenis, zodat een supervisor een misconfiguratie van een
 crash kan onderscheiden: `2` gebruik, `3` geen Godot, `4` geen project, `5` foute
@@ -136,7 +136,7 @@ eigen registreerbaar domein nodig.
   overschrijft nooit een configuratiebestand dat er al is. RCON staat standaard
   aan, met een gegenereerd wachtwoord en alleen via loopback.
 - **Configuratie in YAML**, per onderwerp opgesplitst — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Alles wat
+  `rcon.yml`, `auth.yml`, `groups.yml`, `permissions.yml`, `vote.yml`, `content.yml`, `security.yml`, `log.yml`, `replay.yml`, `party.yml`, `matchmaking.yml`, `admin_menu.yml`, `loading.yml`. Alles wat
   `dot-server` als consolevariabele aanbiedt, kan daar onder zijn eigen naam in.
 - **Rollen, geen flags.** Het rechtenmodel van dot-server bestaat bewust uit
   flags; `groups.yml` is de vertaling, zodat een beheerder

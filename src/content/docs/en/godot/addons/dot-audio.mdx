@@ -60,6 +60,8 @@ audio.play_music(&"combat", 1.5)     # crossfade; asking for what is playing doe
 audio.duck(&"radio")                 # reference-counted, so two ducks do not fight
 ```
 
+A sound already playing can be reshaped without restarting it: `audio.shape(handle, volume_scale, pitch_scale)` takes the same linear scales as `play()`, applied on top of the def's gain and the pitch rolled when the handle started, so an engine loop shaped every frame keeps both. It returns `false` once the voice has ended or been stolen, which is the cue to start it again, and `audio.voice(handle)` reports what a playing voice is set to.
+
 Hand it a
 [`DotRandomStream`](/learn/godot/addons/dot-core#reproducible-randomness) and a
 shot's pitch and variant are the same on the server and every client watching,

@@ -91,7 +91,7 @@ chaque connexion.
 propre `DotBackboneClient` du serveur et il poste le jeton du joueur à
 `integration/v1/player/introspect` **en tant que ce serveur**, et reçoit en retour
 la clé du joueur dans la portée de ce serveur plutôt que son identifiant de
-compte : l'identité est `site:<clé>` avec la clé dans la claim `scoped_key`, qui
+compte : l'identité est `tmc:<clé>` avec la clé dans la claim `scoped_key`, qui
 est le seul identifiant que les routes d'avatar, de profil et de statistiques du
 site résolvent pour ce serveur, et que les autres opérateurs ne peuvent pas
 corréler. Non défini, il lit `/me` comme avant. `scoped_only` refuse une connexion
@@ -163,17 +163,17 @@ complète, sans aucun service central.
     n'utilisant que des endpoints déjà existants : déployer le flux de tickets
     n'exige donc aucune modification du service central.
   </Param>
+  <Param name="DotAuthSessionReporter">
+    Avec `single_session`, l'émetteur refuse à un joueur un ticket pour un second serveur tant qu'il est sur un autre. C'est ce composant qui lui dit qui est arrivé et qui est parti : toutes les `session_report_interval_sec`, il envoie la liste complète des joueurs du serveur à l'émetteur sur `session_report_url`, authentifiée par la `session_report_key` propre à chaque serveur, et un absent est parti. `DotAuthServer` le construit lui-même dès que `session_report_url` est défini. Un serveur qui ne signale rien retient ses joueurs pendant `session_lease_sec` après leur ticket, puis les libère.
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`, `server_id`, `allowed_server_ids`, `ticket_ttl_sec`,
-    `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`,
-    `single_session`, `tickets_per_minute`, `auth_attempts_per_minute`,
-    `encrypt_token_store`, `web_handoff`.
+    `strategy`, `server_id`, `ticket_ttl_sec`, `ticket_leeway_sec`, `ticket_replay_memory_sec`, `allow_guests`, `single_session`, `session_lease_sec`, `session_report_url`, `session_report_key`, `auth_attempts_per_minute`, `encrypt_token_store`. `allowed_server_ids` et `tickets_per_minute` se règlent sur `DotAuthIssuer`, `web_handoff` sur `DotAuthClient`.
   </Param>
   <Param name="Signaux">
     `device_code_ready`, `awaiting_approval`, `signed_in`, `signed_out`,
     `token_refreshed`, `session_revoked`, `session_conflict`, `authenticated`,
     `rejected`, `ticket_issued`, `request_refused`, `profile_created`,
-    `profile_recognised`.
+    `profile_recognised`, `reported`.
   </Param>
 </Params>
 

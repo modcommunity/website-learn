@@ -57,7 +57,7 @@ exist — that is a different problem with a different answer per deployment.
 | | |
 | --- | --- |
 | `DotBrowserSourceList` | Addresses typed in, or a JSON file you ship. |
-| `DotBrowserSourceBackbone` | A community's listing on the TMC backbone, read through a duck-typed client. |
+| `DotBrowserSourceBackbone` | A site's public server listing (`GET /api/content/server/list`), read anonymously over plain HTTP with no sign-in. Off until `DotBrowserBackboneConfig.backbone_url` is set (`--browser-backbone-url`, `DOT_BROWSER_BACKBONE_URL`). |
 | your own | Subclass `DotBrowserSource` and return targets. |
 
 A source produces **addresses**, never player counts. What a server is, is what

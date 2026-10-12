@@ -79,7 +79,7 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
 | `LOCAL` | 局域网与开发。账号放在一个 JSON 文件里。 |
 | `ANONYMOUS` | 所有人都是访客。封禁不可能有任何意义。会警告。 |
 
-`INTROSPECT` 还有第二种带作用域的形式。把服务器自己的 `DotBackboneClient` 交给 `DotAuthServer.backbone`，它就会**以该服务器的身份**把玩家的令牌 POST 到 `integration/v1/player/introspect`，拿回的是玩家在该服务器作用域内的 key，而不是账号 id：身份是 `site:<key>`，key 放在 `scoped_key` 声明里，这是站点的形象、档案和统计路由对该服务器唯一能解析的标识符，其他服主也无法据此关联。不设置时，它像以前一样读取 `/me`。`scoped_only` 会在尚未交入后端客户端时拒绝加入，而不是回退，这样启动期间放进来的玩家就不会先按一种方式记 key、一分钟后又换成另一种。
+`INTROSPECT` 还有第二种带作用域的形式。把服务器自己的 `DotBackboneClient` 交给 `DotAuthServer.backbone`，它就会**以该服务器的身份**把玩家的令牌 POST 到 `integration/v1/player/introspect`，拿回的是玩家在该服务器作用域内的 key，而不是账号 id：身份是 `tmc:<key>`，key 放在 `scoped_key` 声明里，这是站点的形象、档案和统计路由对该服务器唯一能解析的标识符，其他服主也无法据此关联。不设置时，它像以前一样读取 `/me`。`scoped_only` 会在尚未交入后端客户端时拒绝加入，而不是回退，这样启动期间放进来的玩家就不会先按一种方式记 key、一分钟后又换成另一种。
 
 ## 没有云也能有账号
 
@@ -133,17 +133,17 @@ var res := await auth.authenticate({"ticket": from_client}, peer_address)
     唯一需要私钥的组件。它只用已有的后端端点就能独立运行，因此部署这套票据流程不需要
     改动后端。
   </Param>
+  <Param name="DotAuthSessionReporter">
+    开启 `single_session` 后，玩家在一台服务器上时，签发者会拒绝给他签发另一台服务器的票据。告诉签发者谁来了、谁走了的就是它：每隔 `session_report_interval_sec`，它把服务器的完整玩家名单发到 `session_report_url` 上的签发者，用每台服务器各自的 `session_report_key` 认证，名单里没有的人就算已经离开。设置了 `session_report_url` 时，`DotAuthServer` 会自己创建它。什么都不上报的服务器，会在玩家拿到票据后保留他们 `session_lease_sec`，然后放开。
+  </Param>
   <Param name="DotAuthConfig">
-    `strategy`、`server_id`、`allowed_server_ids`、`ticket_ttl_sec`、
-    `ticket_leeway_sec`、`ticket_replay_memory_sec`、`allow_guests`、
-    `single_session`、`tickets_per_minute`、`auth_attempts_per_minute`、
-    `encrypt_token_store`、`web_handoff`。
+    `strategy`、`server_id`、`ticket_ttl_sec`、`ticket_leeway_sec`、`ticket_replay_memory_sec`、`allow_guests`、`single_session`、`session_lease_sec`、`session_report_url`、`session_report_key`、`auth_attempts_per_minute`、`encrypt_token_store`。 `allowed_server_ids` 和 `tickets_per_minute` 设在 `DotAuthIssuer` 上，`web_handoff` 设在 `DotAuthClient` 上。
   </Param>
   <Param name="信号">
     `device_code_ready`、`awaiting_approval`、`signed_in`、`signed_out`、
     `token_refreshed`、`session_revoked`、`session_conflict`、`authenticated`、
     `rejected`、`ticket_issued`、`request_refused`、`profile_created`、
-    `profile_recognised`。
+    `profile_recognised`、`reported`。
   </Param>
 </Params>
 

@@ -73,7 +73,7 @@ Konfiguration des Servers.
 | `--print-config` | Druckt die aufgelöste Konfiguration und beendet sich. |
 | `--install-service [NAME]` | Druckt eine systemd-Unit für diesen Aufruf. |
 | `--restart` | Startet nach einem Absturz neu, mit exponentiellem Backoff bis 60 Sekunden. |
-| `--web` / `--ws-port N` | Lauscht auch auf Browser-Clients. Standard ist `--port` + 1. |
+| `--web` | Lauscht auch auf Browser-Clients, per WebSocket auf dem Spielport selbst (TCP neben dem UDP der nativen Clients). `--ws-port` wird aus älteren Unit-Dateien akzeptiert und ignoriert. |
 
 Die Exit-Codes sind aussagekräftig, damit ein Supervisor eine Fehlkonfiguration
 von einem Absturz unterscheiden kann: `2` Benutzung, `3` kein Godot, `4` kein
@@ -142,7 +142,7 @@ anderes und braucht eine eigene registrierbare Domain.
   bereits vorhandene Konfigurationsdatei wird nie überschrieben. RCON kommt
   eingeschaltet, mit erzeugtem Passwort und nur über Loopback.
 - **Konfiguration in YAML**, nach Themen getrennt — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Alles, was
+  `rcon.yml`, `auth.yml`, `groups.yml`, `permissions.yml`, `vote.yml`, `content.yml`, `security.yml`, `log.yml`, `replay.yml`, `party.yml`, `matchmaking.yml`, `admin_menu.yml`, `loading.yml`. Alles, was
   `dot-server` als Konsolenvariable anbietet, kann dort unter seinem eigenen
   Namen stehen.
 - **Rollen statt Flags.** Das Rechtemodell von dot-server besteht bewusst aus

@@ -61,6 +61,7 @@ steer back toward each other and merge, which a direction alone can never do.
 | `Dot2DState` | Position, velocity, facing, radius, mass. Snapshot-able and replayable. |
 | `Dot2DTunables` | How it moves. `topdown()`, `thrust()` or `blob()`. |
 | `Dot2DMassRules` | How mass becomes size, speed and the right to eat somebody. |
+| `Dot2DAdminModifiers` | Noclip, freeze and a speed step, carried in the state so a client predicts them too. |
 | `Dot2DMotor` | The simulation. Pure, deterministic, node-free. |
 | `Dot2DBody` | What it collides against. `Flat` for a bounded arena, `Physics` for the rest. |
 | `Dot2DGrid` | A uniform spatial hash. Two thousand entities, local queries. |
@@ -95,7 +96,7 @@ visibly overlaps things it cannot eat.
     maximum speed, and which of the three feels the motor runs.
   </Param>
   <Param name="Dot2DMassRules">
-    Growth, speed falloff, eat ratio, split and eject rules.
+    Growth, speed falloff, eat ratio, decay, split and merge rules. Ejecting mass is a command button (`BUTTON_EJECT`); what it does is the game's.
   </Param>
   <Param name="Dot2DBody subclass">
     `move`, `overlaps`, `describe`. **`Dot2DBodyFlat` is the production

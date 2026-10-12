@@ -14,7 +14,16 @@ keywords:
   - "game-g2gfast"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
+  - "game-zombie-zone"
+  - "game-hide-n-seek"
+  - "mg-wipeout"
+  - "mg-deathrun"
+  - "mg-prop-hunt"
+  - "mg-look-at-me"
+  - "mg-dangerous-delivery"
   - "zee-dot-weapons"
+  - "zed-dot-weapons"
+  - "dot-bot"
   - "死斗"
   - "沙盒"
 source:
@@ -26,12 +35,9 @@ source:
   - ../game-dev/godot/dot-bootstrap/projects.tsv
 ---
 
-与合集一同发布的有七个项目——四个参考游戏、两个小游戏和一个武器包——而且它们不是演示。
-每个插件的测试套件都是在其他插件缺席的情况下跑那个插件的，所以插件之间的接合只存在于
-游戏里，而只有一种部署形态才能走到的代码路径，就是从来没被跑过的代码路径。
+与合集一同发布的有十三个游戏——六个完整游戏和七个小游戏——外加两个武器包，以及其中几个游戏要加载的地图仓库，而且它们不是演示。每个插件的测试套件都是在其他插件缺席的情况下跑那个插件的，所以插件之间的接合只存在于游戏里，而只有一种部署形态才能走到的代码路径，就是从来没被跑过的代码路径。
 
-它们放在 [`gamemann`](https://github.com/gamemann) 名下，而不是插件所在的组织名下；
-为什么这种划分是一条规则，见[总览](/learn/godot)。
+它们放在 [`zees-games`](https://github.com/zees-games) 名下，而不是插件所在的组织名下；为什么这种划分是一条规则，见[总览](/learn/godot)。
 
 **它们全都是分发下来的，而不是内置的。** 每个游戏都以签名的
 [`dot-cloud`](/learn/godot/addons/dot-cloud) 资源包形式发布；服务器安装它被告知要提供的那些，
@@ -49,16 +55,17 @@ source:
 有两个插件是由 [TMC 的服务器工具](/learn/godot/tooling#tmc-的服务器工具)为**每一个**游戏构建的，
 而不是由任何游戏构建：每台服务器上的一个 [`dot-replay`](/learn/godot/addons/dot-replay)
 环形缓冲（控制台里 `replay save`，每次踢出和封禁都会附上一段片段的哈希），以及导出的客户端
-外壳里与组队客户端并列的一个 [`dot-friends`](/learn/godot/addons/dot-friends) 客户端，它在站点的好友路由部署之前会自行关闭。
+外壳里与组队客户端并列的一个 [`dot-friends`](/learn/godot/addons/dot-friends) 客户端，当站点对它的好友路由返回 404 时，它会在本次会话内自行关闭。
 没有任何游戏会自己去链接它们。
+
+大多数游戏还共用另一样东西：机器人。九个游戏用 `dot-bot`（本合集的机器人大脑）里的玩家来填补空座位（game-arena、game-hungario、game-zombie-zone、game-hide-n-seek、mg-prop-hunt、mg-wipeout、mg-deathrun、mg-buses-from-hell 和 mg-dangerous-delivery），它们都可以在控制台里使用它的 `bot_difficulty` 预设：`easy`、`medium`（默认）、`hard` 和 `nightmare`，每个预设都是一组单独的 `bot_*` 设置。
 
 ## game-arena
 
-**一个用开发贴图的 3D 竞技场死斗。参考游戏。** 它存在的意义是证明这些插件能组合起来、
+**一个用开发贴图的 3D 竞技场射击游戏。参考游戏。** 它存在的意义是证明这些插件能组合起来、
 展示桥接代码长什么样，以及成为新游戏抄写的模板。
 
-用到 `dot-core`、`dot-player-controller`、`dot-combat`、`dot-loadout`、`dot-match`、
-`dot-ui`、`dot-server` 和 `dot-net`。
+七种模式（自由混战、团队死斗、名为 `siege` 的尸潮模式、山丘之王、夺旗、枪械升级赛和仅限狙击枪），三张内置地图 `dm_box`、`dm_atrium` 和 `dm_pit`，外加来自 `g2gfast-maps` 的战斗 surf 地图。合集里的大部分插件在这里跑在同一个进程中：`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-loadout`、`dot-match`、`dot-team`、`dot-spawn`、`dot-objective`、用于尸潮的 `dot-npc`、`dot-props`、`dot-bot`、`dot-ui`、`dot-menu`、`dot-net` 和 `dot-server`，旁边还有聊天、语音、管理、统计和成就。
 
 有四个文件很关键，而它们各自属于*游戏*而不是插件的理由每次都一样：
 
@@ -67,17 +74,14 @@ source:
   漂移在子弹开始穿过客户端看得见的东西之前都是不可见的。
 - **`game/arena_player.gd`** —— 移动、武器、生命和碰撞盒装在同一个 body 上。所有插件
   都说这种接线属于游戏，因为由插件来做就等于替你规定了场景结构。
-- **`game/arena_game.gd`** —— 那道接缝。六个插件各自都对；这五十行正是战斗击杀变成
-  对局得分、对局重生变成一套配装的地方。
-- **`game/arena_module.gd`** —— 唯一提到 `dot-server` 的文件。约四十行，这就是整个
-  专用服务器集成。
+- **`game/arena_game.gd`** —— 那道接缝。dot-match 对伤害一无所知，dot-combat 对计分一无所知，dot-loadout 对武器一无所知；战斗击杀变成对局得分、对局重生变成一套配装，就发生在这里。它从不提到 `dot-server`，所以监听服务器、测试和专用服务器跑的是同一个游戏。
+- **`game/arena_module.gd`** —— 专用服务器集成。连同它旁边的 `game/arena_services.gd`，它是唯一提到 `dot-server` 的代码。
 
-四把武器，因为它们是对“我怎么拉近距离”这个问题四个真正不同的答案，而武器更少的死斗
-只有一个正确答案。配装是在六点预算下带两把武器——四个数字，而不是一个枚举。
+武器是 [`zee-dot-weapons`](#zee-dot-weapons) 的全部二十七把，没有一把是在游戏里定义的。配装在 B 键上选择，共五个槽位（近战、主武器、副武器、投掷物、装备），预算七点：一把步枪、一把手枪、一枚手雷加护甲刚好放得下并剩一点，而重武器加护甲就放不下，因为这是没人能应付的组合。服主可以用 `mp_loadout_*` cvar 限制可选范围，或者给所有人固定一套配装。
 
 ```bash
 godot --headless --path . res://examples/headless_match.tscn   # 完整跑一局死斗
-godot --headless --path . res://examples/headless_net.tscn     # 服务器 + 客户端，20% 丢包
+godot --headless --path . res://examples/headless_net.tscn     # 一台服务器、两个客户端，每五个包丢一个
 godot --headless --path . res://examples/dedicated.tscn        # 一台真正的 DotServer
 ```
 
@@ -85,11 +89,10 @@ godot --headless --path . res://examples/dedicated.tscn        # 一台真正的
 
 **一个靠吃东西长大的竞技场游戏，你操纵的是怪物，骑在它身上的是你的形象。** 这是合集
 里第一个能玩的客户端、第一个网络代码真跑在真实套接字上的游戏，也是玩法一半和身份一半
-唯一同时运行的地方。
+最早同时运行的地方。
 
 用到 `dot-2d`、`dot-net`、`dot-server`、`dot-match`、`dot-ui`、`dot-user-avatar`、
-`dot-loadout`、`dot-platform` 和 `dot-cloud` —— 除 `dot-player-controller` 和
-`dot-combat` 之外的全部。一个资源包带有五种模式——classic、frenzy、gauntlet、warrens 和 reef——每种都有自己的 `game.yml`，共用同一套内容。
+`dot-loadout`、`dot-platform`、`dot-cloud` 和 `dot-bot`，不用任何 3D 移动或战斗类插件。一个资源包带有六种模式——classic、frenzy、gauntlet、warrens、reef 和 shallows——每种都有自己的 `game.yml`，共用同一套内容。
 
 它同时是**通往浏览器那一栏的最短路径**：体量小、不需要线程，而且在没有其他东西碍事的
 情况下把每一条浏览器约束都踩了一遍。它的 `web/README.md` 就是部署契约：用 WebSocket
@@ -99,14 +102,10 @@ godot --headless --path . res://examples/dedicated.tscn        # 一台真正的
 
 ## game-playground
 
-**一个经典物理沙盒形态的沙盒。** 按住 Q 打开菜单，里面有十四种道具、四个带脚本的 NPC
-和三把武器；点一下它就是你的了。物理枪能抓取和冻结，重力枪能把东西轰出去。三张地图、
-一台专用服务器、二十条控制台命令，还有 `pg_lobby` 奖励赛道上一条九级平台的跳跃路线
-——因为跳跃路线不属于任何移动类型，而正是它说明了
-[`dot-timer`](/learn/godot/addons/dot-timer) 并非只服务于 surf 和 bunny-hop。
+**一个经典物理沙盒形态的沙盒。** 按住 Q 打开菜单，里面有道具、NPC（有些带武器）、武器、工具枪模式和你保存的建筑；点一下它就是你的了。物理枪能抓取、冻结并拿起玩家，重力枪能把东西轰出去，工具枪能缩放、上色、焊接、绑绳、把按钮接到门上等等。建筑可以在菜单里保存和加载（一个焊接出来的物件会被列为**自定义道具**），道具可以被打碎，站在移动的道具上会被带着走，创造模式让建造者不碍任何人的事。内置地图（一张在奖励赛道上带计时路线的沙盒、一张 surf 地图、一张 bhop 地图、一张生成的地图），外加来自 `game-playground-maps`、以 JSON 文档形式分发的自定义地图。正是这些计时路线说明了 [`dot-timer`](/learn/godot/addons/dot-timer) 并非只服务于 surf 和 bunny-hop：跳跃路线不属于任何移动类型。
 
-用到 `dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-leaderboard`、
-`dot-ui` 和 `dot-server`。
+用到 `dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-npc`、`dot-vehicle`、`dot-inventory`、
+`dot-leaderboard`、`dot-ui`、`dot-server`，枪械则用 `zee-dot-weapons`。
 
 <Callout type="warning" title="实体和武器都是按“路径”命名的脚本">
 不是按 `class_name`。挂载的 `dot-cloud` 资源包无法注册 `class_name` 全局名——这是实测
@@ -144,6 +143,18 @@ g2g_zone stage main 1
 g2g_zone_save
 ```
 
+## game-zombie-zone
+
+**合作制僵尸射击游戏。** 一队幸存者穿过一张撤离地图，从一个避难所走到下一个；或者更大的一队在生存地图上依托路障，抵挡一波又一波尸潮。僵尸是 [`dot-npc`](/learn/godot/addons/dot-npc) 的 NPC，只在服务器上存在并被复制，由 [`dot-npc-ai-director`](/learn/godot/addons/dot-npc-ai-director) 派出而不是随机刷出，另有十一种特殊感染者，各有一招绝活。僵尸会掉落箱子，打开后会触发随机效果，可能很好，也可能很糟，并且开启了友军伤害。地图来自 `zombie-zone-maps`：一个三张地图的战役，以及若干生存地图。
+
+用到 `dot-npc`、`dot-npc-ai`、`dot-npc-ai-director`、`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-bot` 和 `dot-game`，并且它是同时带上两个武器包 [`zee-dot-weapons`](#zee-dot-weapons) 和 [`zed-dot-weapons`](#zed-dot-weapons) 的那个游戏。
+
+## game-hide-n-seek
+
+**捉迷藏。** 大多数玩家负责躲藏，以各自的形象出现，身上是躲藏者的蓝色；每八名玩家有一名搜寻者，先蒙眼读秒，然后出去寻找。触碰即抓获（服务器也可以改成被持续看见，或者两者皆可），每个被抓到的躲藏者就在原地变成搜寻者，所以追捕会随回合推进而越来越壮大。门用 E 开关，关着的门对身体、视线和触碰来说都是一堵墙。十一张地图来自 `hide-n-seek-maps`。它是以 mg-prop-hunt 为基础，去掉伪装和武器做成的。
+
+用到 `dot-player-controller`、`dot-player-char`、`dot-team`、`dot-match`、`dot-props`、`dot-bot` 和 `dot-game`。
+
 ## mg-smash-copter
 
 **一个对手是地板的小游戏。** 两到六支队伍站在各自架在单根支柱上的平台上，离地四十米，
@@ -154,8 +165,7 @@ g2g_zone_save
 `dot-combat` 处理生命值和命中判定，`dot-match` 处理回合和阵营，另有 `dot-player-controller`、
 `dot-net`、负责服务器接线的 `dot-game`，以及 `zee-dot-weapons`——后半程用的二十七把武器就出自它。
 `dot-spectate`、`dot-audio`、`dot-stats` 和 `dot-achievements` 是后来加的——它是最后一队
-存活制，被淘汰的玩家此前无事可看。它以书面形式拒绝了 `dot-settings`：它的客户端没有
-可以放设置的界面。
+存活制，被淘汰的玩家此前无事可看。随后又加入了 `dot-settings`，用于客户端的选项，其中的视场角一项服务器可以限制范围。
 
 ## mg-buses-from-hell
 
@@ -165,11 +175,41 @@ g2g_zone_save
 
 用到 `dot-props`、`dot-vehicle`、`dot-combat`、`dot-match`、`dot-player-controller`、
 `dot-net` 和 `dot-game`，外加 `dot-spectate`、`dot-audio`、`dot-stats`、
-`dot-achievements`、`dot-settings` 和 `dot-fx`（用于爆炸桶）。它取消链接了 `dot-spawn`、
+`dot-achievements`、`dot-settings`、`dot-fx`（用于爆炸桶）和用来顶替玩家的 `dot-bot`。它取消链接了 `dot-spawn`、
 `dot-team` 和 `dot-physics`——每个都被点名却从没用过。它也是
 [dot-entity](/learn/godot/addons/dot-entity) 在里面找到泄漏的那个项目：一个没有任何
 `forget()` 的 `_next_entity_id` 计数器，给每个加入过的玩家都留下了一个 `DotHealth`，
 而每个都指向一个已释放的节点。
+
+## mg-wipeout
+
+**水面上的障碍赛道。** 横扫的转臂、大球、滚动的圆木、摆动的大锤和会塌落的地板；掉下去的玩家会回到上一个检查点。如果有两方或更多方跑完，他们会在随机的一个竞技场里决一死战，场上有可用重力枪投掷的道具，地上还散落着武器。障碍是时刻（tick）的纯函数，所以一条赛道只需作为一份文档发送一次，客户端预测就能与服务器在每一条转臂上保持一致，而无需多发一个字节。十一条赛道和五个竞技场来自 `mg-wipeout-maps`。
+
+用到 `dot-props`、`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-bot`、`dot-game` 和 `zee-dot-weapons`。
+
+## mg-deathrun
+
+**一条长长的陷阱赛道。** 大多数玩家负责跑；每回合重新抽出的激活者站在赛道旁的一条步道上，面前每个陷阱都有一个按钮。到达终点的人会得到一把武器，第一个到的人会召唤激活者下来一决胜负。陷阱是时刻和其按钮被按下那一刻时刻的纯函数，所以一次按下就是一个事件，跑者自己的预测与服务器一样精确地带着他们前进。三条赛道来自 `mg-deathrun-maps`，另内置一条练习赛道。
+
+用到 `dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-team`、`dot-game` 和 `zee-dot-weapons`，机器人的名字取自 `dot-bot` 的名字池。
+
+## mg-prop-hunt
+
+**扮成家具躲起来。** 大多数玩家是道具，他们看向地图上的某样东西并变成它；其余的是猎人，道具躲藏期间被蒙住眼睛，随后有几分钟时间去找出他们，每打中一件真正的家具就要付出生命值。伪装既是外观也是碰撞体（[`dot-props`](/learn/godot/addons/dot-props) 的 `DotPropDisguise`），而蒙眼在网络传输上是真的：躲藏中的道具不在任何猎人的快照里。四张地图（一所学校、一栋带泳池的房子、一间办公室和一片树林）来自 `mg-prop-hunt-maps`，另内置一栋练习用的房子。
+
+用到 `dot-props`、`dot-team`、`dot-combat`、`dot-weapon`、`dot-match`、`dot-bot`、`dot-game` 和 `zee-dot-weapons`。
+
+## mg-look-at-me
+
+**一个小型恐怖游戏。** 玩家在一栋黑暗的房子里一路向下闯关，共三十二层，女巫在各个房间里走动；被看到会填满一个计量条，所以任务就是在有人盯着你看太久之前，找到能打开下一扇门的东西。门默认是每位玩家各自的（服务器可以改成共享），所以每个人都自己通关每一层，服务器也永远不必结束。
+
+用到 `dot-player-controller`、`dot-player-char`、`dot-net` 和 `dot-game`。
+
+## mg-dangerous-delivery
+
+**没有护栏的山路上的卡车。** 载着货物的卡车穿过雪、雨、风和落石，把货送到仓库；越难的活报酬越高，赚到的钱可以买更大的卡车和升级。没人走路：玩家就是他的卡车，即 [`dot-vehicle`](/learn/godot/addons/dot-vehicle) 的轮式底盘，只是绑定时没有座位交接。天气属于这座山而不是某一趟行程，所以同一条山口上的所有人开过的是同一场雪。
+
+用到 `dot-vehicle`、`dot-net`、`dot-bot`（顶替玩家的机器人按 `bot_difficulty` 驾驶）和 `dot-game`。
 
 ## zee-dot-weapons
 
@@ -181,9 +221,13 @@ g2g_zone_save
 正确的复制逻辑。美术用的是 Kenney 的 Blaster Kit，近战武器来自 Weapon Pack 和 Survival
 Kit——全是 CC0、全都内置，无需下载。
 
+## zed-dot-weapons
+
+**第二个武器包，建立在第一个之上。** 另外十四把外观写实的武器（两把手枪、一把乌兹冲锋枪、一把战术冲锋枪、两把霰弹枪、一把狩猎步枪、一挺机枪、一具榴弹发射器、一具火箭发射器和一具火焰喷射器），以及合作制僵尸游戏所需的投掷物：燃烧瓶、管状炸弹和胆汁罐，都带有标记，好让游戏知道每样东西落地后会起什么作用。它只含内容：它把自己注册进 zee-dot-weapons 的目录、美术和音效里，所以一套武器骨架就能同时带上两个包。它是为 game-zombie-zone 做的，任何用 zee-dot-weapons 的游戏都可以带上它。
+
 ## dot-game-template
 
-**新游戏的起点。** 不在那八个之列：它跟插件放在一起，位于
+**新游戏的起点。** 不在那十三个之列：它跟插件放在一起，位于
 [`modcommunity`](https://github.com/modcommunity/dot-game-template) 名下，因为它是第三方
 开发者会去复制的东西。它是 **Coin Grab**，一个建立在 [`dot-game`](/learn/godot/addons/dot-game)
 之上的小型联网 2D 游戏——带预测、服务器权威，并且不使用 `class_name`，所以从第一次提交起

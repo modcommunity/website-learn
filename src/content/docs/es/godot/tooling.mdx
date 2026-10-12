@@ -73,7 +73,7 @@ servidor.
 | `--print-config` | Imprime la configuración resuelta, y sale. |
 | `--install-service [NOMBRE]` | Imprime una unidad de systemd para esta invocación. |
 | `--restart` | Reinicia tras una caída, con retroceso exponencial hasta un tope de 60 segundos. |
-| `--web` / `--ws-port N` | Escucha también a clientes de navegador. Por defecto `--port` + 1. |
+| `--web` | Escucha también a clientes de navegador, por WebSocket en el propio puerto del juego (TCP junto al UDP de los clientes nativos). `--ws-port` se acepta por los archivos de unidad antiguos y se ignora. |
 
 Los códigos de salida son significativos, para que un supervisor distinga una
 mala configuración de una caída: `2` uso incorrecto, `3` sin Godot, `4` sin
@@ -135,7 +135,7 @@ distinta y necesita su propio dominio registrable.
   Nunca sobrescribe un archivo de configuración que ya exista. RCON viene
   encendido, con una contraseña generada y solo en loopback.
 - **Configuración en YAML**, separada por temas — `server.yml`, `net.yml`,
-  `rcon.yml`, `auth.yml`, `groups.yml`, `vote.yml`, `permissions.yml`, `security.yml`, `log.yml`. Cualquier
+  `rcon.yml`, `auth.yml`, `groups.yml`, `permissions.yml`, `vote.yml`, `content.yml`, `security.yml`, `log.yml`, `replay.yml`, `party.yml`, `matchmaking.yml`, `admin_menu.yml`, `loading.yml`. Cualquier
   cosa que `dot-server` exponga como variable de consola puede ir ahí con su
   propio nombre.
 - **Roles, no flags.** El modelo de permisos de dot-server son flags, a
