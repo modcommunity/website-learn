@@ -82,7 +82,7 @@ if panel.has_keyboard_focus():
     it back on screen, and into the screenshot somebody posts to ask why their
     server will not start. `DotConsoleLine.redact` keeps the command name and
     replaces the rest with a **fixed** number of asterisks, because the length
-    of a password is information too. It checks every `;`-statement and any word in it, so `say hi; rcon_password x` and `rcon rcon_password x` are caught too, and the history keeps the line with its secrets removed.
+    of a password is information too. It checks every `;`-statement, at its first word or the word after a forwarding prefix, so `say hi; rcon_password x` and `rcon rcon_password x` are caught too (chat that only mentions a password is left alone), and the history keeps the line with its secrets removed.
   </Param>
 </Params>
 
