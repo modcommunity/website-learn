@@ -101,7 +101,7 @@ viennent chacune d'un échec que quelqu'un a mesuré :
   contre les modules de l'hôte, si bien qu'un pack exigeant un module plus récent
   échouait autrefois à l'analyse en plein chargement. Il est désormais refusé avant
   qu'un script ne charge, avec *« Ce jeu a besoin de dot-net API level 3 ou plus ;
-  ce client est au niveau 2. »* — voir
+  ce build est au niveau 2. »* — voir
   [niveaux d'API des modules](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   `host_role` nomme le côté.
 - **Un identifiant de contenu peut nommer son propriétaire : `<owner>/<name>`.**
@@ -185,8 +185,8 @@ chargeur de `dot-map` et le changement de jeu de `dot-server` l'atteignent par c
 nom et appellent :
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 La plupart des modules les atteignent par `DotContent` dans

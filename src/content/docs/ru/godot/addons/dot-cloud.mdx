@@ -97,8 +97,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 - **Сначала читается его `requires.json`.** Скрипты пакета компилируются против
   дополнений хоста, так что пакет, которому нужно более новое дополнение, раньше
   падал на разборе посреди загрузки. Теперь он отвергается до загрузки любого
-  скрипта с сообщением *«Этой игре нужен dot-net API уровня 3 или новее; у этого
-  клиента уровень 2.»* — см.
+  скрипта с сообщением *«Этой игре нужен dot-net API уровня 3 или новее; у этой
+  сборки уровень 2.»* — см.
   [уровни API дополнений](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   `host_role` называет сторону.
 - **Идентификатор контента может называть владельца: `<owner>/<name>`.** `/` не
@@ -175,8 +175,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 нему по этому имени и вызывают:
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 Большинство дополнений обращаются к ним через `DotContent` в

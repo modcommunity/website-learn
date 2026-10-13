@@ -101,7 +101,7 @@ cada una de un fallo que alguien midió:
   contra los complementos del anfitrión, así que uno que necesitaba un
   complemento más nuevo fallaba al analizarse a mitad de la carga. Ahora se
   rechaza antes de cargar ningún script, con *«This game needs dot-net API level
-  3 or newer; this client has level 2.»* — mira los
+  3 or newer; this build has level 2.»* — mira los
   [niveles de API de los complementos](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   `host_role` nombra el lado.
 - **Un id de contenido puede nombrar a su dueño: `<owner>/<name>`.** `/` no
@@ -179,8 +179,8 @@ Registra un `DotCloudClient` y se publica bajo `dot_cloud_client`. El cargador d
 llaman a:
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 La mayoría de los complementos llegan a ellas a través de `DotContent` en

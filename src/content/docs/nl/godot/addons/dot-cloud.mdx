@@ -99,7 +99,7 @@ voortkwamen uit een mislukking die iemand heeft gemeten:
   compileren tegen de add-ons van de host, dus een pakket dat een nieuwere add-on
   nodig had, kon halverwege het laden niet parsen. Nu wordt het geweigerd voordat
   er een script laadt, met *"Deze game heeft dot-net API-niveau 3 of nieuwer nodig;
-  deze client heeft niveau 2."* — zie
+  deze build heeft niveau 2."* — zie
   [add-on-API-niveaus](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   `host_role` noemt de kant.
 - **Een content-id mag zijn eigenaar noemen: `<owner>/<name>`.** `/` kan in geen
@@ -175,8 +175,8 @@ Registreer een `DotCloudClient` en hij publiceert zichzelf onder
 bereiken hem via die naam en roepen aan:
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 De meeste add-ons bereiken ze via `DotContent` in

@@ -52,8 +52,7 @@ if is_server:
 
 Whatever produced the shot runs on the owning client and on the server alike, and both reach the same shot from the same inputs, because the spread is a **hash of the shot** rather than a draw from a random stream.
 
-`DotCombatManager.resolve_shot()` traces those shots and applies the damage, and
-runs only where the game is authoritative. A client that resolved its own shots
+`DotCombatManager.resolve_shot()` traces those shots on any peer, but applies damage only where `is_authority` is set. A client that resolved its own shots
 would be a client that decides who dies.
 
 ## Three failure modes it is built around
@@ -90,8 +89,7 @@ the past, and the symptom is that shots quietly start missing for everyone.
   </Param>
   <Param name="DotDamageRules + DotDamageResolver.adjust" type="Callable">
     Friendly fire, self damage, hit groups, falloff and clamping, applied in one
-    order, once. `adjust` is the last word; `team_of` is how it knows who is on
-    whose side.
+    order, once. `adjust` runs after every rule except the final clamp to `maximum` and `minimum`; `team_of` is how it knows who is on whose side.
   </Param>
   <Param name="DotTrace subclass">
     `_world_ray` **and nothing else** — the hitbox walk, the wall tie-break and
@@ -100,16 +98,15 @@ the past, and the symptom is that shots quietly start missing for everyone.
     whole thing has an offline test suite.
   </Param>
   <Param name="DotCombatManager.rewind_fn / restore_fn" type="Callable">
-    Two lines turn lag compensation on:
+    Two assignments turn lag compensation on:
 
     ```gdscript
     combat.rewind_fn = func(view_tick: float) -> void:
-        net.history.rewind(view_tick, net.registry.all())
+        net.history.rewind(net.registry.all(), int(view_tick), net.clock.tick)
     combat.restore_fn = net.history.restore
     ```
 
-    Unset, shots resolve against the present — correct for a listen server and
-    wrong for anyone with latency.
+    Unset, shots resolve against the present — correct for the host's own shots and wrong for any shooter with latency.
   </Param>
   <Param name="DotHitbox / DotHitboxSet">
     Capsules, boxes and spheres, tested analytically against a ray rather than

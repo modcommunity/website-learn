@@ -60,8 +60,7 @@ holding a `Vector2` is a different caller.
 `min_quality` gates whether an effect **exists**, not how detailed it is.
 Halving the particle count on the effect that is killing the frame does not save
 the frame; not spawning it does. `frame_budget` is the same idea per frame — a
-grenade landing in a crowd cannot cost more than one frame has, and what goes is
-the lowest-priority request.
+grenade landing in a crowd cannot cost more than one frame has. A request over the budget displaces lower-`priority` effects started in the same frame, lowest first and only if that frees enough, never one already on screen; a request the budget refuses retires nothing.
 
 ## Camera shake is a value
 
@@ -93,7 +92,7 @@ somebody adds and the person it harms cannot tell which effect did it.
 
 An unbounded decal list grows with the **round** rather than with the number of
 players, which makes it invisible in testing and fatal at minute forty.
-`max_decals` recycles the oldest, and lowering it takes effect immediately.
+`max_decals` recycles the oldest, and lowering it applies at the next decal or the next `advance()`.
 
 <Related>
 - [dot-audio](/learn/godot/addons/dot-audio) — the same shape, for what you hear

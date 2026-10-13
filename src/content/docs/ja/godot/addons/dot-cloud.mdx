@@ -97,7 +97,7 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 - **まず `requires.json` を読みます。** パックのスクリプトはホストのアドオンに対して
   コンパイルされるので、より新しいアドオンを必要とするパックは、読み込みの途中で
   パースに失敗していました。今はスクリプトが 1 つも読み込まれる前に拒否され、
-  *「このゲームには dot-net の API レベル 3 以上が必要です。このクライアントは
+  *「このゲームには dot-net の API レベル 3 以上が必要です。このビルドは
   レベル 2 です」* と表示されます。
   [アドオン API レベル](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi)を
   参照してください。`host_role` がどちら側かを指定します。
@@ -176,8 +176,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 呼びます。
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 ほとんどのアドオンは、

@@ -34,7 +34,7 @@ local `quit` quits the client rather than the dedicated server.
 | | |
 | --- | --- |
 | `DotConsoleLocal` | What belongs to the machine the player is at: a volume, a bind, a screenshot, `quit`. Works with no server in the process. |
-| `DotConsoleBridge` | Wraps anything with `execute` and `complete`, so a server's console becomes a source without this addon naming a type in it. |
+| `DotConsoleBridge` | Wraps anything with `execute` (and uses `complete` when it has one), so a server's console becomes a source without this addon naming a type in it. |
 | `DotConsoleRemote` | A `send_fn` that puts the line on a wire, for RCON or a chat command. |
 
 ## Usage
@@ -82,7 +82,7 @@ if panel.has_keyboard_focus():
     it back on screen, and into the screenshot somebody posts to ask why their
     server will not start. `DotConsoleLine.redact` keeps the command name and
     replaces the rest with a **fixed** number of asterisks, because the length
-    of a password is information too.
+    of a password is information too. It checks every `;`-statement and any word in it, so `say hi; rcon_password x` and `rcon rcon_password x` are caught too, and the history keeps the line with its secrets removed.
   </Param>
 </Params>
 

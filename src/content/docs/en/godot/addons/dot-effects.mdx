@@ -46,12 +46,13 @@ the game applies it, through whatever it already uses:
 
 ```gdscript
 effects.damaged.connect(func(entity, amount, type, source):
-    health_of(entity).apply(DotDamage.make(amount, type, source, tick)))
+    var hit := DotDamage.make(source, entity, amount, combat.damage_type(type))
+    hit.tick = tick
+    health_of(entity).apply(hit))
 ```
 
 That is what lets a slow, a stun or a speed boost work in a game with no damage
-system at all — and it means an afterburn tick goes through the same lag
-compensation, armour and friendly-fire rules as every other hit.
+system at all — and it means an afterburn tick goes through the same armour and invulnerability rules as every other hit applied to `DotHealth`.
 
 ## Down rather than dead
 
@@ -68,6 +69,8 @@ else:
 
 A downed player bleeds out over ninety seconds, is picked up in five, comes back
 with 30 health, and the third time is the last.
+
+With `rules.downed_revive_scales` on (it is off by default), a second `begin_revive` joins the revive instead of replacing the reviver, and each reviver adds to the speed. `leave_revive(entity, by)` lets one go while the rest carry on; when the last one leaves, the revive is cancelled.
 
 <Callout type="info" title="A cancelled revive throws its progress away">
 If progress were kept, two players could chip at a revive a second at a time

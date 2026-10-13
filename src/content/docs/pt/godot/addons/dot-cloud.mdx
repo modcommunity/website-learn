@@ -101,7 +101,7 @@ de uma falha que alguém mediu:
   contra os complementos do anfitrião, pelo que um que precisasse de um
   complemento mais recente falhava a análise a meio do carregamento. Agora é
   recusado antes de qualquer script carregar, com *«Este jogo precisa do nível de
-  API 3 do dot-net ou superior; este cliente tem o nível 2.»* — veja os
+  API 3 do dot-net ou superior; esta compilação tem o nível 2.»* — veja os
   [níveis de API dos complementos](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   O `host_role` nomeia o lado.
 - **Um id de conteúdo pode nomear o seu dono: `<owner>/<name>`.** O `/` não pode
@@ -179,8 +179,8 @@ Registe um `DotCloudClient` e ele publica-se sob `dot_cloud_client`. O carregado
 do `dot-map` e a troca de jogo do `dot-server` chegam-lhe por esse nome e chamam:
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 A maioria dos complementos chega a elas através do `DotContent` no

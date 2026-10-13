@@ -88,7 +88,7 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 
 - **先读它的 `requires.json`。** 资源包里的脚本是针对宿主的插件编译的，所以需要更新插件的
   资源包过去会在加载途中解析失败。现在它在任何脚本加载之前就被拒绝，提示是
-  *“This game needs dot-net API level 3 or newer; this client has level 2.”*——见
+  *“This game needs dot-net API level 3 or newer; this build has level 2.”*——见
   [插件 API 级别](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi)。
   `host_role` 指明是哪一侧。
 - **内容 id 可以带上所有者：`<owner>/<name>`。** 两半里都不可能出现 `/`，所以作用域为
@@ -150,8 +150,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 `dot-map` 的加载器和 `dot-server` 的切换游戏都通过这个名字找到它，并调用：
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 大多数插件是通过 [`dot-core`](/learn/godot/addons/dot-core#downloadable-content-dotcontent)

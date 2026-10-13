@@ -100,7 +100,7 @@ aus einem Fehler stammen, den jemand gemessen hat:
   kompilieren gegen die Addons des Hosts, sodass eines, das ein neueres Addon
   brauchte, früher mitten im Laden beim Parsen scheiterte. Jetzt wird es
   abgelehnt, bevor ein Skript lädt, mit *„This game needs dot-net API level 3 or
-  newer; this client has level 2.“* — siehe
+  newer; this build has level 2.“* — siehe
   [Addon-API-Levels](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   `host_role` benennt die Seite.
 - **Eine Content-Id darf ihren Eigentümer nennen: `<owner>/<name>`.** `/` kann in
@@ -178,8 +178,8 @@ Registriere einen `DotCloudClient`, und er veröffentlicht sich unter
 `dot-server` erreichen ihn über diesen Namen und rufen:
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 Die meisten Addons erreichen sie über `DotContent` in

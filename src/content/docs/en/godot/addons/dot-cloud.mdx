@@ -97,7 +97,7 @@ failure somebody measured:
 - **Its `requires.json` is read first.** A pack's scripts compile against the
   host's addons, so one needing a newer addon used to fail to parse mid-load.
   Now it is refused before a script loads, with *"This game needs dot-net API
-  level 3 or newer; this client has level 2."* — see
+  level 3 or newer; this build has level 2."* — see
   [addon API levels](/learn/godot/addons/dot-core#addon-api-levels-dotaddonapi).
   `host_role` names the side.
 - **A content id may name its owner: `<owner>/<name>`.** `/` cannot occur in
@@ -171,8 +171,8 @@ Register a `DotCloudClient` and it publishes itself under `dot_cloud_client`.
 name and call:
 
 ```gdscript
-ensure(content_id: String, version: String) -> DotResult
-is_mounted(content_id: String, version: String) -> bool
+ensure(content_id: StringName, version: String = "", groups := PackedStringArray(), manifest_url := "") -> DotResult
+is_mounted(content_id: StringName, version: String = "") -> bool
 ```
 
 Most addons reach them through `DotContent` in
