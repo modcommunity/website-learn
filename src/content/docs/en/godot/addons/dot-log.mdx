@@ -39,7 +39,7 @@ add_child(router)                                    # starts on _ready
 ```
 
 <Callout type="info" title="`DotLog` is the front door and does not change">
-Roughly four hundred and fifty files across the family call `DotLog.info(...)`,
+Hundreds of files across the family call `DotLog.info(...)`,
 and none of them changes. dot-log attaches as a **sink** and takes over the
 other half of the question: what happens to a record after it has been emitted.
 There is no autoload — you place a `DotLogRouter` where you want one.

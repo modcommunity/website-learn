@@ -90,6 +90,8 @@ session.advance(delta)                 # once per simulated tick
 session.rock_the_vote(player_id, player_count)
 ```
 
+Rock the vote needs `time_limit.rtv_min_players` players before it counts as a vote; the default of 1 lets a player alone on a server move on rather than be stranded on a map they cannot leave. `session.follow_hibernation(server)` pauses the time limit while a dot-server sleeps with nobody on it, and restarts it at the map's full limit on waking (`restart_on_wake`, on by default).
+
 The catalogue is deliberately **not** the rotation: what maps exist and what
 plays next are different questions, and a server that answers them with one list
 cannot have a map installed but out of rotation.
