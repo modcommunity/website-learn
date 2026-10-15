@@ -60,9 +60,11 @@ const BUGS = '/bugs'
 // City's own contact page (`CONTACT_URL` there), not a mailto — the page
 // carries the address, the Discord invite and the staff directory.
 const CONTACT = '/contact'
-// City's status page — incidents and live checks, under the bug tracker in its
-// Resources menu.
-const STATUS = '/status'
+// The status page — incidents and live checks, under the bug tracker in city's
+// Resources menu. Its own deployment (website-status) on its own subdomain, so
+// it stays up when the website is down; absolute like the docs link, and like
+// city's `STATUS_URL`.
+const STATUS = 'https://status.moddingcommunity.com'
 /*
  * The documentation — THIS site.
  *
