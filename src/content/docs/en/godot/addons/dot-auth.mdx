@@ -62,6 +62,12 @@ typed on the website and the same code works on desktop, mobile, console and in
 a browser. Returning players never see a code — `sign_in()` restores from a
 stored rotating refresh token.
 
+`auth.account_key()` returns a stable, non-secret key for the signed-in account
+(the identity's uid, never a token), or an empty string for a guest. It is what
+a game files per-account local state under, such as a remembered loadout, so two
+accounts on one machine keep their own. The client registers itself as the
+service `dot_auth_client`.
+
 ## Server
 
 ```gdscript

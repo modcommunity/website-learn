@@ -1,0 +1,124 @@
+---
+title: Achievements
+description: Declaring a game's own achievement catalogue, filing the unlocks its players earn, and reading one player's back — and why these never touch a site account or site points.
+order: 47
+keywords:
+  - "unlock"
+  - "trophy"
+  - "badge"
+  - "catalogue"
+  - "rules"
+  - "dot-achievements"
+source:
+  - src/app/api/integration/v1/achievements
+  - src/types/integration/achievements.ts
+  - src/lib/integration/achievements.ts
+---
+
+A game's **own** achievements: the ones its servers declare and report. They are
+not the site's member achievements (the rungs you earn for using the site), and
+nothing here awards site points. A player is the credential's own pseudonymous
+key (the same [scoped player key](/learn/api/integration/avatars) as everywhere
+else in this API) and is **never resolved to a site account**.
+
+The client is the [dot-achievements](/learn/godot/addons/dot-achievements)
+addon's reporter, and these shapes are its wire format. As with the other
+integration routes, no body names an app or server: the credential decides whose
+achievements these are.
+
+## Declaring the catalogue
+
+<Endpoint method="POST" path="/api/integration/v1/achievements/define" auth="Integration" scope="ACHIEVEMENTS_WRITE">
+Send the whole catalogue once per boot. Idempotent: an unchanged catalogue
+writes nothing. `PUT` is accepted too. The credential must be scoped to an app
+or one of its servers.
+</Endpoint>
+
+```json
+{
+  "achievements": [
+    {
+      "id": "first_blood",
+      "name": "First blood",
+      "description": "Get a kill.",
+      "points": 10,
+      "require_all": true,
+      "rules": [{ "stat": "kills", "op": "at_least", "value": 1, "merge": "sum" }],
+      "category": "combat",
+      "hidden": false,
+      "secret": false,
+      "series": "",
+      "tier": 0
+    }
+  ]
+}
+```
+
+```json
+{ "ok": true, "created": 1, "updated": 0, "unchanged": 0 }
+```
+
+- The id is `id` (or `key`, the stats routes' name; if both are sent they must
+  agree). It is letters, digits, `.`, `_`, `:` or `-`, up to 64 characters.
+- `rules` takes 1 to 16 conditions on [statistics](/learn/api/integration/stats):
+  `op` is `at_least`, `at_most`, `equals` or `not_equals`; `merge` is `sum`,
+  `latest`, `highest` or `lowest`, which are the stat kinds `COUNTER`, `GAUGE`,
+  `BEST` and `LOWEST`.
+- `points` is 0 to 100000 and defaults to 10; `name` falls back to the id.
+- Ceilings: **500 achievements per request and per owner.** An id twice in one
+  request is a `400`. Ones the site refuses by name come back in `refused`,
+  and the rest still apply.
+- A top-level `app` the reporter sends is ignored.
+
+## Filing unlocks
+
+<Endpoint method="POST" path="/api/integration/v1/achievements/unlock" auth="Integration" scope="ACHIEVEMENTS_WRITE">
+Up to **fifty** `{ player, key, unlockedAt }` rows per request, `unlockedAt` in
+**Unix seconds**.
+</Endpoint>
+
+```json
+{ "unlocks": [{ "player": "…", "key": "first_blood", "unlockedAt": 1735689600 }] }
+```
+
+```json
+{ "ok": true, "unlocked": 1, "already": 0 }
+```
+
+- **Idempotent per player and key.** A retried batch changes nothing, and a
+  second report of an unlock only ever moves its time earlier.
+- The achievement must already be declared. An unknown key is named in
+  `refused` and the rest of the batch applies.
+- `unlockedAt` is accepted between the years 2000 and 2100, which is what
+  refuses milliseconds loudly. A time in the future is clamped to now rather
+  than refused.
+- A malformed batch is a `400`. The reporter drops it rather than retrying
+  forever.
+
+## Reading a player's unlocks
+
+<Endpoint method="GET" path="/api/integration/v1/achievements/player" auth="Integration" scope="ACHIEVEMENTS_READ">
+Every achievement one player holds under this credential's owner, oldest first.
+Takes `player` in the query string.
+</Endpoint>
+
+```json
+{
+  "player": "…",
+  "points": 10,
+  "unlocks": [
+    { "key": "first_blood", "name": "First blood", "description": "Get a kill.",
+      "points": 10, "category": "combat", "icon": "", "unlockedAt": 1735689600 }
+  ]
+}
+```
+
+`points` is the sum over those unlocks, in the game's own points. The scopes are
+split for the reason every pair is: a HUD that only reads must never be able to
+file.
+
+<Related>
+- [Statistics](/learn/api/integration/stats) — what a rule reads
+- [dot-achievements](/learn/godot/addons/dot-achievements)
+- [Integration API](/learn/api/integration)
+</Related>

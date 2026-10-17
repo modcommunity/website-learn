@@ -49,6 +49,28 @@ This is the better option when you have a plugin, because it reports continuousl
 and honestly rather than making you responsible for a field you then have to
 keep current by hand.
 
+#### Getting the credential without pasting it (enrollment)
+
+A server the site already lists and that someone has [claimed](/learn/servers/listing)
+can fetch its own integration credential, with nobody copying a token to the box:
+
+1. `POST /api/integration/v1/server/enroll` (no credential; anyone may open
+   one) with `{ "host", "ports": [1 to 4 ports] }`. The answer carries a public
+   `challenge`, a secret `enrollment`, `rule` (`tmc_enroll`), `server_id`,
+   `query_address` and `expires_at` (valid for ten minutes).
+2. The server publishes the challenge as the A2S rule `tmc_enroll`.
+3. `POST /api/integration/v1/server/enroll/complete` with `{ "enrollment" }`.
+   The site queries the address **it already has stored** for that server, never
+   one the request names, and only if the challenge is there does it answer with
+   `token`, `scopes` and `server_id`. A `202` means it has not seen the rule yet:
+   ask again shortly.
+
+Answering on the stored address proves you control the server, and holding the
+secret proves you are the process that asked; neither alone completes. A server
+nobody has claimed cannot enroll. The credential holds the scopes a Dot game
+server calls (statistics, leaderboards, ratings, achievements writes, party and
+profile access) and no more.
+
 Both routes are **deliberate acts recorded against the server**, which is what
 makes "this server has been reporting false numbers" an answerable question.
 

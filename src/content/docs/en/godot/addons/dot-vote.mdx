@@ -140,6 +140,25 @@ never reaches the vote is the failure a server owner would actually see.
 
 A map's clock, a round limit and how long one round lasts are three different settings, and the last is the game's own rule — dot-match's — which this addon never sees. When the map's clock runs out, `time_up` decides what happens to the round in progress: `change_now` (the default) or `finish_round`, which holds the change until the host's next `note_round_end`, for at most `finish_round_max_sec`. It only waits on a host that sets `DotVoteDirector.round_based` — one that reports every round end — because a deathmatch has no round to finish and would otherwise sit out the whole cap; and only a time or score limit waits, since a rock-the-vote or an admin's command is somebody asking for now.
 
+## Votebans
+
+`DotVoteBans` is a yes or no about one player, and not a ballot: it has its own
+clock, its own electorate (everybody but the target) and a consequence the game
+carries out through `ban_fn` (on a dot-server, `DotBanManager`). Its settings are
+`DotVoteBanRules`, one `sv_voteban*` cvar each, read before every decision so a
+console change applies to the next vote: `sv_voteban` (the server's switch, which
+also stops a game's own), `sv_voteban_start_roles` and `sv_voteban_immune_roles`
+(comma lists of roles; `*` is everybody), `sv_voteban_minutes` (0 is permanent),
+`sv_voteban_threshold`, `sv_voteban_cooldown`, `sv_voteban_seconds` and
+`sv_voteban_min_voters`.
+
+A game starts one with `start(DotVoteBans.GAME, target, reason)`; the reason
+reaches the ban. The game as starter skips the start role and the starter's
+cooldown and nothing else, so an automatic trigger cannot ban an immune role.
+It passes the moment enough say yes and fails once that many yes can no longer
+happen or the clock runs out: silence is a no. Commands: `voteban <player>
+[reason]`, `voteban_yes`, `voteban_no`.
+
 ## A ballot a client can draw
 
 `DotVoteBallotView.state_of(director, people_fn)` is the ballot as a screen draws it: the options in the order a typed number indexes them (option `i` is `!votefor i+1` on every screen), the counts, who chose what so each voter's avatar can sit on their choice, and how to choose (`ballot_input`: numbers, pointer or both — a rule, because what the ballot says to press has to be true on every screen at once). `ballot_show_voters: false` sends counts without names, for a secret ballot. `DotVoteBallotFeed` sends that state through a `send_fn` only when it has changed, and is **polled** rather than signal-driven, because a voter who leaves is withdrawn without a signal. There is still no wire format and no UI here: the dictionary rides whatever the host has, and [dot-ui](/learn/godot/addons/dot-ui)'s `DotBallotPanel` draws it.

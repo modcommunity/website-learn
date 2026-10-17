@@ -55,6 +55,14 @@ fx.advance(delta)
 `spawn_2d` sits beside `spawn` rather than widening its signature: a caller
 holding a `Vector2` is a different caller.
 
+## A game that plays the beacon's ping itself
+
+A game that plays the ping through its own sound catalogue sets
+`marker.ping_enabled = false` (API level 3), before `add_child` or followed by
+`build()`. No voice is built, and `advance()` still returns true on each pulse
+so the game plays its own sound from that. Without it the ping would be heard
+twice.
+
 ## A low quality tier is missing effects
 
 `min_quality` gates whether an effect **exists**, not how detailed it is.

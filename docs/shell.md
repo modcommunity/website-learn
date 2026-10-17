@@ -17,6 +17,7 @@ The shell (header, icon rail, footer, language picker, theme toggle, analytics, 
 The same as website-processing ([its dependencies doc](../../website-processing/docs/dependencies.md)), plus `@astrojs/mdx` and `@fontsource-variable/jetbrains-mono`, minus `react-multi-carousel`, which nothing here uses.
 
 - `@modcommunity/shared` has two sources, the published package (what `npm ci` gets) and the local checkout at `../tmc-global/shared`. Switch with `npm run shared:local` / `shared:registry`; check with `shared:status`. Both use `--no-save`, so switching never shows in `git status`. **A plain `npm install` restores the registry version; re-run `shared:local` after one.**
+- **Held back on purpose:** `typescript` stays on 6 (`astro check` refuses 7), `tailwindcss-intersect` on 2 (3 drops the `Observer` named export `src/components/Observer.tsx` imports), `@types/node` on 24 (the Node the image runs). Re-check each when bumping Astro.
 - A shared change is not live here until it is published (registry mode) or linked and rebuilt with `npm run shared:build` (local mode).
 - In local mode the two repos must be on matching branches. The symptom of a mismatch is `"X" is not exported by ".../shared"` for a component that plainly exists.
 - `astro.config.mjs` sets `optimizeDeps.exclude: ['@modcommunity/shared']`, so `shared:build` is safe with the dev server up.

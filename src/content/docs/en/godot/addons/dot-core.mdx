@@ -66,6 +66,8 @@ godot --headless --path . res://examples/capability_report.tscn
 | `DotRandomStream` / `DotRandomTable` / `DotRandomSchedule` | Randomness a second machine can reproduce. See below. |
 | `DotContent` | The one place the family asks for downloadable content. See below. |
 | `DotAddonApi` | Each addon's API level, and a pack's `requires.json` checked against it. See below. |
+| `DotRenderWarmup` | Draws a scene's meshes and materials once, out of sight, so their shaders compile under a loading screen rather than on the first shot. It removes most first-use stalls, not all (a light that appears later adds variants nobody drew). Finishes after `timeout_sec` even when nothing can be drawn (headless). |
+| `DotCollisionAudit` | `audit(root)` lists the visible geometry under a node that nothing collides with: the level pieces a player walks straight through. |
 
 ## Where a game plugs in
 
@@ -268,6 +270,7 @@ is code.
   and `Object.call`, never by name. A script that so much as *mentions* the
   identifier fails to compile on a web export.
 - **One listening socket speaks one protocol, so a server for both audiences listens twice.** `DotTransportDual` puts WebSocket on TCP and ENet on UDP (the same port number by default) behind one `MultiplayerPeer`, so browsers and native clients play in the same match and nothing above the transport knows which a peer came in on. It is dot-server's default. If this build has no ENet, or the UDP port is taken, it serves WebSocket only and logs a warning rather than failing to start.
+- **A TLS hello at a plain WebSocket listener is closed at once.** A native client tries `wss://` first at a public `host:port`; without a screen, every wrong guess against a server with no certificate cost the client its TLS timeout. `DotTcpScreen` reads the first byte, closes anything that is not an HTTP request, and relays the rest to the WebSocket server on loopback. It is skipped for a listener bound to loopback (a TLS terminator's backend) and costs a little script time per busy link.
 - **The UDP port can be shared with the query protocols.** A2S and DQP answer on the game port too, and ENet cannot share a socket with them, so `DotUdpDemux` owns the port: a query goes to its handler and everything else is relayed to ENet on loopback, with the client's real address kept for bans and rate limits.
 - **A client uses one transport.** `DotTransportAuto` picks WebSocket in a browser and when `require_web_clients` is set (the default, for projects that have not decided); dot-server's client link tries ENet first on a native build and falls back to WebSocket.
 

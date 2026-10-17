@@ -18,9 +18,12 @@ look and behave identically.
 | Community | Reporting, penalties, moderation |
 | Servers | Listing, claiming, the scanner, reporting your own statistics |
 | Parties | Visibility, lifecycle, tech levels, matchmaking, integrating a game |
+| Desktop app | Installing, signing in, launching TMC games (UDP by default, Solo), friends, updates |
+| Command line | `tmc`: content API, catalogue, network status, signed in as you |
+| Godot | The `dot-*` addons, hosting and tooling |
 | API reference | The public content API, the integration API and the app API |
 
-65 pages, served in nine languages.
+English is the reference tree; the other eight locales overlay it.
 
 ## Running it
 
@@ -35,7 +38,7 @@ Then open <http://localhost:4321/learn>.
 ## Checks
 
 ```bash
-npm run build         # astro check + full static build, all 585 pages
+npm run build         # astro check + full static build of every page in every locale
 npm test              # vitest, over the search scorer in src/lib/
 npm run docs:check    # internal links and anchors
 npm run audit:overflow -- http://127.0.0.1:4477   # horizontal overflow, all widths

@@ -1,0 +1,73 @@
+---
+title: Player profiles
+description: A player's game profile, stored per scope so it follows them between servers — read, write, erase, and the public half a scoreboard reads.
+order: 55
+keywords:
+  - "display name"
+  - "preferences"
+  - "dot-user"
+  - "PROFILE_READ"
+  - "PROFILE_WRITE"
+source:
+  - src/app/api/integration/v1/user/[key]/profile
+  - src/app/api/integration/v1/user/[key]/public
+  - src/types/integration/profile.ts
+---
+
+A game profile is the small record a game keeps about a player: a display name,
+an avatar reference, a locale, an onboarding flag and a bounded bag of
+preferences. It is stored on the site so it **follows the player between every
+server that shares the credential's scope**. The client is the
+[dot-user](/learn/godot/addons/dot-user) addon.
+
+`{key}` is the player's [scoped key](/learn/api/integration/avatars), addressed
+exactly as the avatar routes are. The scope comes from the **credential**, never
+the request, so one server cannot read or write another game's players.
+
+<Callout type="info" title="404 means a first-time player">
+An unknown key, and a player with no profile yet, both answer `404`. The addon
+reads that as "create one". Any other failure it reads as "keep what is in
+force", which is why a failed read is never a `404`.
+</Callout>
+
+## Reading and writing
+
+<Endpoint method="GET" path="/api/integration/v1/user/{key}/profile" auth="Integration" scope="PROFILE_READ">
+The whole profile: `{ "ok": true, "profile": { … } }`.
+</Endpoint>
+
+<Endpoint method="PUT" path="/api/integration/v1/user/{key}/profile" auth="Integration" scope="PROFILE_WRITE">
+Replace the profile with the document sent. Answers `{ "ok": true, "profile": … }`.
+</Endpoint>
+
+<Endpoint method="DELETE" path="/api/integration/v1/user/{key}/profile" auth="Integration" scope="PROFILE_WRITE">
+Erase it. Answers `{ "ok": true }`.
+</Endpoint>
+
+Bounds the site enforces:
+
+- A display name is 2 to 24 characters, may be empty, needs a letter or number,
+  may not start or end with a space and may not hold control, direction,
+  zero-width or combining characters.
+- Up to **32 preferences**, names up to 40 characters, each value up to 256
+  bytes of JSON.
+- A locale up to 16 characters and an avatar reference up to 64.
+
+Reads and writes are separate scopes: a server that only draws names must never
+be able to rename anybody.
+
+## The public half
+
+<Endpoint method="GET" path="/api/integration/v1/user/{key}/public" auth="Integration" scope="PROFILE_READ">
+Just `{ user_key, display_name, avatar_id }`, returned bare rather than wrapped.
+</Endpoint>
+
+This is what a scoreboard reads. It is a separate route because it returns less:
+a server drawing thirty names must not be able to read thirty players'
+preferences. The same `404` rules apply.
+
+<Related>
+- [Avatars](/learn/api/integration/avatars)
+- [dot-user](/learn/godot/addons/dot-user)
+- [Integration API](/learn/api/integration)
+</Related>
