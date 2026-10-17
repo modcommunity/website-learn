@@ -1,6 +1,6 @@
 ---
 title: Privacy and anonymity
-description: Nine switches, two of which override the rest. What each one hides, from whom, and what anonymity cannot do.
+description: The visibility switches, two of which override the rest. What each one hides, from whom, and what anonymity cannot do.
 order: 30
 source:
   - prisma/models/user.prisma
@@ -8,7 +8,7 @@ source:
 
 Privacy here is a **layered** system: a handful of narrow switches, and two
 broad ones that override them. Reading the broad ones first will save you
-setting seven switches you did not need.
+setting switches you did not need.
 
 ## The two broad switches
 
@@ -36,7 +36,9 @@ friends", which is why it is off.
 
 ## The narrow switches
 
-All default to **on** — the site is public by default:
+The `show*` switches default to **on** — the site is public by default.
+`hideFromLists` is the exception: it is an opt-in to hide, so it defaults to
+**off**.
 
 | Switch | Hides |
 | --- | --- |
@@ -49,6 +51,23 @@ All default to **on** — the site is public by default:
 | `showStatusUpdates` | Your status posts |
 | `showMedia` | Your gallery contributions |
 | `showGameHistory` | Which servers and parties you have played on |
+
+### Who may reach you, and what feeds see
+
+These are on the same page and default to the open setting.
+
+| Switch | Controls |
+| --- | --- |
+| `allowFriendRequests` | Whether anyone can send you a friend request |
+| `allowFollows` | Whether anyone can follow you |
+| `messagePrivacy` | Who may open a chat with you: everyone, friends or nobody |
+| `shareActivity` | Whether your interactions feed the public activity feed |
+| `showAvgRating` | The average review score of your content as a headline on your profile |
+| `allowProfilePosts` | Who may write on your profile: everyone, followers, friends or nobody |
+| `showProfilePosts` | Whether other members' posts on your profile are shown at all |
+| `allowActivityRatings`, `allowActivityComments` | Whether others may like or reply to your activity stories |
+| `suggestable` | Whether you are offered in the feed's "people to follow" suggestions |
+| `showFeedSuggestions` | Whether suggestion cards appear in your own feed |
 
 ## What anonymity does not do
 
