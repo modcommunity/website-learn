@@ -77,6 +77,15 @@ game with `--transport ws` after the argument separator, so it joins over
 WebSocket (TCP) straight away. A server that advertises no UDP port is joined
 over WebSocket regardless.
 
+### The in-game server browser
+
+When the app launches a TMC game it also tells the game which site to list
+servers from (`--browser-backbone-url`, set to the app's own API base, after the
+`--` separator). A shipped client has no web page to take that from, so without
+it the game's server browser would list nothing. A `--browser-backbone-url`
+already in the game's arguments, or a `DOT_BROWSER_BACKBONE_URL` in your
+environment, wins: the app never overrules a choice you made.
+
 ### Solo (no server)
 
 A game that supports Solo can be launched with no server at all. The app starts
@@ -84,6 +93,12 @@ the game with the game pack's `<owner>/<repo>` id and, optionally, the version
 to mount (the newest when none is named). The site tells the app which pack
 through the launch answer ([Resolving a launch](/learn/api/app/play#resolving-a-launch)),
 and a link can name it too, as shown below.
+
+On the website the same thing is the **Play solo** button: a game pack with
+nothing to connect to opens in the browser tab and runs the game's own offline
+mode. When the game also has servers, **Play** (the matchmaker) is the primary
+button and **Solo** the grey one beside it; with no servers, Solo is the only
+button. A game with nothing published cannot be launched without a server.
 
 The builds and how the app finds the right one are described in
 [Where is this game's build?](/learn/api/app/releases#where-is-this-games-build).
