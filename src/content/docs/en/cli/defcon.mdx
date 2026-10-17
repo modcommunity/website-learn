@@ -82,6 +82,12 @@ tmc defcon status --check || echo "the site is not OK right now"
     `--range day|week|month|year|all` (default `day`), `--node` for one node,
     `--summary` for latest, mean and peak per node instead of the series.
   </Param>
+  <Param name="summary">
+    The status site's one-call answer. It needs the status host:
+    `--status-url`, `TMC_STATUS_URL` or a profile's `status_url`
+    (`https://status.moddingcommunity.com` in production). The other commands
+    can read from it too, instead of the API origin that forwards.
+  </Param>
   <Param name="mtr <ref>">
     The latest traceroute of an `MTR` monitor, hop by hop, with the loss and
     latency flags the node computed.

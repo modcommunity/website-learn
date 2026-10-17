@@ -44,14 +44,15 @@ the [catalogue](/learn/cli/catalog) and [network status](/learn/cli/defcon).
 
 ## Install
 
-Python 3.10 or newer and nothing else — the tool uses only the standard
+Python 3.11 or newer and nothing else — the tool uses only the standard
 library. From a checkout of
 [`modcommunity/tmc-cli`](https://github.com/modcommunity/tmc-cli):
 
 ```bash
 pip install .                 # gives you `tmc` on PATH
 pip install '.[fast]'         # …plus `cryptography` for faster JWT signing
-python src/main.py --help     # or run it from the checkout, nothing to build
+./tmc --help                  # or run it from the checkout, nothing to build
+python src/main.py --help     # (the same thing)
 ```
 
 Shell completion: `tmc completion bash|zsh|fish`.
@@ -76,7 +77,8 @@ tmc auth doctor       # crypto backend, config permissions, connectivity
 Credentials are stored in `~/.config/tmc/config.json`, created at mode `0600`.
 `--profile` keeps several sites or keys apart; in CI, the `TMC_TOKEN`,
 `TMC_KEY_ID`, `TMC_PRIVATE_KEY_FILE`, `TMC_BASE_URL` and `TMC_PROFILE`
-environment variables are usually what you want. A signed assertion is made
+environment variables are usually what you want (`TMC_SITE_URL`, `TMC_STATUS_URL`,
+`TMC_JWT_LIFETIME`, `TMC_CONFIG_DIR` and `TMC_COLOR` exist too; the README has the full table). A signed assertion is made
 fresh for every attempt, because the API refuses a replayed one — see
 [Authentication](/learn/api/authentication).
 

@@ -63,6 +63,28 @@ the command line. For a Godot game the app keeps the `--` separator in front of
 the game's own arguments: Godot reads everything after a bare `--` as the
 game's, and everything before it as the engine's.
 
+### UDP by default, TCP/WebSocket if you need it
+
+A TMC game joins a server over **UDP** (ENet) by default whenever the server
+serves it, and falls back to WebSocket if the UDP attempt does not get through.
+Every TMC server listens on both, so **UDP players and WebSocket or browser
+players play together on the same server**: the choice only changes how your
+machine reaches it.
+
+If your network drops UDP silently, the game waits out its UDP attempt on every
+join. Turn off **Settings → Games → Connect over UDP** and the app launches the
+game with `--transport ws` after the argument separator, so it joins over
+WebSocket (TCP) straight away. A server that advertises no UDP port is joined
+over WebSocket regardless.
+
+### Solo (no server)
+
+A game that supports Solo can be launched with no server at all. The app starts
+the game with the game pack's `<owner>/<repo>` id and, optionally, the version
+to mount (the newest when none is named). The site tells the app which pack
+through the launch answer ([Resolving a launch](/learn/api/app/play#resolving-a-launch)),
+and a link can name it too, as shown below.
+
 The builds and how the app finds the right one are described in
 [Where is this game's build?](/learn/api/app/releases#where-is-this-games-build).
 
@@ -71,6 +93,18 @@ The builds and how the app finds the right one are described in
 A `tmc://play/<host>:<port>` link on the website opens the app on that server.
 It shows which game is running there and the latency **measured from your
 machine**, then the ways you can actually join it.
+
+A link can also open one game's launch screen with no server, and name the Solo
+pack to run:
+
+```text
+tmc://play/app/<app>?solo=<owner>/<repo>&solo_version=<version>
+```
+
+`<app>` is the game's slug or id; `solo_version` is optional. Both values are
+checked as single, safe command-line arguments (letters, digits, `.`, `_`, `-`;
+nothing starting with `-`), and a value that fails is dropped rather than
+refused, so the link then behaves as a plain `tmc://play/app/<app>` link.
 
 <Callout type="warning" title="A link never joins on its own">
 Opening a `tmc://` link only ever shows you the server. Joining is always a

@@ -52,7 +52,16 @@ tmc reviews write mod 42 --rating 5 --content "Works great"
 tmc reviews vote REVIEW up|down|clear | delete REVIEW
 tmc stats top 3 kills --limit 10 # a leaderboard, with your own rank
 tmc stats me 3 | defs 3
+tmc account settings | set notifyParties=false timezone=Europe/Berlin
+tmc account downloads [--items]  # what your app devices are downloading
+tmc account avatar -o json > me.json && tmc account avatar-set me.json
+tmc report mod 42 --type SPAM --title "Scam links" --content "The description links to …"
 ```
+
+`tmc account` is your synced settings, the downloads your signed-in app devices
+have in progress, and your avatar document. `tmc report` sends an item to the
+moderators (`--type SPAM` or `OTHER`; a title of 3 to 120 characters and a
+description of 10 to 4000), as you rather than as a content key.
 
 `tmc reviews` (plural) writes as you; `tmc review` is still the content API's review type. A review the site [holds for approval](/learn/community/approvals) says so.
 
