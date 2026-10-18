@@ -41,7 +41,7 @@ The shell's links are bare paths. `nav.tsx` holds `/mods`, not an absolute URL, 
 
 **`PUBLIC_URL` is not that variable**, and setting it instead is the natural mistake: it is this build's own origin (canonical, hreflang, Open Graph and the sitemap), so on a subdomain it is the docs host, not the main site.
 
-Outside this repo: website-city's `AUTH_COOKIE_DOMAIN` must be set to the shared parent domain, or the `tmc_auth` hint cookie stays host-only and `lib/auth-hint.ts` sees a signed-in reader as signed out.
+Outside this repo: website-city's `AUTH_COOKIE_DOMAIN` must be set to the shared parent domain, or the `tmc_auth` hint cookie stays host-only and `lib/auth-hint.ts` sees a signed-in reader as signed out, and the `tmc_locale` language cookie stays host-only so a language picked on the app never reaches the docs. This repo derives the same domain from `PUBLIC_MAIN_URL` (`i18n/cookie.ts`, and the inline script in `Layout.astro` that sends an unprefixed page to the reader's language).
 
 ## Sitemap and reserved paths
 

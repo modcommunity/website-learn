@@ -7,7 +7,7 @@ import SiteSidebar from "../components/SiteSidebar";
 import SiteFooter from "../components/SiteFooter";
 import CornerLauncher from "../components/CornerLauncher";
 import { LOCALES, localizeUrl, stripLocale, type LocaleT } from "../i18n/config";
-import { SITE_URL } from "../lib/site";
+import { MAIN_URL, SITE_URL } from "../lib/site";
 
 import PlausibleAnalytics from "../components/helper/PlausibleAnalytics.astro";
 import UmamiAnalytics from "../components/helper/UmamiAnalytics.astro";
@@ -63,6 +63,11 @@ const favIcon = import.meta.env.PUBLIC_FAV_ICON ?? "/favicon.ico"
 const socialMediaImg = import.meta.env.PUBLIC_SOCIAL_MEDIA_IMAGE ?? "/images/banner.png"
 const url = SITE_URL
 
+// The main domain's host, for the locale-cookie script in <head> (see there).
+const mainHost = (() => {
+	try { return MAIN_URL ? new URL(MAIN_URL).hostname : "" } catch { return "" }
+})()
+
 // Canonical + hreflang. Every locale serves the same page at its own prefix, so
 // without these the 9 copies compete as duplicate content and every page claims
 // to be the home page in Open Graph. Built off the real request path (Astro's
@@ -90,6 +95,42 @@ const desc = descMeta ?? import.meta.env.PUBLIC_DESCRIPTION ?? "Documentation fo
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width" />
 
+		<!--
+			Follow the language the reader picked on any of our sites.
+
+			`tmc_locale` is shared with website-city and website-processing (on
+			the main domain, see `i18n/cookie.ts`). This build is static, so the
+			check website-city's middleware makes on the server happens here,
+			before first paint: an unprefixed (English) docs URL with a non-English
+			cookie goes to its prefixed copy, which is what a reader following an
+			unlocalized link from the app needs. A prefixed URL is an explicit
+			choice and wins, so it writes the cookie instead, as the middleware's
+			`syncCookie` does. The domain check repeats `localeCookieDomain()`.
+		-->
+		<script is:inline define:vars={{ mainHost, locales: LOCALES }}>
+			(function () {
+				try {
+					var path = location.pathname
+					var seg = path.split('/')[1]
+					var page = locales.indexOf(seg) > 0 ? seg : 'en'
+					var m = document.cookie.match(/(?:^|; )tmc_locale=([^;]*)/)
+					var chosen = m && locales.indexOf(m[1]) >= 0 ? m[1] : null
+
+					if (page === 'en' && chosen && chosen !== 'en' && /^\/learn(\/|$)/.test(path)) {
+						location.replace('/' + chosen + path + location.search + location.hash)
+						return
+					}
+
+					if (page !== 'en' && chosen !== page) {
+						var shared = mainHost && location.hostname.endsWith('.' + mainHost)
+						if (shared) document.cookie = 'tmc_locale=; path=/; max-age=0; samesite=lax'
+						document.cookie = 'tmc_locale=' + page + '; path=/; max-age=31536000; samesite=lax' +
+							(shared ? '; domain=' + mainHost : '') +
+							(location.protocol === 'https:' ? '; secure' : '')
+					}
+				} catch (e) {}
+			})()
+		</script>
 		<!--
 			Apply the stored/OS-default theme before first paint, so toggling to
 			light (via the shared <ThemeToggle/>) has no flash on the next load.

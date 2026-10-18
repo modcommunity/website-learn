@@ -3,11 +3,11 @@ import { Languages, Check } from 'lucide-react'
 import {
     LOCALES,
     LOCALE_INFO,
-    LOCALE_COOKIE,
     localizeUrl,
     isLocale,
     type LocaleT,
 } from '../i18n/config'
+import { writeLocaleCookie } from '../i18n/cookie'
 import { getT } from '../i18n/t'
 import { track } from '../lib/umami'
 
@@ -52,13 +52,7 @@ export default function LanguagePicker({
          */
         track('docs_locale_change', { from: locale, to: next })
 
-        try {
-            document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${
-                60 * 60 * 24 * 365
-            }; samesite=lax`
-        } catch {
-            /* ignore */
-        }
+        writeLocaleCookie(next)
         window.location.href = localizeUrl(pathName, next)
     }
 
