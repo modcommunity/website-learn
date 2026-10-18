@@ -153,7 +153,7 @@ bandwidth; high late-input counts are the clock. Different fixes.
     `max_extrapolation_sec`, `enable_prediction`, `reconcile_smooth_sec`,
     `reconcile_snap_distance`, `input_margin_ticks`, `adaptive_input_margin`,
     `enable_lag_compensation`, `max_rewind_sec`, `history_sec`,
-    `interest_cell_size`, `interest_linger_sec`, `max_entities_per_snapshot`,
+    `interest_cell_size`, `max_entities_per_snapshot`,
     `max_tracked_entities`, `world_extent`, `position_step`, `velocity_bits`,
     `rotation_bits`.
   </Param>
@@ -226,17 +226,21 @@ client and server built before 2026-09-26 must be rebuilt once.
   touches a transport — so nothing inside it can write a sample. Call it with
   your link's ping every tick; game-arena's bridge does it through an
   `rtt_source` callable of its own.
-- **Adopt the server's tick rate on the client**, including
-  `Engine.physics_ticks_per_second`. A client counting at its own rate replays
-  prediction at the wrong step and reconstitutes every replicated time through
-  the wrong divisor.
-- **Interpolate at a fractional tick.** `clock.server_tick()` returns an int and
-  only moves inside `advance()`, so a renderer sampling it draws the same
-  instant on every frame inside one physics step. A renderer wants
-  `Engine.get_physics_interpolation_fraction()`.
+- **Adopt the server's tick rate on the client** with
+  `DotNetClock.adopt_tick_rate()`, which also sets
+  `Engine.physics_ticks_per_second` and raises the engine's physics step cap so
+  a slow frame does not silently drop ticks. A client counting at its own rate
+  replays prediction at the wrong step and reconstitutes every replicated time
+  through the wrong divisor.
+- **Call `DotNetManager.interpolate_frame()` once per rendered frame.**
+  `clock.server_tick()` returns an int and only moves inside `advance()`, so
+  sampling it draws the same instant on every frame inside one physics step and
+  remote entities step at the tick rate. `interpolate_frame()` samples at a
+  fractional tick from `clock.render_alpha()`, which needs the clock advanced once
+  per physics frame with the engine's physics rate equal to the tick rate.
 
-Each of those was a real bug whose every *simulated* value was correct. Nothing
-in this collection renders between ticks by default; that mapping is the game's.
+Each of those was a real bug whose every *simulated* value was correct. The
+host still has to make the calls: nothing here runs on its own schedule.
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server) — the dedicated server around it

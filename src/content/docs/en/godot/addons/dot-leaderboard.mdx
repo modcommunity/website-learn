@@ -43,8 +43,8 @@ var page := await boards.page(&"fastest", {"map": "surf_beginner", ...})
 ```
 
 Four orderings — `TIME`, `SCORE`, `POINTS`, `PENALTY` — and rendering that knows
-a time from a score. **Ranks are materialised on write**, because "am I first"
-is asked far more often than a board is written to.
+a time from a score. **The in-memory store materialises ranks on write**, because "am I first"
+is asked far more often than a board is written to; the SQL store computes them on read (ties share a rank), since a stored rank costs a write per player on the board for every submission.
 
 ## Statistics
 
@@ -68,9 +68,7 @@ one.
 <Params>
   <Param name="DotLeaderboardStore subclass">
     `put`, `page`, `entry_for`, `count_on`, `remove`, `add_stats`,
-    `stats_for`. An in-memory implementation ships; point it at a database when
-    you outgrow it and nothing above changes. **The manager sorts, the store does
-    not have to.**
+    `stats_for`. Two implementations ship: `DotLeaderboardStoreMemory`, and `DotLeaderboardStoreSql`, which keeps boards and statistics in real tables through a `dot-sql` driver (held duck-typed, so `dot-leaderboard` does not depend on `dot-sql`). Every SQL call suspends, so with it use `submit_async`, `page_async` and `entry_for_async`; the plain forms refuse it. Swap between them and nothing above changes. **The manager sorts, the store does not have to.**
   </Param>
   <Param name="DotLeaderboardDef">
     Kind, display name, scope keys, value formatting, and `publish` — the opt-in

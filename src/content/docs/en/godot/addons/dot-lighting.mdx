@@ -69,6 +69,8 @@ for speed, is not a cosmetic difference.
 | fog | yes | yes | yes |
 | sun shadows | yes | **no** | no |
 
+A fourth profile, `DotLightProfile.painted()`, starts from `web()` in a browser and `high()` elsewhere and adds a softer look for flat-coloured worlds: a higher tone-map white, a little contrast and saturation, ambient occlusion, a fill light, and a dimmer sun and lower exposure under the Compatibility renderer.
+
 **The browser drops the expensive half and not the cheap one.** A shadow pass
 scales with how much geometry is in frame, which on a large level is all of it;
 glow is a fixed cost in screen pixels that a phone-class GPU handles. Dropping

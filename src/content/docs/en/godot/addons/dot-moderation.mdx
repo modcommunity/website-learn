@@ -39,7 +39,7 @@ any of them importing another.
 
 [`dot-server`](/learn/godot/addons/dot-server) has bans, kicks, admin flags with
 immunity and an audit log. What it does not have is a **mute that outlives a
-session**: `DotClientSession.silence()` sets two booleans on a session object,
+session**: `DotClientSession.silence()` sets a mute flag, a gag flag and an expiry on a session object,
 and a session is destroyed when its player disconnects. So a muted player
 reconnects and can talk again, which is the first thing anybody who has been
 muted tries. Bans persisting and mutes not is not a design; it is an accident of
@@ -93,7 +93,7 @@ same fourteen columns.
 | **JSON file** | `DotPunishmentStoreFile` | Works out of the box. Right for one server. |
 | **REST API** | `DotPunishmentStoreRest` | Works out of the box. Four endpoints; keep your own ban system. |
 | **SQLite** | `DotPunishmentStoreSql` + `DotSqlDriverSqlite` | Needs the godot-sqlite GDExtension. |
-| **PostgreSQL / MySQL** | `DotPunishmentStoreSql` + `DotSqlDriverGateway` | Needs a driver extension, or an HTTP gateway beside the database. |
+| **PostgreSQL / MySQL** | `DotPunishmentStoreSql` + `DotSqlDriverGateway` | Needs dot-sql's HTTP gateway (`DotSqlDriverGateway`) beside the database; no PostgreSQL or MySQL wire client ships. |
 
 **Be aware of what Godot does not have.** There is no `SQLite`,
 `PostgreSQLClient` or `MySQL` class in the engine, and neither wire protocol can
@@ -103,7 +103,7 @@ half-finished one is a security problem rather than a missing feature.
 
 So the SQL half does everything that *can* be done here — the DDL per dialect,
 bound parameters, row mapping, upserts, indexes — and hands execution to a
-driver. **Putting the database behind HTTP is what most deployments should do
+[dot-sql](/learn/godot/addons/dot-sql) driver, held duck-typed so this addon does not depend on it. **Putting the database behind HTTP is what most deployments should do
 anyway:** a game server holding a Postgres password is a game server whose
 compromise is a compromise of the database.
 
