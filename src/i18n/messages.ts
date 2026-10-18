@@ -1,6 +1,6 @@
 import { LOCALES, type LocaleT } from './config'
 import { shellNav } from './sections/shellNav'
-import { shellSidebar } from './sections/shellSidebar'
+import { shellSidebar } from '@modcommunity/shared/i18n'
 import { shellFooter } from './sections/shellFooter'
 import { notFound } from './sections/notFound'
 import { docsUi } from './sections/docsUi'
