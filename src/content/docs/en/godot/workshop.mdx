@@ -1,0 +1,221 @@
+---
+title: Making a subscribable pack
+description: How a creator ships maps, weapons, props, NPCs or tools that players subscribe to once and find in their solo games — the provides.json file, compatible games, testing it in solo, publishing, and the policy for packs that run code.
+navTitle: Subscribable packs
+order: 22
+badge: new
+keywords:
+  - "workshop"
+  - "subscribe"
+  - "provides.json"
+  - "pack"
+  - "map pack"
+  - "weapon pack"
+  - "accepts"
+  - "runs code"
+  - "code review"
+  - "solo"
+  - "thumbnail"
+source:
+  - dev02:godot/dot-cloud/docs/workshop.md
+  - docs/workshop.md (website-city)
+---
+
+A **subscribable pack** is a [dot-cloud](/learn/godot/addons/dot-cloud) content pack that says what it contains. A player subscribes to it on the site, for every game or for chosen ones, and the next **solo** launch of a compatible game downloads it, mounts it and lists it in that game's menus: a map in the map list, a weapon in the loadout, a prop in the spawn menu. Online play never loads any of it ([why](#what-solo-only-means-for-players)). Players' side of this is in [the Workshop for players](/learn/account/workshop).
+
+Everything a pack says about itself is in one file at the root of its source, `provides.json`. Without it a pack still works exactly as before, as a game's content or a server's required pack; it just never appears in a player's menus.
+
+## provides.json
+
+```json
+{
+    "schema": 1,
+    "title": "Utopia surf maps",
+    "kinds": ["map"],
+    "games": "*",
+    "categories": [
+        {"id": "utopia", "name": "Utopia", "icon": "icons/utopia.png"}
+    ],
+    "entries": [
+        {
+            "kind": "map", "id": "surf_utopia", "name": "Utopia",
+            "scene": "maps/surf_utopia/map.tscn", "map_kind": "surf",
+            "thumbnail": "maps/surf_utopia/thumb.png", "category": "utopia"
+        }
+    ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `schema` | The version of this format the file was written against. Write `1` |
+| `title` | The pack's name in menus; a category is made per pack with it |
+| `kinds` | Every kind the entries contain. A pack with maps and props lists both; there is no "mixed" |
+| `games` | `"*"` for any game that takes your kinds, or a list of game content ids such as `gamemann/game-playground`. Leave it out and it means `"*"` |
+| `categories` | Optional groupings for spawn menus: `id`, `name`, and an optional `icon` |
+| `entries` | One object per thing the pack contributes |
+
+**Every path is relative to the pack root**, never `res://`. The runtime puts the pack under its own mount prefix and resolves the paths onto it, so a pack never needs to know where it was mounted. The publisher refuses a path that is absolute, contains `..`, or names a file the pack does not ship.
+
+<Callout type="warn" title="Do not declare that your pack runs code">
+There is no field for it. The publisher and the site scan the files and set the flag themselves; a value you wrote would be ignored. See [packs that run code](#packs-that-run-code).
+</Callout>
+
+### Kinds and their entries
+
+Every entry has `kind`, `id` (lower-case letters, digits and underscores, unique within the pack and kind) and `name`. It may also have `category` (an id from `categories`), `thumbnail` (a path to an image in the pack), `tags` (a list of strings) and `meta` (a free object that the code consuming that kind defines). The rest depends on the kind:
+
+| Kind | Fields | What reads it |
+| --- | --- | --- |
+| `map` | `scene`, `map_kind`; optionally `zones`, `min_players`, `max_players`, `tier` | the map catalogue ([dot-map](/learn/godot/addons/dot-map)) |
+| `weapon` | `def` (a weapon definition resource); optionally `slot` | the weapon catalogue ([dot-weapon](/learn/godot/addons/dot-weapon)) |
+| `prop` | `def` (a prop definition) or `scene` | the prop catalogue ([dot-props](/learn/godot/addons/dot-props)) |
+| `npc` | `def` (an NPC definition) or `scene` | the NPC catalogue ([dot-npc](/learn/godot/addons/dot-npc)) |
+| `entity` | `script` | the game, which spawns it |
+| `tool` | `script` | the game's tool gun |
+| `sound` | `stream` | the audio addon, or the game |
+| `script` | `script`, `hook` | the game's hook loader |
+
+Two kinds are not subscribable at all. `game` describes a game pack and carries [`accepts`](#for-game-developers-the-accepts-block); `addon` replaces code for the whole process, which is a decision for a server's announced addon set and never for a player's subscription list, so an addon is never mounted from a subscription.
+
+`kinds` and `map_kind` are open sets. A kind a player's build does not know is kept and offered to nobody; a field it does not know is ignored. Neither is an error, because a newer pack on an older client is the normal case. This is also the rule for the format itself: it only ever grows (new kinds, new optional fields), and `schema` rises with each addition.
+
+### Thumbnails and categories
+
+A `thumbnail` is an image inside the pack, shown in the menu beside the entry. Keep it small: it ships to every subscriber, and a menu of fifty maps loads fifty of them. A `category` groups entries in the spawn menus; it must be an `id` you listed in `categories`, and a pack that lists none gets one category named after its `title`.
+
+### Weapons that reuse the build's code
+
+A weapon's `def` names the behaviour script it runs. A script path inside your pack is rewritten onto the mount like any other. A path under `res://addons/` is left alone: it means the copy of that addon already in the player's build, which is how a pack of weapon definitions and art can ship **without any script of its own**, and so without needing a code review.
+
+## Which games get it
+
+The `games` field is your statement of intent. The site reads it from the first version of the pack it publishes and turns it into the asset's **compatibility**: any game that takes your kinds, or exactly the games you listed. After that the compatibility is the asset owner's to edit on the asset page, and a later version never overwrites the owner's choice. A content id that matches no game on the site is dropped, and the release panel reports it.
+
+A game is offered your pack only when the game says it takes your kinds, which is the game developer's half, below. A pack whose only kind is `map` also needs one of its entries' `map_kind` to be in the list the game accepts: a pack of surf maps is not offered to a game that only takes sandbox maps.
+
+## Which games accept what
+
+Each game lists what it takes in its own `provides.json`. This is what the games in the family declare today; the site reads a game's newest published version, so treat the table as a snapshot.
+
+| Game | Pack kinds | Map kinds (`map_kind`) |
+| --- | --- | --- |
+| Playground | map, weapon, prop, npc, entity, tool | sandbox, surf, bhop, kz, race |
+| Surf and bhop timer | map | surf, bhop, kz, race |
+| Arena deathmatch | map | arena |
+| Hungry-hungry layouts game | map | arena |
+| Hide and seek | map | hideseek |
+| Zombie survival | map | survival, exodus |
+| Smash-copter | map | arena |
+| Buses from hell | map | arena |
+| Dangerous delivery | map | delivery |
+| Deathrun | map | deathrun |
+| Look at me | map | lookatme |
+| Prop hunt | map | prophunt |
+| Wipeout | map | obstacle, race |
+
+Most games take maps only, and only of their own kind: an `arena` map pack is offered to the arena-style games and to no other, which is why every map entry needs a `map_kind`. A map entry's `scene` is whatever the game's own loader reads for that kind, so read the game's repository notes before authoring; some games read a small data document rather than a scene. A game that lists no weapon kind has a loadout that reads no catalogue, so a weapon pack is not offered for it. Menu rows for subscribed content are labelled with the pack, for example `Name [Pack]`, and a game's own ids always win over a pack's.
+
+## Approval, versions and what players see
+
+If the game your pack is published for requires approval before content reaches its bucket, publishing is held the same way as for any game content. There are two modes, set per game (and overridable per item by the game's owner):
+
+- **Full approval**: a reviewer approves the item once; after that every version you publish syncs. Release pages stay public, only the packs wait.
+- **Release approval**: every version waits for its own approval, pinned to the files that were reviewed, so swapping a file afterwards asks again.
+
+A held version is not built, signed or listed, so no subscriber receives it; once approved it is published and reaches subscribers at their next launch. A version that runs code is held for [code review](#packs-that-run-code) as well, whatever the game's mode. Your uploads and their state are on your dashboard (`/dashboard/uploads` and `/dashboard/game-uploads`). How much you may store is an allowance the operator sets per role, so a pack that does not fit is refused when you publish, not when someone downloads it.
+
+Each publish is a new, immutable version. A subscriber with auto-update on gets the newest listed version at their next launch; with it off they stay on the version they last saw, and move to the newest only if theirs is no longer listed. Players see the pack's name, image and page, a "Runs code" label if it has one, and its entries in the game's menus under your categories. They see nothing of a version still waiting for approval.
+
+## Testing it locally in solo
+
+You do not need to publish to see it work.
+
+1. Build the pack as you would any [dot-cloud](/learn/godot/addons/dot-cloud) pack and publish it to a local or development content root with the publisher; it reads and validates `provides.json` and fails with the offending path or field if something is wrong. Run this before anything else, because every mistake in the file is reported here with a name.
+2. Run the game in **solo** with that pack mounted. The pack registers its entries in the runtime content index, tagged `solo`, and the game's catalogues pick them up with no further code.
+3. Check the menus: the entry is listed with its name, thumbnail and category.
+4. Start an online session of the same game and check that **none of it appears**. That is the isolation rule working, and a pack that shows up online is a bug to report rather than a feature.
+
+If you ship scripts, also test with the device setting for packs that run code set to `never`, and see that the game degrades cleanly without them.
+
+## Publishing through the site
+
+Upload the pack to the site as a game content asset. The site's pack worker reads the same file the local publisher does, validates it, signs it into the manifest as `provides`, and records what it found: the kinds, the declared games, and whether the pack runs code. The upload flow itself is described in [publishing packs](/learn/api/app/publishing).
+
+Two things about the site's copy that are worth knowing:
+
+- **The manifest is the single source.** The `provides.json` that also ships inside the pack is not read by anyone; only the signed copy in the manifest is, because it is the only one verified before anything is downloaded.
+- **A pack must be signed by the site** to be offered to subscribers. A pack signed by a key the player's device was not told to trust for subscriptions is refused on the device, even when the site listed it.
+
+While pack uploads are switched off on a deployment nothing is ready, and the Workshop is empty there.
+
+## What solo-only means for players
+
+Subscriptions apply to **solo** play only: a game started from the shell or the app on your own, never a join to a server. That is a choice, not a limitation to work around.
+
+- A server decides which maps, weapons and rules a match has. If each player brought their own, two players would be playing different games. A server that wants extra content names it, and every joiner fetches that.
+- A subscribed pack is made by someone the server never chose. Loading it in a match would let a stranger's content run against other players.
+- Nothing can be unmounted from a running game. So entries from a subscription are invisible, not gone, once a session is online, and they never take the place of the game's own resources.
+
+When a player moves from solo to online in one session, packs that **run code** make the game restart first, so none of their code is still resident in the match. Packs that only carry data need no restart. Tell your players if your pack is one of the former.
+
+## Packs that run code
+
+<Callout type="info" title="Proposed default, easy to change">
+This policy is a proposed default pending confirmation by the site owner. It is one rule on the site (whether a version that runs code is listed before review) and one setting on the device (`workshop_script_packs`), so changing it changes no pack and no format.
+</Callout>
+
+A pack **runs code** when it ships a script (`.gd`, `.cs`, a native library), a resource with a script inside it, or any entry of the kinds `entity`, `tool` or `script`. The label is computed, not declared, and it is a label for honest packs rather than a sandbox: a crafted binary resource can hide a script from any scan, which is why the policy rests on review and signing and not on the scan alone.
+
+The current default:
+
+- A version that runs code is **not listed to subscribers until a reviewer approves that version**. The site has a separate code review for this; it applies regardless of the game's own approval policy for content. Until it is approved the version shows as "Awaiting code review" and subscribers' devices do not receive it.
+- Each new version is reviewed again. Approval belongs to the version, not the pack.
+- Once listed, the asset page and the subscribe button show **Runs code**, so players know.
+- On the device, `workshop_script_packs` is `approved` by default; `never` turns code packs off on that device. A developer testing their own unreviewed pack can set `any` locally; it is not offered in the shell's settings.
+- A pack that does not run code follows the game's usual approval policy and needs nothing further.
+
+Keep code out of a pack when data will do: a weapon that reuses the build's behaviour script, a prop that is a scene with no script, a map whose logic is the game's own.
+
+## Collections
+
+<Callout type="info" title="Proposed default, easy to change">
+Pending confirmation by the site owner.
+</Callout>
+
+A site [collection](/learn/content/collections) is the Workshop's collection. Subscribing to a collection subscribes the member to the packs in it, with a scope chosen for the collection (all games or chosen ones). The game only ever sees the resulting packs, each marked with the collection it came through. Changing a collection's scope changes every pack that came through it; changing the scope of one pack by hand detaches that pack from the collection, so a later collection-wide change does not overwrite the member's choice. If this default changes, collection subscriptions would simply always mean "all games".
+
+## For game developers: the accepts block
+
+The Workshop is **opt-in per game**, and the opt-in is written in the game's own repository. A game's pack has a `provides.json` with `"kinds": ["game"]`, no entries, and an `accepts` block:
+
+```json
+{
+    "schema": 1,
+    "kinds": ["game"],
+    "accepts": {
+        "kinds": ["map", "weapon", "prop", "npc", "entity", "tool", "script"],
+        "map_kinds": ["sandbox", "surf", "bhop"]
+    }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `accepts.kinds` | The kinds of subscribed pack the game takes. A pack is offered for the game only when its kinds meet this list |
+| `accepts.map_kinds` | Which `map_kind`s the game can run. Checked for a pack that provides only maps |
+
+- **A game with no `accepts` takes no subscriptions at all.** It is not offered in any player's scope picker, and the launch shell tells the player the game takes none. This is deliberate: a game with one fixed level should never be offered a map pack it cannot load.
+- The site reads `accepts` from the game's **newest ready version**, so a change reaches players when you publish, with no site change and no column to edit.
+- Treat the list as a promise you keep in code. The site's check is a convenience and a stale list is possible, so the game's catalogues filter again at runtime with the same lists. List only the kinds your game has a consumer for: each of `map`, `weapon`, `prop` and `npc` is read by that addon's catalogue once the game follows the content index, and `entity`, `tool`, `sound` and `script` need code in your game.
+- Only list `entity`, `tool` or `script` if you are prepared for subscribers' packs to run code in solo. Those kinds always run code, so they always go through the [code review](#packs-that-run-code).
+
+To follow the index, a catalogue calls `follow_content` once; see [dot-cloud](/learn/godot/addons/dot-cloud) and the catalogue addons for the details.
+
+<Related>
+- [The Workshop for players](/learn/account/workshop)
+- [dot-cloud](/learn/godot/addons/dot-cloud)
+- [Publishing packs](/learn/api/app/publishing)
+- [Collections](/learn/content/collections)
+- [Subscriptions and the app](/learn/account/subscriptions)
+</Related>

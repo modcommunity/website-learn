@@ -1,0 +1,75 @@
+---
+title: The Workshop for players
+description: Subscribe to maps, weapons, props and more once, choose which games get them, and find them in your solo games on any device — and why they never appear online.
+navTitle: The Workshop
+order: 65
+badge: new
+keywords:
+  - "workshop"
+  - "subscribe"
+  - "remove from all games"
+  - "solo"
+  - "sync"
+  - "devices"
+  - "online"
+  - "sign in"
+  - "runs code"
+source:
+  - dev02:godot/dot-cloud/docs/workshop.md
+  - docs/workshop.md (website-city)
+---
+
+The Workshop is how packs of maps, weapons, props, NPCs and tools reach your **solo** games. You subscribe to a pack on the site; the next time you start a compatible game on your own, on any device, it downloads the pack and adds it to the game's menus. To make packs of your own, see [making a subscribable pack](/learn/godot/workshop).
+
+A Workshop subscription is the ordinary subscription from [Subscriptions and the app](/learn/account/subscriptions), with one addition: which games it applies to.
+
+## Choosing which games
+
+When you subscribe to a Workshop pack, a picker asks where it should apply.
+
+- **All games** is the default: every game that can use the pack, **including games added later**.
+- **Chosen games** lists the compatible games with a box for each. A game added later is not included automatically.
+
+You can change this afterwards from Account → Subscriptions, from the pack's page, or from the Workshop tab on a game's page. Turning off one game on an "all games" subscription turns it into a chosen-games one with every other compatible game still on.
+
+Only games that say they take subscriptions are listed. A game with a fixed level, for instance, takes none, and the game's launch screen says so rather than leaving you to wonder where your maps went.
+
+## Removing from all games
+
+**Remove from all games** takes the pack off every game but keeps it in your library: it stays subscribed, still notifies you of new versions, and can be turned on for a game again whenever you like. It is not unsubscribing. To drop it entirely, unsubscribe as usual.
+
+## On every device
+
+Your scope choices are part of your account, so they follow you. Subscribe on the website and your phone's next solo launch has it; change the scope on your phone and the desktop sees it next launch.
+
+The one exception is the **per-device off switch** in a game's Subscriptions panel. "Off on this device" is for a phone that is short of space, or a connection you do not want to spend on, and it stays on that device and never reaches the site. Anything you want on all your devices is a scope change, made on the site or in the panel's per-game and all-games toggles. When the game was opened through the website you can change the current game but not every game at once; the panel offers "Change for every game on the site" instead.
+
+## When changes apply
+
+**At the next launch of the game.** A pack that is already loaded cannot be taken back out of a running game, so turning something on or off, or a new version, is picked up when you next start it. The Subscriptions panel in the game says so.
+
+At launch the game shows progress while it fetches what you subscribed to. On a metered connection, or when the download is large, it asks first. If the site is unreachable it uses the list from your last launch; it never blocks the game, and a pack that fails to load is skipped while the others load.
+
+## Why subscriptions never apply online
+
+In a match, the server decides the maps and rules so that everyone plays the same game. Content that each player brought along would break that, and a pack made by a stranger is not something an online server has agreed to run. So your subscriptions are never loaded when you join a server. A server that wants extra content names it, and everyone who joins gets exactly that.
+
+Joining a server after a solo session in the same run is safe. Packs that were only data are hidden from the match. Packs that contain code make the game restart before the join so none of that code is still loaded.
+
+## Signing in
+
+Subscriptions belong to your account, so a game needs to know who you are to get them. **Signed in, you get them. As a guest, you get none**, and the Subscriptions panel offers to sign you in. On the desktop, signing in is required; that is the current plan and may change.
+
+## Packs that run code
+
+Some packs contain scripts. Those are labelled **Runs code** on the pack's page, and by default a pack only reaches you after a site reviewer has approved that version of its code. Until then it shows as "Awaiting code review" and is not downloaded. You can also switch code packs off for a device. This is a default we may adjust.
+
+## Collections
+
+Subscribing to a [collection](/learn/content/collections) subscribes you to its packs, with a scope you choose for the collection. Each pack remembers the collection it came through. If you change one pack's scope by hand it stops following the collection, so a later change to the collection does not undo your choice. This is also a default we may adjust.
+
+<Related>
+- [Subscriptions and the app](/learn/account/subscriptions)
+- [Making a subscribable pack](/learn/godot/workshop)
+- [Collections](/learn/content/collections)
+</Related>
