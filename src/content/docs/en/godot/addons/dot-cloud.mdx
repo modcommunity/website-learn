@@ -64,6 +64,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
     --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
 ```
 
+An imported asset's source file (the `.glb` or `.png` behind its imported output) is left out of a pack by default, since the pack already ships the output; `--with-sources` puts it back. A file that is not under the source, such as one a build step derives, goes in through `DotCloudPublisher.extra_files` (pack path to file) rather than being written into someone's checkout.
+
 ## The two constraints that shaped everything
 
 **Godot cannot unmount a resource pack.** Not slowly, not with a workaround —
@@ -123,6 +125,16 @@ ship under `_imported/`, with each `.import` marker rewritten to name where the
 output landed. Missing art in a mounted pack otherwise shows up only as
 warnings — the pack verifies, mounts and loads with its textures absent.
 </Callout>
+
+## Provides, session tags and the Workshop
+
+A pack can say what it contributes. A `provides.json` at the root of its source (kinds such as maps, weapons, props, NPCs, sounds and scripts, each with entries, and optionally the games it is for) is validated by the publisher and signed into the manifest as `provides`. When such a pack is mounted, the client registers its entries in `DotContentIndex` (in `dot-core`), which is how a map menu or spawn menu finds delivered content without ever naming a pack path. A game pack declares an `accepts` block listing the kinds it takes; a game with none takes no subscriptions.
+
+The publisher also sets `runs_code` in `provides`, computed by `DotCloudScriptScan` from the files rather than taken from the author. Treat it as a label for honest packs, not a sandbox.
+
+Every pack in the index carries the sessions it was mounted for, `solo` or `online`, and only entries of the current session are visible. `DotCloudClient.session_tag` (default `online`) tags what `ensure()` and `acquire()` mount, and `ensure_for_session(content_id, version, session, source, options)` passes the tag and the mount options explicitly. A subscription mount uses `uid_policy = "add_only"`, so a downloaded pack can never re-point a UID the game already holds, and an `addon` overlay is refused from a subscription as `CODE_FORBIDDEN`.
+
+`DotCloudWorkshop` (registry name `dot_workshop`) is the solo-play sync client: it asks the site for the packs the player subscribed to, downloads and mounts them for a solo launch, and never runs for an online session. If a pack that runs code was mounted, joining an online server restarts the process first, because resident scripts cannot be unloaded. Its `DotCloudWorkshopConfig` sets, among others, `workshop_script_packs` (`never`, `approved` or `any`; default `approved`), `workshop_metered` (`ask`, `allow`, `never`) and `workshop_key_ids`, the signing keys a subscription must carry, which are deliberately separate from the keys trusted for a server's content. The host supplies `token_fn` for the signed-in player's bearer and `ask_fn` for the "download N MB?" prompt.
 
 ## Where a game plugs in
 

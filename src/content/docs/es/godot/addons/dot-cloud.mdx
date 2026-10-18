@@ -62,6 +62,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
     --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
 ```
 
+El archivo fuente de un recurso importado (el `.glb` o `.png` detrás de la salida importada) se deja fuera de un pack por defecto, porque el pack ya incluye la salida; `--with-sources` lo vuelve a incluir. Un archivo que no está bajo la fuente, por ejemplo uno que deriva un paso de compilación, entra mediante `DotCloudPublisher.extra_files` (ruta del pack a archivo) en lugar de escribirse en el checkout de otra persona.
+
 ## Las dos restricciones que lo moldearon todo
 
 **Godot no puede desmontar un paquete de recursos.** Ni despacio ni con un
@@ -130,6 +132,16 @@ nombrar dónde quedó la salida. Si no, el arte que falta en un paquete montado
 solo aparece como avisos — el paquete verifica, se monta y carga con sus
 texturas ausentes.
 </Callout>
+
+## Provides, etiquetas de sesión y el Workshop
+
+Un pack puede declarar qué aporta. Un `provides.json` en la raíz de su fuente (tipos como mapas, armas, props, NPC, sonidos y scripts, cada uno con entradas y, opcionalmente, los juegos a los que va dirigido) lo valida el publicador y lo firma en el manifiesto como `provides`. Cuando se monta un pack así, el cliente registra sus entradas en `DotContentIndex` (en `dot-core`), y así un menú de mapas o de aparición encuentra el contenido entregado sin nombrar nunca una ruta de pack. Un pack de juego declara un bloque `accepts` con los tipos que admite; un juego sin él no admite suscripciones.
+
+El publicador también fija `runs_code` en `provides`, calculado por `DotCloudScriptScan` a partir de los archivos y no tomado del autor. Tómalo como una etiqueta para packs honestos, no como un sandbox.
+
+Cada pack del índice lleva las sesiones para las que se montó, `solo` u `online`, y solo las entradas de la sesión actual son visibles. `DotCloudClient.session_tag` (por defecto `online`) etiqueta lo que montan `ensure()` y `acquire()`, y `ensure_for_session(content_id, version, session, source, options)` pasa la etiqueta y las opciones de montaje de forma explícita. Un montaje de suscripción usa `uid_policy = "add_only"`, de modo que un pack descargado nunca puede reapuntar un UID que el juego ya posee, y un overlay `addon` procedente de una suscripción se rechaza como `CODE_FORBIDDEN`.
+
+`DotCloudWorkshop` (nombre de registro `dot_workshop`) es el cliente de sincronización del juego en solitario: pide al sitio los packs a los que el jugador está suscrito, los descarga y los monta para un inicio en solitario, y nunca se ejecuta en una sesión online. Si se montó un pack que ejecuta código, unirse a un servidor online reinicia primero el proceso, porque los scripts residentes no se pueden descargar. Su `DotCloudWorkshopConfig` fija, entre otras, `workshop_script_packs` (`never`, `approved` o `any`; por defecto `approved`), `workshop_metered` (`ask`, `allow`, `never`) y `workshop_key_ids`, las claves de firma que debe llevar una suscripción, deliberadamente distintas de las que se aceptan para el contenido de un servidor. El host aporta `token_fn` para el bearer del jugador con sesión iniciada y `ask_fn` para la pregunta «¿descargar N MB?».
 
 ## Por dónde se engancha un juego
 

@@ -62,6 +62,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
     --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
 ```
 
+Die Quelldatei eines importierten Assets (die `.glb` oder `.png` hinter der importierten Ausgabe) bleibt standardmäßig aus einem Pack heraus, weil das Pack die Ausgabe bereits enthält; `--with-sources` nimmt sie wieder auf. Eine Datei außerhalb der Quelle, etwa eine von einem Build-Schritt abgeleitete, kommt über `DotCloudPublisher.extra_files` (Pack-Pfad auf Datei) hinein, statt in fremde Checkouts geschrieben zu werden.
+
 ## Die zwei Beschränkungen, die alles geformt haben
 
 **Godot kann ein Ressourcenpaket nicht aushängen.** Nicht langsam, nicht mit
@@ -130,6 +132,16 @@ gekommen ist. Fehlende Grafik in einem eingehängten Paket zeigt sich sonst nur
 als Warnungen — das Paket verifiziert, hängt sich ein und lädt, ohne seine
 Texturen.
 </Callout>
+
+## Provides, Sitzungs-Tags und die Workshop
+
+Ein Pack kann sagen, was es beisteuert. Eine `provides.json` im Wurzelverzeichnis der Quelle (Arten wie Karten, Waffen, Props, NPCs, Sounds und Skripte, jeweils mit Einträgen und optional den Spielen, für die es gedacht ist) wird vom Publisher geprüft und als `provides` ins Manifest signiert. Wird so ein Pack eingehängt, trägt der Client seine Einträge in `DotContentIndex` (in `dot-core`) ein; so findet ein Karten- oder Spawn-Menü gelieferte Inhalte, ohne je einen Pack-Pfad zu nennen. Ein Spiel-Pack deklariert einen `accepts`-Block mit den Arten, die es annimmt; ein Spiel ohne diesen Block nimmt keine Abonnements an.
+
+Der Publisher setzt außerdem `runs_code` in `provides`, berechnet von `DotCloudScriptScan` aus den Dateien und nicht vom Autor übernommen. Betrachte es als Etikett für ehrliche Packs, nicht als Sandbox.
+
+Jedes Pack im Index trägt die Sitzungen, für die es eingehängt wurde, `solo` oder `online`, und nur Einträge der aktuellen Sitzung sind sichtbar. `DotCloudClient.session_tag` (Standard `online`) markiert, was `ensure()` und `acquire()` einhängen, und `ensure_for_session(content_id, version, session, source, options)` übergibt Tag und Einhänge-Optionen ausdrücklich. Ein Abonnement-Mount nutzt `uid_policy = "add_only"`, sodass ein heruntergeladenes Pack nie eine UID umbiegen kann, die das Spiel schon besitzt, und ein `addon`-Overlay aus einem Abonnement wird als `CODE_FORBIDDEN` abgelehnt.
+
+`DotCloudWorkshop` (Registry-Name `dot_workshop`) ist der Sync-Client für Solo-Spiele: Er fragt die Seite nach den abonnierten Packs, lädt und hängt sie für einen Solo-Start ein und läuft nie für eine Online-Sitzung. Wurde ein Pack eingehängt, das Code ausführt, startet der Beitritt zu einem Online-Server zuerst den Prozess neu, weil residente Skripte sich nicht entladen lassen. Seine `DotCloudWorkshopConfig` setzt unter anderem `workshop_script_packs` (`never`, `approved` oder `any`; Standard `approved`), `workshop_metered` (`ask`, `allow`, `never`) und `workshop_key_ids`, die Signaturschlüssel, die ein Abonnement tragen muss und die bewusst getrennt von den für Server-Inhalte vertrauten Schlüsseln sind. Der Host liefert `token_fn` für das Bearer-Token des angemeldeten Spielers und `ask_fn` für die Rückfrage „N MB herunterladen?“.
 
 ## Wo sich ein Spiel einklinkt
 

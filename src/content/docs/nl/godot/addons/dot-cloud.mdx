@@ -62,6 +62,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
     --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
 ```
 
+Het bronbestand van een geïmporteerde asset (de `.glb` of `.png` achter de geïmporteerde uitvoer) blijft standaard buiten een pack, omdat het pack de uitvoer al bevat; `--with-sources` neemt het weer mee. Een bestand dat niet onder de bron staat, bijvoorbeeld een door een buildstap afgeleid bestand, gaat via `DotCloudPublisher.extra_files` (packpad naar bestand) in plaats van in andermans checkout te worden geschreven.
+
 ## De twee beperkingen die alles hebben gevormd
 
 **Godot kan een resourcepakket niet afkoppelen.** Niet langzaam, niet met een
@@ -128,6 +130,16 @@ herschreven zodat hij noemt waar de uitvoer terecht is gekomen. Ontbrekende art 
 een aangekoppeld pakket verschijnt anders alleen als waarschuwingen — het pakket
 verifieert, koppelt aan en laadt zonder zijn texturen.
 </Callout>
+
+## Provides, sessietags en de Workshop
+
+Een pack kan zeggen wat het bijdraagt. Een `provides.json` in de root van de bron (soorten zoals kaarten, wapens, props, NPC's, geluiden en scripts, elk met items en eventueel de games waarvoor het bedoeld is) wordt door de publisher gevalideerd en als `provides` in het manifest ondertekend. Wordt zo'n pack aangekoppeld, dan registreert de client de items in `DotContentIndex` (in `dot-core`); zo vindt een kaart- of spawnmenu geleverde inhoud zonder ooit een packpad te noemen. Een gamepack declareert een `accepts`-blok met de soorten die het accepteert; een game zonder dat blok accepteert geen abonnementen.
+
+De publisher zet ook `runs_code` in `provides`, berekend door `DotCloudScriptScan` uit de bestanden en niet van de auteur overgenomen. Zie het als een label voor eerlijke packs, niet als sandbox.
+
+Elk pack in de index draagt de sessies waarvoor het is aangekoppeld, `solo` of `online`, en alleen items van de huidige sessie zijn zichtbaar. `DotCloudClient.session_tag` (standaard `online`) tagt wat `ensure()` en `acquire()` aankoppelen, en `ensure_for_session(content_id, version, session, source, options)` geeft tag en koppelopties expliciet mee. Een abonnementskoppeling gebruikt `uid_policy = "add_only"`, zodat een gedownload pack nooit een UID kan omleggen die de game al heeft, en een `addon`-overlay uit een abonnement wordt geweigerd als `CODE_FORBIDDEN`.
+
+`DotCloudWorkshop` (registernaam `dot_workshop`) is de synchronisatieclient voor solospel: hij vraagt de site naar de packs waarop de speler is geabonneerd, downloadt en koppelt ze voor een solostart aan en draait nooit voor een onlinesessie. Is er een pack aangekoppeld dat code uitvoert, dan herstart het deelnemen aan een onlineserver eerst het proces, omdat resident scripts zich niet laten ontladen. Zijn `DotCloudWorkshopConfig` stelt onder meer `workshop_script_packs` (`never`, `approved` of `any`; standaard `approved`), `workshop_metered` (`ask`, `allow`, `never`) en `workshop_key_ids` in, de ondertekeningssleutels die een abonnement moet dragen en die bewust los staan van de sleutels die voor serverinhoud worden vertrouwd. De host levert `token_fn` voor de bearer van de ingelogde speler en `ask_fn` voor de vraag „N MB downloaden?”.
 
 ## Waar een game aansluit
 

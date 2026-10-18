@@ -60,6 +60,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
     --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
 ```
 
+导入资源的源文件（导入产物背后的 `.glb` 或 `.png`）默认不放进包里，因为包已经带有导入产物；`--with-sources` 可以把它加回来。不在源目录下的文件，例如由构建步骤派生的文件，通过 `DotCloudPublisher.extra_files`（包内路径到文件）加入，而不是写进别人的检出目录。
+
 ## 塑造了一切的两条约束
 
 **Godot 无法卸载已挂载的资源包。** 不是慢，也不是有变通办法——这个 API 根本不存在。
@@ -107,6 +109,16 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 每个 `.import` 标记都被改写为指向产物落地的位置。否则，挂载的资源包里缺失的美术只会表现为
 警告——资源包校验通过、挂载成功、加载完成，只是缺了贴图。
 </Callout>
+
+## Provides、会话标签与 Workshop
+
+包可以声明自己提供什么。包源根目录下的 `provides.json`（地图、武器、道具、NPC、音效、脚本等类型，每类带条目，也可以带适用的游戏）由发布工具校验，并作为 `provides` 签入清单。挂载这样的包时，客户端会把它的条目登记到 `DotContentIndex`（在 `dot-core` 中），地图菜单或生成菜单因此无需提及任何包路径就能找到已交付的内容。游戏包声明一个 `accepts` 块，列出它接受的类型；没有该块的游戏不接受任何订阅。
+
+发布工具还会在 `provides` 中设置 `runs_code`，由 `DotCloudScriptScan` 根据文件计算，而不是采用作者的说法。它是给诚实的包用的标签，不是沙箱。
+
+索引中的每个包都带有它被挂载时所属的会话，`solo` 或 `online`，只有当前会话的条目可见。`DotCloudClient.session_tag`（默认 `online`）标记 `ensure()` 和 `acquire()` 所挂载的内容，`ensure_for_session(content_id, version, session, source, options)` 则显式传入标签和挂载选项。订阅挂载使用 `uid_policy = "add_only"`，因此下载的包永远不能改指游戏已持有的 UID，来自订阅的 `addon` 覆盖层会以 `CODE_FORBIDDEN` 被拒绝。
+
+`DotCloudWorkshop`（注册名 `dot_workshop`）是单人游戏的同步客户端：它向网站询问玩家订阅的包，为单人启动下载并挂载，并且绝不会在联机会话中运行。如果挂载过会执行代码的包，加入联机服务器时会先重启进程，因为常驻脚本无法卸载。它的 `DotCloudWorkshopConfig` 设置了 `workshop_script_packs`（`never`、`approved` 或 `any`；默认 `approved`）、`workshop_metered`（`ask`、`allow`、`never`）和 `workshop_key_ids`（订阅必须携带的签名密钥，刻意与服务器内容所信任的密钥分开）等。宿主提供 `token_fn`（已登录玩家的 bearer）和 `ask_fn`（“下载 N MB？”的询问）。
 
 ## 游戏从哪里接入
 

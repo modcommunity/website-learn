@@ -62,6 +62,8 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
     --id dm_arena --version 1.2.0 --entry arena.tscn --key keys/content.key
 ```
 
+インポートされたアセットのソースファイル（インポート出力の元になる `.glb` や `.png`）は、パックがすでに出力を含んでいるため、既定ではパックに入りません。`--with-sources` で再び含められます。ソースの外にあるファイル（たとえばビルド手順が生成するもの）は、他人のチェックアウトに書き込む代わりに `DotCloudPublisher.extra_files`（パック内パスからファイルへの対応）で渡します。
+
 ## すべてを形作った 2 つの制約
 
 **Godot はリソースパックをアンマウントできません。** ゆっくりでも、回避策でも
@@ -127,6 +129,16 @@ godot --headless --path . --script addons/dot_cloud/publish/dot_cloud_cli.gd -- 
 現れず、パックは検証され、マウントされ、読み込まれ、テクスチャーだけが無い状態に
 なります。
 </Callout>
+
+## Provides、セッションタグ、Workshop
+
+パックは自分が何を提供するかを宣言できます。ソースのルートにある `provides.json`（マップ、武器、プロップ、NPC、サウンド、スクリプトなどの種類と、それぞれのエントリ、必要なら対象ゲーム）はパブリッシャーが検証し、`provides` としてマニフェストに署名されます。そのようなパックをマウントすると、クライアントはそのエントリを `DotContentIndex`（`dot-core`）に登録します。これにより、マップメニューやスポーンメニューはパックのパスを一切指定せずに配信コンテンツを見つけられます。ゲームのパックは、受け入れる種類を並べた `accepts` ブロックを宣言します。これがないゲームはサブスクリプションを受け付けません。
+
+パブリッシャーは `provides` に `runs_code` も設定します。作者の記述ではなく、`DotCloudScriptScan` がファイルから計算します。誠実なパックのためのラベルであり、サンドボックスではありません。
+
+インデックス内の各パックは、マウントされたセッション（`solo` または `online`）を持ち、現在のセッションのエントリだけが見えます。`DotCloudClient.session_tag`（既定は `online`）が `ensure()` と `acquire()` のマウントにタグを付け、`ensure_for_session(content_id, version, session, source, options)` はタグとマウントオプションを明示的に渡します。サブスクリプションのマウントは `uid_policy = "add_only"` を使うため、ダウンロードしたパックがゲームの既存の UID を付け替えることはなく、サブスクリプション由来の `addon` オーバーレイは `CODE_FORBIDDEN` で拒否されます。
+
+`DotCloudWorkshop`（レジストリ名 `dot_workshop`）はソロプレイ用の同期クライアントです。プレイヤーが購読したパックをサイトに問い合わせ、ソロ起動のためにダウンロードしてマウントし、オンラインセッションでは動作しません。コードを実行するパックをマウントした場合、常駐スクリプトはアンロードできないため、オンラインサーバーへの参加時にまずプロセスが再起動されます。`DotCloudWorkshopConfig` では、`workshop_script_packs`（`never`、`approved`、`any`。既定は `approved`）、`workshop_metered`（`ask`、`allow`、`never`）、`workshop_key_ids`（サブスクリプションが持つべき署名鍵。サーバーのコンテンツで信頼する鍵とは意図的に別）などを設定します。ホストは、サインイン中のプレイヤーのベアラーを返す `token_fn` と、「N MB をダウンロードしますか？」の確認用の `ask_fn` を渡します。
 
 ## ゲームが差し込める場所
 

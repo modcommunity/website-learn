@@ -29,12 +29,12 @@ Requires `dot-core`, [dot-ui](/learn/godot/addons/dot-ui) and [dot-settings](/le
 
 ## What you get
 
-- **Stock settings**: volumes, window mode, V-Sync, frame-rate cap, render scale, field of view, effects quality, sensitivity, invert mouse, camera shake, screen flashes, theme, a frame-rate counter and the chat box. They are declared once with fixed keys and scopes, so moving a game onto the menu keeps every player's choices.
+- **Stock settings**: volumes, window mode, V-Sync, frame-rate cap, render scale, field of view, effects quality, sensitivity, invert mouse, camera shake, screen flashes, theme, HUD size, a frame-rate counter and the chat box. They are declared once with fixed keys and scopes, so moving a game onto the menu keeps every player's choices.
 - **An applier** (`DotMenuApplier`) that pushes each setting at what it controls (the engine, the audio buses, a camera, a sampler), once at load and again on every change.
-- **Keys**: `DotMenuBindings` is one table of actions. It declares a setting per key, puts them on the InputMap, draws a button per row on the Controls page and lists them on the help screen. Binding a key already in use swaps the two, and Escape can never be bound.
+- **Keys**: `DotMenuBindings` is one table of actions. It declares a setting per key, puts them on the InputMap, draws a button per row on the Controls page and lists them on the help screen. Binding a key already in use swaps the two, and Escape can never be bound. A second key on one action is an extra row (`add_extra`), never a second `add`, which would replace the row. The mouse wheel is `add_wheel_jump()` in a game with nothing to switch and `add_wheel_weapons(prev, next)` in one with weapons; `add_movement()` includes neither.
 - **Help** on H: your game's goal and modes, every key as currently bound, the server's chat commands, and in a browser what the browser does with Ctrl+W and friends.
-- **Themes**: six ship (Midnight, Ember, Violet, Classic, Paper, High contrast); a theme is a palette for the menus and the HUD and can be written as JSON.
-- **A picker** (a numbered list, seven to a page), a **HUD layout editor** (drag pieces, saved as fractions of the screen), and **net_stat**, a connection overlay with frame rate, ping, jitter, loss and bandwidth.
+- **Themes**: seven ship (Midnight, Ember, Violet, Classic, Arcade, Paper, High contrast); a theme is a palette for the menus and the HUD and can be written as JSON. Midnight's HUD is dark and is the default; Arcade is the bright one. A game's HUD follows the theme when you call `menu.follow_hud(root, accent)` where it is built: the menu restyles that root at once and on every change, keeps your accent in every theme, and applies the player's `hud_size` setting (0.7 to 1.4). Call it through `has_method` in a delivered game, since an older shell lacks it.
+- **A picker** (a numbered list, seven to a page), a **HUD layout editor** (drag pieces, saved as fractions of the screen), and **net_stat**, a connection overlay with frame rate, ping, jitter, loss and bandwidth. Its levels go from numbers to a graph of arrivals by channel, and at the top level to departures, wall-clock frame times split by part, renderer counts, hitches, the server's own frame and prediction cost.
 - **Server rules**: while connected, a server can hide rows, narrow the themes and cap settings such as field of view. It can never change or read a player's stored value, and leaving puts everything back.
 - **The scoreboard**: hold Tab for the server's name, map and slots, teams side by side and a row per player (name, score, time, ping) plus any columns your game adds. It never takes the mouse or stops you moving.
 
@@ -114,6 +114,8 @@ A changed default reaches a player who has never run the game; a player who alre
 ## The scoreboard and the server
 
 The board is held on whatever action you name (`menu.scoreboard_action`, bound to Tab in your key table). Online, [dot-server](/learn/godot/addons/dot-server) sends the roster only while a player holds the board, and your server adds its own columns and teams through `server.scoreboard_fields` and `server.scoreboard_extra`. Offline, set `menu.scoreboard.source` to a function that returns the same dictionary. A server hands the menu what it allows with `menu.apply_server_rules({...})` and takes it back with `menu.release_server_rules()`.
+
+`menu.toast(...)` shows a short line, and `menu.toast_top` sets how many pixels below the top edge it sits, so a game whose HUD draws a strip there (scores, a clock) can place it underneath.
 
 <Callout type="info" title="A game whose Escape is its own">
 A garage or a lobby sets `menu.open_on_escape = false` and opens the menu some other way; Escape still closes it. In a browser, where Escape releases the mouse, the menu opens anyway and an Escape arriving right after is ignored so it does not flash shut.

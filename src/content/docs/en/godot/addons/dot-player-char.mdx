@@ -1,6 +1,6 @@
 ---
 title: dot-player-char
-description: What a player looks like and how it animates — body metrics five systems share, a customisation document validated from ids alone, a 3D rig with named mounts, a 2D sheet, and a locomotion state machine.
+description: What a player looks like and how it animates — body metrics five systems share, a customisation document validated from ids alone, a 3D rig with named mounts, a 2D sheet, a locomotion state machine, animated people built from a look, and ragdolls for the dead.
 navTitle: dot-player-char
 order: 40
 badge: new
@@ -19,9 +19,10 @@ source:
   - dev02:godot/dot-player-char/README.md
 ---
 
-`dot-player-char` covers four things: the character definition (body metrics and
-the customisation document), a 3D rig with named mounts, a 2D sprite sheet with
-layered overlays, and a locomotion state machine that drives either.
+`dot-player-char` covers the character definition (body metrics and the
+customisation document), a 3D rig with named mounts, a 2D sprite sheet with
+layered overlays, a locomotion state machine that drives either, and two things
+built on top: ready-made animated people and ragdolls for when they die.
 
 Requires `dot-core` and `dot-player`. Both drawing halves ship in one addon and
 neither loads anything until a catalogue points it at content, so a 3D game pays
@@ -63,6 +64,8 @@ behind), and the crouched pair of the same.
 | `DotPlayerSpriteVisual` / `DotPlayerSpriteFacing` | The 2D half: layered overlays on one grid, and the facing lookup. |
 | `DotPlayerAnimDriver` / `DotPlayerAnimState` / `DotPlayerAnimSet` | Locomotion, and the clip table both halves share. |
 | `DotPlayerAnimPlayerSink` / `DotPlayerAnimSpriteSink` | Where the animation decision is applied: an `AnimationPlayer`, or a sheet. |
+| `DotHumanoidLook` / `DotHumanoidFigure` / `DotHumanoidClips` | Animated people: four skinned characters on one rig, coloured by a look. |
+| `DotPlayerRagdolls` / `DotPlayerDeath` | Ragdolls, and the death reaction the server picks. |
 
 ## Validating a look
 
@@ -138,6 +141,42 @@ started a jump animation each time twitches its way upstairs.
 
 Animation events come from the clip's own timeline rather than a `Timer`, as
 fractions, so `0.25` is the same place in a rig's clip and a sheet's.
+
+## People
+
+```gdscript
+var look := DotHumanoidLook.from_site(site_avatar)   # or DotHumanoidLook.stock(hash(player_id))
+var person := DotHumanoidFigure.new()
+world.add_child(person)
+person.build(look.with_side(team_colour, 0.6), 1.8)
+
+# every frame:
+person.set_motion({"on_floor": on_floor, "vertical": velocity.y, "crouched": crouched})
+person.set_hold(DotHumanoidFigure.Hold.GUN)
+person.pose(drawn_position, yaw, ground_speed)
+```
+
+Players, bots and NPCs can be four animated people on one rig, coloured by a look: a body and its skin, hair, top and bottom. A member's site avatar becomes a look, a team colour goes on the top, and everybody dressed alike shares one material. The figure chooses the clip from how the player moves (idle, walk, run, crouch, jump, fall, land, crawl when down, swim, climb, sit, drive, death), holds a gun with the gun clips, bends the upper body to aim up and down (`aim`), and plays swings, flinches and gestures over the legs. The `sit` and `driving` motion keys seat it, with `driving` falling back to the sit clip if the driving one is missing, and a hat, crest or similar attaches at the `head_top` mount.
+
+Two settings matter for a body that moves in steps, as one carried on physics ticks or network snapshots does. Its per-frame speed alternates between zero and double and the clip flips between idle, walk and run, so set `auto_smooth_time` to average the measured speed over a short time. A game whose walking pace is near the default raises `set_run_speeds(run_speed, run_exit_speed)` so a walk does not play the hunched run clip.
+
+## When somebody dies
+
+```gdscript
+var yard := DotPlayerRagdolls.new()     # one per world, on a client
+yard.rules.follow_cvars(link)           # sv_ragdoll and friends
+world.add_child(yard)
+
+# the server, on a kill:
+var death := DotPlayerDeath.decide(reactions, headshot, damage, direction, seed, weapon_def)
+
+# every client, on that message:
+yard.spawn(victim_figure, DotPlayerDeath.from_dict(kill_message), victim_velocity)
+```
+
+The dead figure becomes a ragdoll: its parts on rigid bodies joined at the hips, shoulders and neck, pushed the way the shot went, then settling, freezing and fading, with the oldest making room when there are too many. A skinned figure falls by its bones. Death reactions are data (a plain fall, a headshot that throws the body, a powerful weapon that carries it along the shot, a face plant, a crumple), and **the server picks** and sends the pick with the kill, so every screen shows the same fall. A server can also make ragdolls one stiff piece, a scripted fall with no physics, or turn them off.
+
+A pack that draws a ragdoll or a person needs a shell with the addon API level that has it (level 2 for ragdolls, 3 for people, 4 for driving), and says so in its `requires.json`.
 
 <Related>
 - [dot-player](/learn/godot/addons/dot-player) — the row this binds to
