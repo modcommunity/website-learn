@@ -7,7 +7,14 @@ import {
     ThemeToggle,
 } from '@modcommunity/shared'
 import { WriteLocaleCookie } from '@modcommunity/shared/i18n'
-import BrandLogo from './BrandLogo'
+/*
+ * The mark as a FILE rather than the package's inline data URI: the data URI is
+ * ~14 kB of base64 in the island's JS and again in the HTML at each place the
+ * shell draws the mark, on every page; the file is one cached request. Vite
+ * hashes and emits it under `learn/_astro/`. Passed as `logoSrc` rather than a
+ * `logo` slot, so the shell's own <Logo> keeps the bar's locale-aware link.
+ */
+import lockup from '@modcommunity/shared/logo01.webp'
 import { getT } from '../i18n/t'
 import { learnChrome } from '../i18n/chrome'
 import { localeLink } from '../i18n/link'
@@ -97,10 +104,7 @@ export default function SiteHeader({
             activePath={stripLocale(pathName)}
             nav={nav}
             linkComponent={Link}
-            // The mark as a file rather than the package's inline data URI —
-            // see <BrandLogo/>. Given the same locale-aware link the rest of
-            // the bar uses, since a slotted logo does not inherit it.
-            logo={<BrandLogo linkComponent={Link} />}
+            logoSrc={lockup}
             // Entries that no longer fit collapse into this dropdown as the bar
             // narrows. Without it the trigger reads "More" in all nine
             // languages; city passes its own `nav.more` for the same reason.
@@ -111,6 +115,7 @@ export default function SiteHeader({
                     nav={nav}
                     sections={sidebar}
                     linkComponent={Link}
+                    logoSrc={lockup}
                     footer={
                         <div className="flex flex-col gap-2 sm:hidden">
                             <div className="flex items-center justify-between gap-2">

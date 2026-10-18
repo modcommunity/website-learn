@@ -1,5 +1,6 @@
 import { Footer } from '@modcommunity/shared'
-import BrandLogo from './BrandLogo'
+// The mark as a file, not the data URI; see SiteHeader.
+import lockup from '@modcommunity/shared/logo01.webp'
 import { learnChrome } from '../i18n/chrome'
 import { localeLink } from '../i18n/link'
 
@@ -17,7 +18,7 @@ export default function SiteFooter({ locale = 'en' }: { locale?: string }) {
             columns={footer}
             socials={socials}
             linkComponent={Link}
-            logo={<BrandLogo linkComponent={Link} />}
+            logoSrc={lockup}
             copyright={copyright}
         />
     )
