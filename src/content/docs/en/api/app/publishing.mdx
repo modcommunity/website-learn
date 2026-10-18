@@ -26,14 +26,15 @@ The publishing tool's endpoint. Three actions on one route.
 </Endpoint>
 
 <Callout type="warning" title="Behind a switch that ships off">
-This is the **registry** half of publishing: it hands out `<owner>/<repo>`
-names, takes version numbers permanently, and marks a pack ready. The half that
-moves bytes into the games bucket is not finished, so the whole surface is
-gated on the `uploads.packsEnabled` setting and answers **`503`** until an
-operator turns it on.
+Publishing is gated on the `uploads.packsEnabled` setting and answers **`503`**
+until an operator turns it on. The site does write the bytes (a worker job
+builds the signed pack from the release's files), but a claim takes a version
+number permanently, so an operator enables it only once the games bucket and the
+signing key are configured and a trial publish passes. Until then the
+[Game uploads page](#managing-your-packs) keeps listing what is already there.
 
-`503` rather than `404` on purpose — the endpoint exists and will work, and a
-publishing tool should say "not yet" rather than "no such command".
+`503` rather than `404` on purpose: the endpoint exists, and a publishing tool
+should say "not yet" rather than "no such command".
 </Callout>
 
 ## Three actions, because a publish is not one request
@@ -104,6 +105,8 @@ something they did not need to.
 | `BAD_ID` | The id or the version cannot survive being a path component. |
 | `NOT_YOUR_NAMESPACE` | That `<owner>/<repo>` belongs to somebody else. |
 | `VERSION_TAKEN` | That exact version has already been published. |
+| `RETIRED` | That id was renamed away from; the denial names the new one. |
+| `MOVING` | A rename of that pack is still running; try again when it ends. |
 | `TOO_MANY_FILES` | Over `uploads.maxFilesPerVersion` for your role. |
 | `TOO_MANY_VERSIONS` | Over `uploads.maxVersions` for that content id. |
 | `OUT_OF_SPACE` | Over `uploads.maxBytesPerUser` for your role. |
@@ -116,7 +119,7 @@ that have already cached the first.
 </Callout>
 
 Two details worth knowing about the quotas. `maxVersions` counts rows in **every
-state**, including failed ones — a failed row is still holding its version
+state but deleted**, including failed ones — a failed row is still holding its version
 number, and not counting it would let somebody mint versions by failing.
 `maxBytesPerUser` counts **ready** rows only: a pending row has stored nothing
 yet and a failed one never will, so charging either would bill for bytes nobody
@@ -124,6 +127,31 @@ is holding.
 
 The same limits are asked **again** on `complete`, because the numbers on a
 claim are a promise and the numbers on a complete are what actually landed.
+
+## Managing your packs
+
+**Account, then Game uploads** lists one card per pack (content id): its total size, and the newest three versions, with "View all" for the rest. The list is paged, newest activity first. The same list appears on an asset's Releases tab and in a game's Content panel, scoped to that item.
+
+<Params>
+  <Param name="Delete">
+    One version, or every version of a pack. Only the owner of the namespace and staff may delete: it is their version numbers that are spent, and permission to edit the asset is not permission to delete.
+  </Param>
+  <Param name="Rename">
+    Changes the pack's id and rebuilds every version under the new one. Whoever can edit the asset may rename its pack; a pack with no asset (published from the CLI) can be renamed only by its owner. What changes depends on where the name comes from: the asset's repo name, a per-archive name override for a map pack, or, for a CLI pack, only the id itself.
+  </Param>
+</Params>
+
+<Callout type="warning" title="A deleted version keeps its number">
+Deleting removes the files, not the version: the row stays as a tombstone, so `id@version` is never handed to other bytes. Publishing that number again is refused with `VERSION_TAKEN`. Deleted versions stop counting toward your storage, `maxVersions` and the pack count, and a release sync will not republish one behind your back.
+</Callout>
+
+The delete itself is queued: the request only marks the rows and a worker removes the files afterwards, then repoints the pack's `latest.json` (or removes it when no version is left). Delete and rename are refused while a version is still pending or a rename of the same asset's packs is running, because either would write files the other has just removed.
+
+A rename does not delete the old id's files, and the old id is retired: the CLI publishing to it is refused with `RETIRED` naming the new one. Servers keep installing the old id's newest version until they are pointed at the new name.
+
+## Compression
+
+Files in a pack are content-addressed and cached for a year, and the compressible ones (models, JSON, scenes, scripts and resources) are stored gzip-encoded with `Content-Encoding: gzip` after delivery. You do nothing for this and the client sees the same bytes. Browser game builds are handled the same way with brotli.
 
 ## Credentials
 

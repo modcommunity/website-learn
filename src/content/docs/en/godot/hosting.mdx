@@ -367,6 +367,12 @@ chat box offers those commands when a member types `/`. The list is built at the
 relay's own source, so what the menu shows is what that person could actually
 run.
 
+## Which browser build your players load
+
+The browser client is a shared engine build that the site frames your game in. A server tells the site which build matches the addons it actually runs by reporting the variable `sv_web_build` with its other replicated settings, and its players are given that build instead of the site-wide default. That keeps a server working when the shared build moves on before you have reinstalled.
+
+You do not register the build by hand. The site only honours a build it has a record of, so a worker job registers a reported build once its entry page answers on the game content origin. Ids must have the timestamp shape the publish job emits (`YYYYMMDD-HHMM`, optionally with seconds), the site never follows a redirect while checking, and a miss is remembered for ten minutes. A server that reports an unknown or not-yet-uploaded id simply gets the default build until the next check succeeds.
+
 ## Known limits
 
 - **The desktop app's UDP path is unencrypted.** Browsers join over WebSocket (TLS through your proxy); the desktop app joins over ENet on the game's UDP port with no certificate. A sign-in that would send an access token or a password is moved to WebSocket automatically; a server ticket is safe in the clear. Open the game port over **UDP** as well as TCP, and remember a proxy cannot carry it.
