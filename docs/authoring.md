@@ -19,7 +19,7 @@ This is deliberately not the `src/i18n/sections/*.ts` pattern website-processing
 
 - **`order`** sorts within a folder; ties break by title, so a folder can leave it off and still be stable. Watch for accidental interleaving when a folder mixes concept pages and sub-section indexes; that is why `api/content`, `api/integration` and `api/app` carry 40 / 50 / 60 rather than 10 / 20 / 30.
 - **`navTitle`** shortens the sidebar label. The rail is 16.5rem; anything over about 24 characters truncates.
-- **`source`** is a maintenance note listing the files in sibling repos the page was written against. It is never rendered. When you change something in city, `grep` this repo for the path.
+- **`source`** is a maintenance note listing the files in sibling repos the page was written against. It is never rendered. When you change something in city, `grep` this repo for the path. Game-development sources are written `dev02:godot/<repo>/README.md` (or `dev02:docs/…`, `dev02:CLAUDE.md`): that tree lives on x-tmc-dev02, never in a copy here, and `nightly/bin/docs-claims` asks dev02 when those repositories last changed.
 - **`keywords`** feeds search only ([search.md](search.md#keywords)). Quote numeric keywords: YAML parses a bare `429` as a number and the schema wants strings.
 - **`hidden` and `badge: draft`** keep a page out of the nav and/or the search index, and out of `sitemap.xml`: the sitemap builds from `indexableDocPaths()`, not `allDocPaths()`. Both still build, because a hidden deep-link has to stay reachable from the prose that links it.
 
