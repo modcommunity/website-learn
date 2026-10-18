@@ -20,16 +20,17 @@ keywords:
   - "changelevel"
   - "server.cfg"
 source:
-  - ../game-dev/godot/dot-server/README.md
-  - ../game-dev/godot/dot-server/CLAUDE.md
-  - ../game-dev/godot/dot-server/docs/console.md
-  - ../game-dev/godot/dot-server/docs/game-switching.md
-  - ../game-dev/godot/dot-server/docs/game-facing.md
-  - ../game-dev/godot/dot-server/docs/signon.md
+  - dev02:godot/dot-server/README.md
+  - dev02:godot/dot-server/CLAUDE.md
+  - dev02:godot/dot-server/docs/console.md
+  - dev02:godot/dot-server/docs/game-switching.md
+  - dev02:godot/dot-server/docs/game-facing.md
+  - dev02:godot/dot-server/docs/signon.md
 ---
 
-The dedicated server, in the shape operators already know: a console, RCON,
-permissions, moderation, votes, modules and dynamic game switching.
+**What it is.** The dedicated server framework: a headless Godot process that players connect to, with the things whoever runs it expects. That means a console (commands and settings called cvars), RCON (remote admin), permissions, moderation, votes, modules that add features, and switching between games while it runs.
+
+**When to use it.** Your game is multiplayer and needs a server people can host. To *run* one without writing any code, use [`dotserve`](/learn/godot/tooling) or TMC's server tool ([Hosting a server](/learn/godot/hosting)); this page is for building a game's server on top of the framework. The server-side wiring every game repeats is already packaged in [dot-game](/learn/godot/addons/dot-game).
 
 Requires `dot-core`. [`dot-auth`](/learn/godot/addons/dot-auth),
 [`dot-cloud`](/learn/godot/addons/dot-cloud),

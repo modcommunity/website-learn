@@ -28,16 +28,35 @@ keywords:
   - "api level"
   - "CODE_CONFLICT"
 source:
-  - ../game-dev/godot/dot-core/README.md
-  - ../game-dev/godot/dot-core/CLAUDE.md
-  - ../game-dev/godot/dot-core/docs/addon-api.md
-  - ../game-dev/godot/dot-core/docs/transports.md
-  - ../game-dev/godot/dot-core/docs/randomness.md
-  - ../game-dev/godot/dot-core/docs/engine-traps.md
+  - dev02:godot/dot-core/README.md
+  - dev02:godot/dot-core/CLAUDE.md
+  - dev02:godot/dot-core/docs/addon-api.md
+  - dev02:godot/dot-core/docs/transports.md
+  - dev02:godot/dot-core/docs/randomness.md
+  - dev02:godot/dot-core/docs/engine-traps.md
 ---
 
-The common layer under everything else, and **the only hard dependency in the
-collection**. It targets desktop, mobile and the browser from one codebase, and
+**What it is.** The common layer under everything else, and **the only hard dependency in the
+collection**: a result type for operations that can fail, logging, configuration that layers file, environment and command line, transports, HTTP, paths and hashing.
+
+**When to use it.** Always: copy it first, whatever else you take. You can also use it alone, as a set of small tools for a Godot project of any kind.
+
+**Smallest use.** Return a `DotResult` instead of null, and branch on its code rather than its message:
+
+```gdscript
+func load_save(path: String) -> DotResult:
+    if not FileAccess.file_exists(path):
+        return DotResult.fail(DotError.CODE_IO, "no save at %s" % path)
+    return DotResult.success(FileAccess.get_file_as_string(path))
+
+var res := load_save("user://save.json")
+if res.ok:
+    print(res.value)
+elif res.error.code == DotError.CODE_IO:
+    start_new_game()
+```
+
+In more detail: It targets desktop, mobile and the browser from one codebase, and
 encodes the browser's limitations rather than pretending they do not exist.
 
 ```bash

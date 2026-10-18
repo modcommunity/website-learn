@@ -1,0 +1,127 @@
+---
+title: dot-menu
+description: The Escape menu as data — a sidebar of pages over dot-settings values with no Apply button, stock settings every game shares, a key table, a help screen, themes, a HUD layout editor, a connection overlay and the Tab scoreboard.
+navTitle: dot-menu
+order: 432
+badge: new
+keywords:
+  - "menu"
+  - "escape menu"
+  - "pause menu"
+  - "settings screen"
+  - "key bindings"
+  - "rebind"
+  - "scoreboard"
+  - "tab"
+  - "theme"
+  - "help"
+  - "net_stat"
+source:
+  - dev02:godot/dot-menu/README.md
+  - dev02:godot/dot-menu/CLAUDE.md
+---
+
+**What it is.** The menu every Dot game opens with Escape: a sidebar of pages (General, Video, Audio, Controls, Advanced, plus any your game adds), a Resume button, Help and Leave. Every switch, slider and drop-down is a view of a [dot-settings](/learn/godot/addons/dot-settings) value, so it shows what is stored and writes it back when changed. There is no Apply button, and a value changed from the console shows up the next time the menu opens.
+
+**When to use it.** You want your game to have settings, rebindable keys, a help screen and a scoreboard that look and behave like every other Dot game's, without copying them. It was pulled out of one game's menus so that all of them could share one. If you only need a settings panel generated from a config, [dot-ui](/learn/godot/addons/dot-ui) is smaller.
+
+Requires `dot-core`, [dot-ui](/learn/godot/addons/dot-ui) and [dot-settings](/learn/godot/addons/dot-settings). Opening the addon's project runs a small demo world with the menu on it: Escape, H, P and M all work.
+
+## What you get
+
+- **Stock settings**: volumes, window mode, V-Sync, frame-rate cap, render scale, field of view, effects quality, sensitivity, invert mouse, camera shake, screen flashes, theme, a frame-rate counter and the chat box. They are declared once with fixed keys and scopes, so moving a game onto the menu keeps every player's choices.
+- **An applier** (`DotMenuApplier`) that pushes each setting at what it controls (the engine, the audio buses, a camera, a sampler), once at load and again on every change.
+- **Keys**: `DotMenuBindings` is one table of actions. It declares a setting per key, puts them on the InputMap, draws a button per row on the Controls page and lists them on the help screen. Binding a key already in use swaps the two, and Escape can never be bound.
+- **Help** on H: your game's goal and modes, every key as currently bound, the server's chat commands, and in a browser what the browser does with Ctrl+W and friends.
+- **Themes**: six ship (Midnight, Ember, Violet, Classic, Paper, High contrast); a theme is a palette for the menus and the HUD and can be written as JSON.
+- **A picker** (a numbered list, seven to a page), a **HUD layout editor** (drag pieces, saved as fractions of the screen), and **net_stat**, a connection overlay with frame rate, ping, jitter, loss and bandwidth.
+- **Server rules**: while connected, a server can hide rows, narrow the themes and cap settings such as field of view. It can never change or read a player's stored value, and leaving puts everything back.
+- **The scoreboard**: hold Tab for the server's name, map and slots, teams side by side and a row per player (name, score, time, ping) plus any columns your game adds. It never takes the mouse or stops you moving.
+
+## Minimal example
+
+```gdscript
+# The keys your game reads.
+var keys := DotMenuBindings.new()
+keys.add_movement()                                       # WASD, Space, Ctrl
+keys.add(&"mygame_flashlight", &"bind_flashlight", "Flashlight", "F", "View")
+keys.add_help()                                           # H opens help; rebindable like any key
+
+# The settings: the stock ones, your own, and your config over both.
+var config := DotMenuConfig.new()
+config.load_layered("res://menu.json")
+var schema := DotSettingsSchema.new()
+DotMenuStock.declare(schema)
+schema.add(DotSettingsDef.boolean(&"show_speed", true, &"hud"))
+keys.add_to_schema(schema)
+config.apply_to_schema(schema)
+
+var settings := DotMenuStock.manager(schema, "user://my_game_settings", &"my_game")
+add_child(settings)
+settings.setup()
+
+# What applies them.
+var applier := DotMenuApplier.new()
+applier.settings = settings
+applier.bindings = keys
+add_child(applier)
+applier.bind_camera(camera)          # field of view
+applier.on(&"show_speed", func(on, _why): hud.speed.visible = on)
+applier.setup()
+
+# The menu.
+var menu := DotMenu.new()
+menu.settings = settings
+menu.bindings = keys
+menu.config = config
+add_child(menu)
+menu.setup()
+menu.help.about = "First to twenty frags wins."
+menu.leave_on_its_own = true                              # Leave disconnects, or quits a solo game
+
+menu.overlays_changed.connect(func(open): sampler.suspended = open)   # stop game input while it is open
+```
+
+`applier.bind_audio(audio)` and `applier.bind_look(sampler.tunables)` do the same for volumes and mouse sensitivity.
+
+## Adding your own page
+
+```gdscript
+var page := DotMenuPage.make(&"gameplay", "Gameplay", "Your view and the HUD.")
+page.section("HUD").add(DotMenuRow.toggle(&"show_speed", "Speed", "Under the clock."))
+page.section("View").add(DotMenuRow.live_toggle("Flashlight", "",
+    func(): return light.on, func(on): light.on = on))
+menu.add_page(page, &"video")       # before Video
+```
+
+A row is one of `toggle`, `slider`, `select` (over a setting), `live_toggle`, `live_select`, `live_slider` (over state your game owns, which is not stored), `button`, `note` and `custom` (any Control you build). A setting row takes its range and options from the setting. A row for a setting your schema does not have is not drawn, which is how the stock pages fit a game that only declared some of the stock settings. Everything on a stock page can be moved, reworded or hidden with `menu.page(&"general").take_row(...)` and `menu.find_row(...)`.
+
+## Configuration without code
+
+`DotMenuConfig` is layered like every Dot config (inspector defaults, then a JSON file, then environment, then command line), so a developer can brand the menu, hide rows, narrow themes or change a setting's default and range from a file:
+
+```json
+{
+  "brand_mark": "g2g", "brand_name": "fast",
+  "theme": "ember", "themes_allowed": ["ember", "paper", "contrast"],
+  "rows_hidden": ["render_scale"],
+  "settings": { "field_of_view": {"default": 90, "min": 75, "max": 120} }
+}
+```
+
+A changed default reaches a player who has never run the game; a player who already has a value keeps it. The addon's README lists every key.
+
+## The scoreboard and the server
+
+The board is held on whatever action you name (`menu.scoreboard_action`, bound to Tab in your key table). Online, [dot-server](/learn/godot/addons/dot-server) sends the roster only while a player holds the board, and your server adds its own columns and teams through `server.scoreboard_fields` and `server.scoreboard_extra`. Offline, set `menu.scoreboard.source` to a function that returns the same dictionary. A server hands the menu what it allows with `menu.apply_server_rules({...})` and takes it back with `menu.release_server_rules()`.
+
+<Callout type="info" title="A game whose Escape is its own">
+A garage or a lobby sets `menu.open_on_escape = false` and opens the menu some other way; Escape still closes it. In a browser, where Escape releases the mouse, the menu opens anyway and an Escape arriving right after is ignored so it does not flash shut.
+</Callout>
+
+<Related>
+- [dot-settings](/learn/godot/addons/dot-settings) — the values every row is a view of
+- [dot-ui](/learn/godot/addons/dot-ui) — screens and the HUD the menu draws on
+- [dot-server](/learn/godot/addons/dot-server) — the roster the scoreboard shows
+- [Reference games](/learn/godot/games) — every game uses it
+</Related>

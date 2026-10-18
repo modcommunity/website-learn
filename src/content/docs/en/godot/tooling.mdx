@@ -1,6 +1,6 @@
 ---
 title: Tooling
-description: dotserve, the shell launcher that starts a dot-server without knowing how dot-server works, and TMC's server tool — YAML configuration, games out of a directory, and a browser client.
+description: dotserve, the shell launcher that starts a dot-server without knowing how dot-server works, TMC's server tool (YAML configuration, games out of a directory, a browser client), and dot-ci, the shared CI every repository calls.
 navTitle: Tooling
 order: 60
 keywords:
@@ -13,9 +13,12 @@ keywords:
   - "hosting"
   - "browser client"
   - "export web"
+  - "ci"
+  - "github actions"
+  - "dot-ci"
 source:
-  - ../game-dev/godot/dot-serve/README.md
-  - ../game-dev/godot/dot-server-deploy/README.md
+  - dev02:godot/dot-serve/README.md
+  - dev02:godot/dot-server-deploy/README.md
 ---
 
 [`dot-server`](/learn/godot/addons/dot-server) is deeply configurable — cvars,
@@ -163,6 +166,27 @@ translation.
 </Callout>
 
 It is also where every game in the collection is published as a pack and switched between under live players, and the first place anything in this collection was loaded in a browser.
+
+## `dot-ci`
+
+**What it is:** the shared continuous integration for the whole collection, as three reusable GitHub Actions workflows (`validate`, `release`, `release-maps`) and a handful of shell scripts. Like `dotserve` it is not a Godot project: nothing in it is ever linked into one.
+
+**When you want it:** you keep a Dot project in a public GitHub repository and want every push checked the way the collection is checked, and tagged releases packaged, without writing any of the logic yourself.
+
+A repository calls it with about twenty lines:
+
+```yaml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  validate:
+    uses: modcommunity/dot-ci/.github/workflows/validate.yml@v1
+```
+
+`validate` fetches the pinned Godot runtime, clones the addons your project lists in its `.gitignore`, runs the `--import` pass, parses every tracked script, runs every suite under a timeout, and reads each suite's stderr even when it exits 0 — the same two steps as [Installing](/learn/godot/installing#the-two-step-check). `release` runs on a `v*` tag, attaches the artifact and a `SHA256SUMS` file, and for a game builds its content pack as well. It signs nothing: a pack's signature is made on a machine that holds the key ([dot-cloud](/learn/godot/addons/dot-cloud)).
 
 <Related>
 - [`dot-server`](/learn/godot/addons/dot-server)

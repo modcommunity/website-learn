@@ -1,6 +1,6 @@
 ---
 title: The addons
-description: All fifty-eight Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
+description: All sixty-one Dot addons for Godot 4 — what each one is for, what it depends on, and where a game plugs into it.
 order: 40
 badge: updated
 keywords:
@@ -12,12 +12,12 @@ keywords:
   - "dot-server"
   - "dot-player"
 source:
-  - ../game-dev/docs/family.md
-  - ../game-dev/CLAUDE.md
-  - ../game-dev/docs/projects.md
+  - dev02:docs/family.md
+  - dev02:CLAUDE.md
+  - dev02:docs/projects.md
 ---
 
-Fifty-eight addons that work together and, apart from `dot-core`, work independently.
+Sixty-one addons that work together and, apart from `dot-core`, work independently.
 Each is its own repository under
 [`modcommunity`](https://github.com/modcommunity), each ships one
 `addons/<name>/` folder, and each has its own headless test suite.
@@ -28,13 +28,32 @@ Everything in an *optionally* column is duck-typed or found through
 those addons names another's identifiers — because in GDScript a script that mentions a
 missing `class_name` fails to parse and takes everything referencing it down with it.
 
-Eight are the exception that proves the rule, and each says so: `dot-npc-ai` and
+Nine are the exception that proves the rule, and each says so: `dot-npc-ai` and
 `dot-npc-ai-director` need `dot-npc`; `dot-player-controller`, `dot-player-char`
 and `dot-player-class` need `dot-player`; `dot-server-query` and
 `dot-server-security` need `dot-server`, because each one *is* a piece of a
-server rather than something a server optionally consults; and `dot-game` needs
-`dot-server` and `dot-net` together, because it is the wiring *between* them.
+server rather than something a server optionally consults; `dot-game` needs
+`dot-server` and `dot-net` together, because it is the wiring *between* them; and
+`dot-menu` needs `dot-ui` and `dot-settings`, because it is a screen built out of the two.
 </Callout>
+
+## Where to start
+
+Most games take a handful of these, not all. Find what you want to build:
+
+| You want | Start with |
+| --- | --- |
+| Any Dot addon at all | [dot-core](/learn/godot/addons/dot-core), always first |
+| A player you can walk around as, ready for multiplayer | [dot-player](/learn/godot/addons/dot-player) and [dot-player-controller](/learn/godot/addons/dot-player-controller) |
+| Shooting and damage | [dot-combat](/learn/godot/addons/dot-combat) and [dot-weapon](/learn/godot/addons/dot-weapon) |
+| A match with rounds, teams and a scoreboard | [dot-match](/learn/godot/addons/dot-match), [dot-team](/learn/godot/addons/dot-team), [dot-menu](/learn/godot/addons/dot-menu) |
+| Computer-controlled opponents | [dot-bot](/learn/godot/addons/dot-bot) for players, [dot-npc](/learn/godot/addons/dot-npc) for creatures |
+| A server other people can join | [dot-server](/learn/godot/addons/dot-server) and [dot-game](/learn/godot/addons/dot-game), or run one with [Hosting a server](/learn/godot/hosting) |
+| Netcode: prediction, replication, lag compensation | [dot-net](/learn/godot/addons/dot-net) |
+| Sign-in and profiles from the site | [dot-auth](/learn/godot/addons/dot-auth) and [dot-user](/learn/godot/addons/dot-user) |
+| Settings, key bindings and an Escape menu | [dot-settings](/learn/godot/addons/dot-settings) and [dot-menu](/learn/godot/addons/dot-menu) |
+| A speedrun timer or leaderboard | [dot-timer](/learn/godot/addons/dot-timer), [dot-leaderboard](/learn/godot/addons/dot-leaderboard) |
+| Content delivered after install | [dot-cloud](/learn/godot/addons/dot-cloud) |
 
 ## The foundation
 
@@ -42,6 +61,7 @@ server rather than something a server optionally consults; and `dot-game` needs
 | --- | --- | --- |
 | [dot-core](/learn/godot/addons/dot-core) | — | Logging, platform capabilities, paths, configurable node references, layered config, frame-budgeted jobs, multiplayer transports, HTTP. |
 | [dot-log](/learn/godot/addons/dot-log) | dot-core | Where `DotLog`'s records actually go: a rotating file, a memory ring, syslog, a database table or a hosted collector — with flood collapsing, bounded queues and redaction done once in front of all of them. |
+| [dot-sql](/learn/godot/addons/dot-sql) | dot-core | SQLite, PostgreSQL and MySQL for an engine with no database client: drivers, dialects, tables as data and versioned migrations. Nothing depends on it. |
 | [dot-entity](/learn/godot/addons/dot-entity) | dot-core | The id space every world object shares. An allocator whose ids carry their own kind, lookups in both directions, and a record kept beside the node rather than on it. |
 
 ## The player
@@ -111,6 +131,7 @@ are. Every game in the collection uses these.
 | [dot-npc](/learn/godot/addons/dot-npc) | dot-core | What an NPC *is*: a catalogue, a population budget, perception that commits to a target, and navigation generated from a code-built map's own constants. |
 | [dot-npc-ai](/learn/godot/addons/dot-npc-ai) | dot-core, dot-npc | How one *decides*: behaviour trees that resume rather than restart, state machines, a blackboard that forgets, and a character instead of a difficulty setting. |
 | [dot-npc-ai-director](/learn/godot/addons/dot-npc-ai-director) | dot-core, dot-npc | Population and pacing: build up, sustain, fade, relax — driven by what the players are experiencing rather than by a timer. |
+| [dot-bot](/learn/godot/addons/dot-bot) | dot-core | Player bots: a brain that sees and aims like a person, four difficulty presets made of overridable `bot_*` cvars, names and a roster that fills empty seats. |
 | [dot-vehicle](/learn/godot/addons/dot-vehicle) | dot-core | Vehicles to drive, ride in and shoot from — and the handover, which is the part every game gets wrong. |
 | [dot-map](/learn/godot/addons/dot-map) | dot-core, *optionally* dot-cloud | Maps as content rather than as builds: a catalogue, a rotation, nominations and voting, and a loader that fetches through dot-cloud. |
 | [dot-props](/learn/godot/addons/dot-props) | dot-core | A sandbox layer: spawnable props, per-player budgets, an undo stack, a physics gun and a gravity gun. Server-authoritative. |
@@ -130,12 +151,17 @@ are. Every game in the collection uses these.
 | | Depends on | |
 | --- | --- | --- |
 | [dot-ui](/learn/godot/addons/dot-ui) | dot-core | Screens, HUD and menus with no art assets. A screen stack, a settings panel generated from any `DotConfig`, a rebinder with conflict detection. |
+| [dot-menu](/learn/godot/addons/dot-menu) | dot-core, dot-ui, dot-settings | The Escape menu as data: pages over settings with no Apply button, a key table, help, themes, a HUD layout editor and the Tab scoreboard. |
 | [dot-settings](/learn/godot/addons/dot-settings) | dot-core | Settings as a bounded document with three scopes — including the few a server may clamp and may never read. |
 | [dot-locale](/learn/godot/addons/dot-locale) | dot-core | Localisation that reads the website's own locale files, so a refusal key means the same thing on the site and in a game. ICU messages, CLDR plurals, pseudo-localisation. |
 | [dot-console](/learn/godot/addons/dot-console) | dot-core, *optionally* dot-server | The player's console: a physical key, a line, history, completion, a bounded scrollback — and command *sources* rather than a second command system. |
 | [dot-audio](/learn/godot/addons/dot-audio) | dot-core | Game audio that ships no audio: a catalogue of ids, pooled voices with priority stealing, concurrency caps, a distance cull, music and ducking. |
 | [dot-fx](/learn/godot/addons/dot-fx) | dot-core | Visual effects as documents: pooled, budgeted, quality-tiered, distance-culled. An effect never changes the simulation. |
 | [dot-lighting](/learn/godot/addons/dot-lighting) | dot-core | A world's lighting as a document: sun, ambient, fog, sky and post-processing, read from what a map carries, with a quality profile per machine. Not dot-fx, because lighting is not safe to drop. |
+
+## Not addons, but part of the collection
+
+Four projects are not folders you copy into a game. [`dot-serve`](/learn/godot/tooling#dotserve) and [`dot-server-deploy`](/learn/godot/tooling#tmcs-server-tool) start and host a server, [`dot-ci`](/learn/godot/tooling#dot-ci) is the shared CI every repository calls, and [`dot-game-template`](/learn/godot/games#dot-game-template) is a small complete game (Coin Grab) to copy a new project from. [`dot-bootstrap`](/learn/godot/getting-started) clones and links all of it.
 
 <Related>
 - [Getting started](/learn/godot/getting-started) — install one and run something

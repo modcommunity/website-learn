@@ -1,0 +1,89 @@
+---
+title: dot-bot
+description: Player bots that play like a person — a brain that sees only what a player could see, reacts late and misses at first, four difficulty presets made of individually overridable bot_* settings, a pool of names, and a roster that fills empty seats.
+navTitle: dot-bot
+order: 345
+badge: new
+keywords:
+  - "bot"
+  - "bots"
+  - "ai"
+  - "difficulty"
+  - "bot_difficulty"
+  - "aim"
+  - "roster"
+  - "hide and seek"
+source:
+  - dev02:godot/dot-bot/README.md
+  - dev02:godot/dot-bot/CLAUDE.md
+---
+
+**What it is.** `dot-bot` makes a computer-controlled **player**. Each tick the brain decides what a person would press — where to look, how to move, whether to shoot, crouch, jump or throw — and your game turns that into the same movement and weapon commands a client sends. A bot walks through your movement code and shoots through your weapons, so it cannot do anything a player could not.
+
+**When to use it.** Your game should not feel empty with two people in it, or you want practice opponents. For creatures that are *not* players (zombies, wildlife, a horde) use [dot-npc](/learn/godot/addons/dot-npc) and [dot-npc-ai](/learn/godot/addons/dot-npc-ai) instead.
+
+Requires `dot-core` and nothing else.
+
+## Minimal example
+
+You describe the world through callables, create one brain per bot, and each tick ask it what it would press.
+
+```gdscript
+var world := DotBotWorld.new()
+world.contacts_fn = func() -> Array: return my_players_as_contacts()   # Array of DotBotContact
+world.line_of_sight_fn = func(a: Vector3, b: Vector3) -> bool: return trace.line_of_sight(a, b)
+world.waypoints_fn = func() -> PackedVector3Array: return spawn_points
+
+var brain := DotBotBrain.new(bot_id, DotBotSettings.of(game))
+
+# Each tick:
+var intent := brain.think(me_as_contact, world, now)
+intent.write_move(move_command)     # yaw, pitch, move, crouch, jump
+intent.write_fire(fire_command)     # yaw, pitch, attack
+
+world.emit_sound(shooter_position, 1.0, shooter_id, now)   # on every gunshot, so bots hear it
+brain.hurt(attacker_eye_position, now)                      # when a bot is hit
+```
+
+`write_move` and `write_fire` read the button bits from your command's own constants, so `DotFpsCommand` from [dot-player-controller](/learn/godot/addons/dot-player-controller) and `DotWeaponCommand` from [dot-weapon](/learn/godot/addons/dot-weapon) work as they are. Without a `route_fn` a bot walks in a straight line, and without a `projectile_speed_fn` it aims every weapon as hitscan; supply them if your map has walls between waypoints or your weapons throw rockets.
+
+## What a bot knows and does
+
+The brain sees only what is inside its view cone and in line of sight, and hears gunshots within its hearing range. It reacts after a delay, its first shots miss by a few degrees and get better as the fight goes on, and its view turns at a limited speed. It keeps a preferred range, strafes, fires in bursts at range, backs out when badly hurt, pre-aims and re-peeks the corner a target went behind, throws a grenade at somebody who just took cover, and roams toward where it last knew of an enemy.
+
+## Difficulty is a preset, and every number is a cvar
+
+How well a bot does all that is a profile of about thirty numbers. `bot_difficulty` picks one of four presets — `easy`, `medium` (the default), `hard`, `nightmare` — and every number is its own cvar (`bot_reaction`, `bot_fov`, `bot_aim_error`, `bot_turn_rate`, `bot_grenades` and so on). A server owner picks a preset and then changes any single setting. A setting you set stays when the preset changes, `bot_settings` lists every value and marks the ones you set, and `bot_settings_reset` puts the preset's values back.
+
+Hard is meant to play like a good human. Nightmare is better than a human, but its reaction never drops to zero and its aim is never exact. `bot_through_walls` exists for testing and is off in every preset.
+
+```gdscript
+DotBotSettings.of(game).bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY, add_command)   # on a dot-server module
+DotBotSettings.of(game).bind_console(local_console)                                 # solo, on dot-console's DotConsoleLocal
+```
+
+## Names and the bot count
+
+A pool of bot names means a scoreboard never shows "Bot 2". `DotBotRoster` adds or removes bots to reach a count; [dot-server](/learn/godot/addons/dot-server)'s `DotBotQuota` says what the count should be given the humans present.
+
+```gdscript
+var roster := DotBotRoster.new()
+roster.keep(quota.wanted(humans, max_players), bot_ids,
+    func(name: String) -> int: return add_bot(name),
+    func(id: int) -> void: remove_bot(id),
+    names_in_use)
+```
+
+## Only the aim, or hiding and seeking
+
+A game that already decides what its bots do can use just `DotBotAim`, so its bots still turn, miss and react like the preset says. For games where bots hide and seek rather than fight, `DotBotNav` bakes a navigation mesh from the map's colliders, `DotBotHiding` scores hiding places by how many of the map's sight lines reach them, and `DotBotSearch` is a seeker's memory: likely places first, crossed off once looked at, places near a sound put back on the list. game-hide-n-seek's `game/hs_bots.gd` is the worked example.
+
+## Testing
+
+The addon's repository has a headless self-test, `examples/bot_selftest.tscn`, run after the `--import` pass like every other suite ([Installing](/learn/godot/installing#the-two-step-check)). It measures each preset's reaction time, first-shot aim error, settled aim, turn speed and kill/death ratio against one scripted opponent.
+
+<Related>
+- [Reference games](/learn/godot/games) — nine games fill empty seats with these bots
+- [dot-npc-ai](/learn/godot/addons/dot-npc-ai) — decisions for creatures that are not players
+- [dot-console](/learn/godot/addons/dot-console) — where the `bot_*` cvars are typed
+</Related>

@@ -12,10 +12,10 @@ keywords:
   - "headless"
   - "--import"
 source:
-  - ../game-dev/godot/NOTES.md
-  - ../game-dev/CLAUDE.md
-  - ../game-dev/docs/engine.md
-  - ../game-dev/docs/development-setup.md
+  - dev02:godot/NOTES.md
+  - dev02:CLAUDE.md
+  - dev02:docs/engine.md
+  - dev02:docs/development-setup.md
 ---
 
 Every addon installs the same way, and the answer is deliberately boring:
@@ -95,7 +95,7 @@ that cannot go stale, because the repository that gains a dependency is the
 repository that has to ignore the link. The version before it carried four
 manifests and they had drifted to 19 of the 33 repositories the collection had
 at the time; one run now links getting on for three hundred folders across
-fifty-eight of them.
+every project.
 
 `--content-keys` is the one mode that is not about repositories:
 [dot-cloud](/learn/godot/addons/dot-cloud) refuses an unsigned manifest, so
@@ -113,8 +113,7 @@ and finds a Godot binary at run time.
 
 ## The two-step check
 
-There is no CI. Every project has the same two-step check and **both steps
-matter**.
+Every project has the same two-step check, and [`dot-ci`](/learn/godot/tooling#dot-ci) runs exactly these two steps on every push and tag. **Both steps matter**.
 
 ```bash
 cd <project>

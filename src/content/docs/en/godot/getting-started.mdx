@@ -19,18 +19,18 @@ keywords:
   - "contribute"
   - "open source"
 source:
-  - ../game-dev/CLAUDE.md
-  - ../game-dev/docs/family.md
-  - ../game-dev/docs/development-setup.md
-  - ../game-dev/godot/dot-bootstrap/README.md
-  - ../game-dev/godot/dot-server-deploy/README.md
+  - dev02:CLAUDE.md
+  - dev02:docs/family.md
+  - dev02:docs/development-setup.md
+  - dev02:godot/dot-bootstrap/README.md
+  - dev02:godot/dot-server-deploy/README.md
 ---
 
 **Dot** is The Modding Community's open-source game platform for Godot 4:
-fifty-eight addons, a launcher, a server tool and seven games that exist to run
+sixty-one addons, a launcher, a server tool and thirteen games that exist to run
 the addons together. Everything on
 [the play center](https://moddingcommunity.com/play) is built out of it, and all
-of it is MIT licensed: the addons under [`modcommunity`](https://github.com/modcommunity), the games under [`gamemann`](https://github.com/gamemann).
+of it is MIT licensed: the addons under [`modcommunity`](https://github.com/modcommunity), the games under [`zees-games`](https://github.com/zees-games).
 
 This page takes you from an empty directory to a game running locally, and then
 to a server other people can join.
@@ -93,20 +93,22 @@ repository with uncommitted work in it is reported and left alone.
 | `./bootstrap.sh --links` | Only redo the addon links. |
 | `./bootstrap.sh --status` | Branch, dirty and unpushed, per repository. |
 | `./bootstrap.sh --check` | Does `projects.tsv` still agree with the disk? |
+| `./bootstrap.sh --only wipeout` | Just that game and what it needs (its addons, packs, maps): short names, a `'mg-*'` wildcard, `--no-deps` for the one repository alone. |
 | `./bootstrap.sh --list` | What there is to play. |
 | `./bootstrap.sh --play <name>` | Play one, offline. |
 | `./bootstrap.sh --content-keys` | Give this machine a content signing key, so it can publish packs. |
 
 Each has a `-Links`, `-Status`, `-Check`, `-List`, `-Play`, `-ContentKeys`
-counterpart on Windows. `--https` reaches GitHub over HTTPS rather than SSH —
-the assets are public, so cloning and pulling need no credentials at all, and
-the script falls back to it on its own if SSH is unavailable.
+counterpart on Windows. Cloning is over HTTPS by default: the assets are
+public, so cloning and pulling need no credentials at all. `--ssh` clones over
+SSH instead, for a machine you push from, and falls back to HTTPS if the key is
+missing.
 
 <Callout type="info" title="Do not make the addon links by hand">
 Every project except `dot-core` needs `dot-core` present just to *open*, and a
 game needs every addon it uses. Those links are gitignored, because a consumer
 copies the folders instead — so a fresh clone of `game-arena` does not open
-until something has linked **forty-two** addons into it. Across the whole
+until something has linked dozens of addons into it. Across the whole
 collection one run makes getting on for three hundred.
 </Callout>
 
@@ -205,7 +207,7 @@ getting the listing on the site to say you are up.
 
 <Cards>
   <Card title="The addons" href="/learn/godot/addons">
-    All fifty-eight, grouped by what they are for, with every hook each exposes.
+    All sixty-one, grouped by what they are for, with every hook each exposes.
   </Card>
   <Card title="Conventions" href="/learn/godot/conventions">
     The rules every addon obeys — no autoloads, `DotResult`, `DotNodeRef`,

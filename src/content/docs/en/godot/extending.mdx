@@ -15,9 +15,9 @@ keywords:
   - "abstract"
   - "customise"
 source:
-  - ../game-dev/CLAUDE.md
-  - ../game-dev/docs/extension-points.md
-  - ../game-dev/docs/family.md
+  - dev02:CLAUDE.md
+  - dev02:docs/extension-points.md
+  - dev02:docs/family.md
 ---
 
 **Nothing in the collection should require a fork.** A change that makes one of
@@ -110,7 +110,7 @@ at tells you where to look for it.
 | What can be spawned, and how much of it | `DotPropCatalogue`, `DotPropLimits` |
 | A new sandbox tool, or a weapon | `DotPropTool` subclass |
 | A prop that has code | `DotPropDef.meta.script`, a PATH |
-| What a weapon is | `DotWeapon`, and `DotDamageType` for how it hurts |
+| What a weapon is | `DotWeaponDef`, and `DotDamageType` for how it hurts |
 | Where a shot goes | `DotTrace` subclass — `DotTracePhysics` or `DotTraceFlat` |
 | Named body regions and their multipliers | `DotHitGroup`, a table rather than an enum |
 | Friendly fire, self damage, clamping | `DotDamageRules`, plus `DotDamageResolver.adjust` |
@@ -325,7 +325,7 @@ No code, no subclass — a `.tres` or a JSON file.
 | `DotFpsModifier` | A temporary change: speed pad, slow field, stun, launcher |
 | `DotFpsStyle` | A named variation — sideways, backwards, low gravity, prebhop |
 | `Dot2DTunables` / `Dot2DMassRules` | Top-down, thrust or blob; and how mass becomes size, speed and the right to eat somebody |
-| `DotWeapon` / `DotDamageType` / `DotHitGroup` | What a weapon is, how it hurts, and what a headshot is worth |
+| `DotWeaponDef` / `DotDamageType` / `DotHitGroup` | What a weapon is, how it hurts, and what a headshot is worth |
 | `DotDamageRules` | Friendly fire, self damage, falloff, clamping — in one order, once |
 | `DotItem` / `DotLoadoutSlot` / `DotLoadoutSchema` | A game mode's equipment rules |
 | `DotAvatarSchema` / `DotAvatarSlot` / `DotAvatarPart` | What parts exist and what values are legal |

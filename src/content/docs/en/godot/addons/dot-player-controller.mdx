@@ -23,15 +23,30 @@ keywords:
   - "touch controls"
   - "dot-fps-controller"
 source:
-  - ../game-dev/godot/dot-player-controller/README.md
-  - ../game-dev/godot/dot-player-controller/CLAUDE.md
-  - ../game-dev/godot/dot-player-controller/docs/extending.md
-  - ../game-dev/godot/dot-player-controller/docs/motor.md
-  - ../game-dev/godot/dot-player-controller/docs/design.md
-  - ../game-dev/godot/dot-player-controller/docs/networking.md
+  - dev02:godot/dot-player-controller/README.md
+  - dev02:godot/dot-player-controller/CLAUDE.md
+  - dev02:godot/dot-player-controller/docs/extending.md
+  - dev02:godot/dot-player-controller/docs/motor.md
+  - dev02:godot/dot-player-controller/docs/design.md
+  - dev02:godot/dot-player-controller/docs/networking.md
 ---
 
-`dot-player-controller` is the layer between input and a player's body. It ships
+**What it is.** The layer between a player's input and a player's body: it turns "forward, jump, look left" into movement the same way on the client that predicts it and on the server that checks it.
+
+**When to use it.** You want a first-person or third-person character that is ready for multiplayer, with movement feel you can tune from a file. For a top-down or thrust-driven game use [dot-2d](/learn/godot/addons/dot-2d) instead.
+
+**Smallest setup.** A `CharacterBody3D` with a collider, a head with a camera, and two child nodes. Nothing is wired by hand: the view finds the camera by type and the controller finds the collider and the view the same way.
+
+```
+Player (CharacterBody3D)
+ ├── Collision   (CollisionShape3D)
+ ├── Head        (Node3D)
+ │    └── Camera (Camera3D)
+ ├── View        (DotFpsView)
+ └── Controller  (DotFpsController)
+```
+
+In detail, `dot-player-controller` ships
 an abstract base, a first-person movement model written to be predicted and
 reconciled, a third-person orbit rig, and a switch that hands control from one
 to the other.

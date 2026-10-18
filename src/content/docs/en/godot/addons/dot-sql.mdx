@@ -1,0 +1,83 @@
+---
+title: dot-sql
+description: A database layer for Godot, which has none — SQLite directly, PostgreSQL and MySQL through a small HTTP gateway, tables described as data, and versioned migrations. No other addon depends on it.
+navTitle: dot-sql
+order: 472
+badge: new
+keywords:
+  - "sql"
+  - "sqlite"
+  - "postgresql"
+  - "postgres"
+  - "mysql"
+  - "database"
+  - "migration"
+  - "gateway"
+source:
+  - dev02:godot/dot-sql/README.md
+  - dev02:godot/dot-sql/CLAUDE.md
+---
+
+**What it is.** Godot has no database client: no SQLite, PostgreSQL or MySQL class in the engine. `dot-sql` is the one layer the rest of the collection uses to get one.
+
+**When to use it.** A server should keep something across restarts (timer records, bans, leaderboards, achievements, stats), or several servers should share one database. If a JSON file in `user://` is enough, you do not need it.
+
+Requires `dot-core` and nothing else.
+
+## Minimal example
+
+```gdscript
+# One SQLite file on this server:
+var made := DotSql.from_config({"driver": "sqlite", "path": "user://game.db"}, self)
+
+# Or a shared MySQL or PostgreSQL database through the gateway:
+var made := DotSql.from_config({
+    "driver": "gateway", "dialect": "mysql",
+    "url": "http://10.0.0.5:8780", "token": "from your config file",
+}, self)
+
+var store := DotTimerStoreSql.new(made.value)   # any addon's SQL store takes the driver
+await store.open()                               # creates or migrates its tables
+timers.store = store
+```
+
+`from_config` returns a `DotResult`, so check `made.ok` first. Keep the token in the config file: environment variables and command line arguments are readable by every process on the machine.
+
+## The pieces
+
+| Piece | What it is |
+| --- | --- |
+| `DotSqlDriverSqlite` | SQLite through the godot-sqlite GDExtension. One server, one file. |
+| `DotSqlDriverGateway` | PostgreSQL, MySQL/MariaDB or SQLite through a small HTTP gateway that runs beside the database. Several servers, one database. |
+| `tools/sql_gateway.py` | A reference gateway, about two hundred lines of Python. |
+| `DotSqlDialect` | Every place the databases differ: column types, upserts, placeholders, reserved words. |
+| `DotSqlSchema` | Tables described as plain data and turned into the right SQL for each database. |
+| `DotSqlMigrator` | Versioned schema changes, one counter per asset, so an older table grows the columns a newer build needs. |
+
+## Nothing depends on it
+
+[dot-timer](/learn/godot/addons/dot-timer), [dot-moderation](/learn/godot/addons/dot-moderation), [dot-leaderboard](/learn/godot/addons/dot-leaderboard), [dot-achievements](/learn/godot/addons/dot-achievements) and [dot-stats](/learn/godot/addons/dot-stats) each have a SQL store, and none of them names a class from this addon. They hold the driver in an untyped variable and call five methods on it (`query`, `execute`, `batch`, `upsert_sql`, `migrate`), so they still load in a project that does not have `dot-sql`. SQL is something you add when you want it.
+
+## Why PostgreSQL and MySQL go through HTTP
+
+Speaking either wire protocol from GDScript means implementing an authentication handshake, a binary format and a connection pool, and a half-finished version of that is a security problem. A gateway is also the safer setup: the database password stays on the gateway's machine instead of on every game server, and the gateway connects as a database user that can only touch the game's tables. It takes a bearer token on every request, so keep it on a private address or put TLS in front of it.
+
+```bash
+pip install "psycopg[binary]" pymysql      # only the one you need
+echo "a long random token" > gateway.token
+python3 tools/sql_gateway.py --dialect mysql --dsn mysql://user:pass@127.0.0.1:3306/game --token-file gateway.token
+```
+
+<Callout type="warning" title="Two limits">
+The SQLite driver needs the godot-sqlite GDExtension, which this addon does not ship: `tools/fetch_sqlite.sh <your project>` installs a pinned, checksummed release. The reference gateway handles one request at a time, which is fine for a few servers; it is meant to be copied, not scaled.
+</Callout>
+
+## Testing
+
+`examples/sql_selftest.tscn` needs no database (dialects, placeholders, table specs, upserts, migrations, config). `tools/test_live.sh` runs real tables, upserts and transactions against SQLite, and against PostgreSQL and MySQL too when `DOT_SQL_PG_DSN` and `DOT_SQL_MYSQL_DSN` are set.
+
+<Related>
+- [dot-timer](/learn/godot/addons/dot-timer) — records kept in a store
+- [dot-moderation](/learn/godot/addons/dot-moderation) — bans kept in a store
+- [dot-log](/learn/godot/addons/dot-log) — a log sink that writes to a SQL table
+</Related>
