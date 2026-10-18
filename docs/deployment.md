@@ -35,13 +35,13 @@ Those two prefixes cover the whole build, which is what `build.assets: 'learn/_a
 
 ## On its own origin: `PUBLIC_MAIN_URL`, not `PUBLIC_URL`
 
-The shell's links are bare paths. `nav.tsx` holds `/mods`, not an absolute URL, so the shared Header can match them against `activePath`, and a bare path resolves against whatever host served the page. On the docs host every header entry would point at a page the docs host does not have.
+The shell's links are bare paths. The shared chrome data holds `/mods`, not an absolute URL, so the shared Header can match them against `activePath`, and a bare path resolves against whatever host served the page. On the docs host every header entry would point at a page the docs host does not have.
 
-`PUBLIC_MAIN_URL` is the fix, applied at render time in `i18n/link.tsx` and in the three places that hand-roll an anchor: `AccountButton`, `SiteSidebar`'s share card, and the `a` in `components/docs/mdx.tsx` for prose links. Unset, every link stays relative, so a main-domain deploy costs nothing.
+`PUBLIC_MAIN_URL` is the fix, applied at render time in `i18n/link.tsx` and in the three places that build an anchor outside it: the shared `AccountButton` (given `cityUrl={MAIN_URL}` in `SiteHeader`), `SiteSidebar`'s share card, and the `a` in `components/docs/mdx.tsx` for prose links. Unset, every link stays relative, so a main-domain deploy costs nothing.
 
 **`PUBLIC_URL` is not that variable**, and setting it instead is the natural mistake: it is this build's own origin (canonical, hreflang, Open Graph and the sitemap), so on a subdomain it is the docs host, not the main site.
 
-Outside this repo: website-city's `AUTH_COOKIE_DOMAIN` must be set to the shared parent domain, or the `tmc_auth` hint cookie stays host-only and `lib/auth-hint.ts` sees a signed-in reader as signed out, and the `tmc_locale` language cookie stays host-only so a language picked on the app never reaches the docs. This repo derives the same domain from `PUBLIC_MAIN_URL` (`i18n/cookie.ts`, and the inline script in `Layout.astro` that sends an unprefixed page to the reader's language).
+Outside this repo: website-city's `AUTH_COOKIE_DOMAIN` must be set to the shared parent domain, or the `tmc_auth` hint cookie stays host-only and `lib/auth-hint.ts` sees a signed-in reader as signed out, and the `tmc_locale` language cookie stays host-only so a language picked on the app never reaches the docs. This repo derives the same domain from `PUBLIC_MAIN_URL` (`WriteLocaleCookie(next, { mainUrl: MAIN_URL })` in `SiteHeader`, and the inline script in `Layout.astro` that sends an unprefixed page to the reader's language).
 
 ## Sitemap and reserved paths
 

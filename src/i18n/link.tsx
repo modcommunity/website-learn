@@ -6,7 +6,7 @@ import { track } from '../lib/umami'
 /**
  * Locale-aware link for the shared Header / Sidebar / Footer.
  *
- * The nav configs in `nav.tsx` keep **bare** hrefs (`/mods`, `/tos`) because the
+ * The shared chrome (`chrome.ts`, over the package's `site-nav.json`) keeps **bare** hrefs (`/mods`, `/tos`) because the
  * shared components match them against `activePath` to highlight the current
  * entry — prefixing them there would break that comparison. So the prefix is
  * applied at render time instead: this is passed as `linkComponent`, and every
@@ -19,7 +19,7 @@ import { track } from '../lib/umami'
  * The ORIGIN is applied here for the same reason. On a docs-subdomain deploy
  * every entry in this shell except the docs themselves belongs to another host,
  * and a bare `/mods` would resolve against the docs origin — see `mainUrl` in
- * `lib/site.ts`. Applied at render time rather than in `nav.tsx` so `activePath`
+ * `lib/site.ts`. Applied at render time rather than in the chrome data so `activePath`
  * still has bare paths to compare against, exactly like the locale prefix.
  */
 function isInternal(href: string): boolean {

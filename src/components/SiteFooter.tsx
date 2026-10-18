@@ -1,27 +1,24 @@
 import { Footer } from '@modcommunity/shared'
 import BrandLogo from './BrandLogo'
-import { getT } from '../i18n/t'
-import { buildFooterColumns, SOCIALS } from '../i18n/nav'
+import { learnChrome } from '../i18n/chrome'
 import { localeLink } from '../i18n/link'
 
-/** The landing site's footer — the shared website-city <Footer>, translated. */
+/** The docs site's footer: the shared website-city <Footer> over the shared chrome. */
 export default function SiteFooter({ locale = 'en' }: { locale?: string }) {
-    const t = getT(locale)
-    // UTC, matching website-city's footer. `getFullYear()` reads the runtime's
-    // local zone — the build machine's when the page is generated, the viewer's
-    // when this island hydrates — and around New Year those disagree, so the
-    // copyright text node changes under the reader for no reason.
-    const year = new Date().getUTCFullYear()
+    // The copyright year is UTC inside `buildChrome`, matching website-city's
+    // footer: a local-zone year differs between the build machine and the
+    // viewer around New Year, and the text node would change on hydration.
+    const { footer, socials, slogan, copyright } = learnChrome(locale)
+    const Link = localeLink(locale)
 
     return (
         <Footer
-            year={year}
-            slogan={t('footer.slogan')}
-            columns={buildFooterColumns(t)}
-            socials={SOCIALS}
-            linkComponent={localeLink(locale)}
-            logo={<BrandLogo linkComponent={localeLink(locale)} />}
-            copyright={t('footer.copyright', { year })}
+            slogan={slogan}
+            columns={footer}
+            socials={socials}
+            linkComponent={Link}
+            logo={<BrandLogo linkComponent={Link} />}
+            copyright={copyright}
         />
     )
 }

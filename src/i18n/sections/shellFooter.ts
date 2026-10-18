@@ -7,17 +7,14 @@ import type { LocaleT } from '../config'
  * (`slogan`, `copyright`, `headings.*`, `links.*`), and the shape is nested so
  * `getT` can resolve it by dot-path.
  *
- * Keep in sync with website-city's `FOOTER_LINKS`
- * (`src/app/_components/ui/shell/nav-config.ts`) — that config is the source of
- * truth for which links the footer shows, in which column and in what order;
- * this file only carries their text.
+ * Which links the footer shows, in which column and in what order is not
+ * decided here: it is the shared `site-nav.json`, rendered by `buildChrome`
+ * (`../chrome.ts`), which reads these keys through `ShellCatalogKey`
+ * (`footer.*` maps one-to-one). This file only carries the text.
  *
- * The ONE key that is deliberately not city's text is `copyright`: it names
- * the operating entity, `TekWorks LLC`, with `The Modding Community` as its
- * DBA — the same line website-processing carries, word for word in every
- * locale. City's footer.json still has the older entity-less line and is
- * expected to gain this wording; do not copy city's back over it.
- * ~/stack/scripts/check-layout-sync.sh reports city as stale until it does.
+ * `copyright` is city's line too: it names the operating entity, The Modding
+ * Community as a DBA of TekWorks LLC, in every locale, and city's footer.json
+ * carries the same wording, so there is no exception to keep here any more.
  *
  * City now translates every one of these keys itself, so nothing here is
  * English-only any more (most of the second, third and fourth columns used to

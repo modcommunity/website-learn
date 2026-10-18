@@ -99,13 +99,13 @@ const desc = descMeta ?? import.meta.env.PUBLIC_DESCRIPTION ?? "Documentation fo
 			Follow the language the reader picked on any of our sites.
 
 			`tmc_locale` is shared with website-city and website-processing (on
-			the main domain, see `i18n/cookie.ts`). This build is static, so the
+			the main domain, see `WriteLocaleCookie` in `@modcommunity/shared/i18n`). This build is static, so the
 			check website-city's middleware makes on the server happens here,
 			before first paint: an unprefixed (English) docs URL with a non-English
 			cookie goes to its prefixed copy, which is what a reader following an
 			unlocalized link from the app needs. A prefixed URL is an explicit
 			choice and wins, so it writes the cookie instead, as the middleware's
-			`syncCookie` does. The domain check repeats `localeCookieDomain()`.
+			`syncCookie` does. The domain check repeats `WriteLocaleCookie`'s.
 		-->
 		<script is:inline define:vars={{ mainHost, locales: LOCALES }}>
 			(function () {

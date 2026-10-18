@@ -25,6 +25,6 @@ The same as website-processing ([its dependencies doc](../../website-processing/
 
 ## One deliberate divergence from city's nav
 
-City, website-processing and this site all carry the same **Docs** leaf (top of the header's Resources menu, the footer's Resources column, the rail's Resources section). City and processing point it at `https://docs.moddingcommunity.com`; `src/i18n/nav.tsx` points it at `/learn`, because a docs site should not leave its own origin to reach itself. That href is the one place the navs differ.
+City, website-processing and this site all carry the same **Docs** leaf (top of the header's Resources menu, the footer's Resources column, the rail's Resources section). City and processing point it at `https://docs.moddingcommunity.com`; here it is `/learn`, because a docs site should not leave its own origin to reach itself. That href is the one place the navs differ, and it lives in the package as data (`SITE_CHROME_OVERRIDES.learn`), not here: `src/i18n/chrome.ts` is one `buildChrome({ site: 'learn', … })` call, so this repo holds no copy of the link lists.
 
 Everything else in the chrome (header, rail, footer columns, social row, copyright) must match website-city. `~/stack/scripts/check-layout-sync.sh` compares them in all nine locales (it treats `/learn` as the docs URL) and prints a diff on drift; the structure is also published as `tmc-global/shared/src/data/site-nav.json`.

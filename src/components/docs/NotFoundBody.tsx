@@ -16,7 +16,7 @@ import { track } from '../../lib/umami'
  * after mount.
  *
  * First paint is the default locale, deterministically, so there is no
- * hydration mismatch — the same trick `AccountButton` uses for the auth hint.
+ * hydration mismatch — the same trick the header uses for the auth hint.
  */
 export default function NotFoundBody() {
     const [locale, setLocale] = useState<LocaleT>(DEFAULT_LOCALE)

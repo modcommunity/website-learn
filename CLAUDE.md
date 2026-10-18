@@ -14,7 +14,7 @@ The Astro + React static site for The Modding Community's documentation: guides 
 | `src/layouts/DocsLayout.astro` | The three columns inside `Layout.astro`'s `<main>` |
 | `src/components/docs/` | `mdx.tsx` (the MDX component set), `DocsNav`, `DocsSearch`, `DocsToc`, `Pager` |
 | `src/lib/search.ts` | The pure search scorer, tested by `search.test.ts` |
-| `src/i18n/` | Shell strings (`sections/docsUi.ts`), `nav.tsx`, `link.tsx` (applies `PUBLIC_MAIN_URL`) |
+| `src/i18n/` | Shell strings (`sections/docsUi.ts`), `chrome.ts` (the shared `buildChrome` call), `link.tsx` (applies `PUBLIC_MAIN_URL`) |
 | `src/styles/components/Docs.css` | Docs shell and prose styles, Shiki colours |
 | `scripts/docs-lint.mjs`, `overflow-audit.mjs` | Link/anchor/NUL check; horizontal-overflow audit |
 | `Dockerfile`, `docker/nginx.conf.template` | The deploy image and its nginx |

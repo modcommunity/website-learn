@@ -24,27 +24,6 @@ export const NON_DEFAULT_LOCALES = LOCALES.filter(
     (l): l is Exclude<LocaleT, 'en'> => l !== DEFAULT_LOCALE
 )
 
-/**
- * Display metadata for the language picker. `short` is the two-letter trigger
- * label; `name` is the endonym (a Spanish speaker scans for "Español", not
- * "Spanish"), matching website-city.
- */
-export const LOCALE_INFO: Record<LocaleT, { short: string; name: string }> = {
-    en: { short: 'EN', name: 'English' },
-    es: { short: 'ES', name: 'Español' },
-    fr: { short: 'FR', name: 'Français' },
-    de: { short: 'DE', name: 'Deutsch' },
-    ru: { short: 'RU', name: 'Русский' },
-    nl: { short: 'NL', name: 'Nederlands' },
-    ja: { short: 'JA', name: '日本語' },
-    zh: { short: 'ZH', name: '中文' },
-    pt: { short: 'PT', name: 'Português' },
-}
-
-/** The cookie website-city's next-intl reads for locale detection; we set it too
- *  so a language choice on the landing site carries over to the app. */
-export const LOCALE_COOKIE = 'tmc_locale'
-
 /** Narrowing helper for untrusted input (route params, cookies). */
 export function isLocale(value: unknown): value is LocaleT {
     return (
