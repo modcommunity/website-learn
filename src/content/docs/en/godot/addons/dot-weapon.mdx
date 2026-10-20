@@ -164,6 +164,14 @@ Scatter is a hash of the shooter, the tick, the use index and the pellet index.
   </Param>
 </Params>
 
+## Weapons from mounted packs
+
+`DotWeaponCatalogue.follow_content()` reads weapon entries from a `DotContentIndex` (the shared one by default, from [dot-core](/learn/godot/addons/dot-core)), so a weapon pack mounted at run time shows up without the game naming it. Only the current session's packs count (solo or online), so leaving a server forgets what it delivered; weapons written in code stay, and **code wins an id clash**. `listings()`, `listing()` and `categories()` give `DotWeaponListing` rows for a menu, and `weapon_added` and `listings_changed` say when the table moved. `unfollow_content()` stops following. Order does not matter: a catalogue built before the first mount and one built after it see the same table.
+
+## Tick counts follow the running rate
+
+A definition's tick counts (use interval, reload, charge) are written against some tick rate. Set `DotWeaponDef.authored_tick_rate` to that rate and the arsenal rescales them to the rate the game runs at (`ticks_at`, `per_tick_at`); zero, the default, means the row was written for the running rate and nothing changes. A count above zero never rounds down to zero, because zero means "every tick" or "instantly", which is not what was written. A behaviour that counts ticks itself asks `scaled_ticks` and `running_tick_rate`.
+
 ## Ammunition is pooled by name
 
 Two weapons declaring the same ammo type draw from one reserve, so a pistol and

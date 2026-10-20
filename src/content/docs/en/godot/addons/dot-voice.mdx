@@ -53,6 +53,22 @@ packet, the router and the jitter buffer all run the code a player runs.
 `DotVoiceConfig.format_fingerprint()` is one number to exchange at handshake,
 because a mismatch is not an error — it is noise, or speech at the wrong speed.
 
+## The server's switch and the game's channel
+
+`sv_voice_enable` turns voice off on the router, which then relays nothing (quietly, and counted), and `sv_voice_mode` forces a channel over the game's own. Register them with `DotVoiceRouter.bind_cvars(add, FLAG_REPLICATED)` on the authoritative router; clients call `DotVoiceManager.follow_cvars(link)` and only hide their key, because the enforcement is the server's. If the shell has not published its link yet, `follow_cvars(null)` waits for it.
+
+**Every packet is relayed on the router's `default_channel`, never the one the client wrote.** That field was once never read, so every game that chose team or proximity voice relayed to everybody. `honour_packet_channel` opts back into the packet's field.
+
+## Proximity, gag and mute
+
+Proximity voice is a gain the server works out per listener and carries in the packet's flags byte (the version stays 2); a packet past the radius is not sent at all, and the router resets any gain bits a client wrote. The cvars are `sv_voice_proximity_range`, `_min`, `_falloff`, `_occlusion`, `_occlusion_gain`, `_team_bypass` and `_global_bypass`. Occlusion stays off until the game sets `occlusion_fn` and turns the cvar on. `DotVoiceProximity` holds the falloff curves and a ray occluder.
+
+`DotVoiceLookMute` lets a player look at a speaker: a tap on `voice_gag` gags them, a double tap on `voice_mute` mutes them. Both are rebindable and **local to that player's machine**, kept apart from `local_mutes` so a chat `sm` and a look-mute do not undo each other. The server only says whether they are allowed: `sv_voice_gag_allowed`, `sv_voice_mute_allowed` and `sv_voice_gag_default`.
+
+## The microphone opens on the first press
+
+`DotVoiceManager.update_talk(held)` opens the microphone on the first press of the talk key (`TALK_ACTION`, `dot_voice_talk`, V by default). That press is the player's consent, and it is the user gesture a browser insists on before it will grant a microphone. A voice build in a browser needs the project's `audio/driver/enable_input` on, and for a delivered game it is the client shell's setting that counts. Positional playback needs `speaker_position_fn`; without it voices are flat rather than sitting at the origin.
+
 ## Where a game plugs in
 
 | To change | Where |

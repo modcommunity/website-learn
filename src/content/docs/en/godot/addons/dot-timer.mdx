@@ -121,6 +121,9 @@ without it. That is what lets the same timer, records and replay format serve a
     Clock, split against a personal best or the record, speedometer, strafe
     statistics. No art, no theme.
   </Param>
+  <Param name="DotTimerSplitsPanel">
+    A quiet stage-splits sidebar for a staged map: one row per section (the last is "Finish"), the delta against a comparison, the cumulative time, and a footer with the sum of best and the possible time save. It is fed, not polled: call `set_reference` when the map, the comparison or the records change and `show_run` once a frame. A reference set while a run is going applies when the next run starts, so a run is compared with the one it began with. Give it a full-rect `Control`, as with `DotTimerHud`.
+  </Param>
   <Param name="Signals">
     `run_started`, `run_finished`, `run_stopped`, `stage_reached`,
     `zone_entered`, `zone_exited`, `zones_changed`, `player_started`,

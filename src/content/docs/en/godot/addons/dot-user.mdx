@@ -90,6 +90,8 @@ else. Guests have no account name, so they can pick one.
     store that failed for them would make every new player a support ticket. A
     failure means the store could not *answer*, which the manager treats
     differently.
+
+    `Backbone` is in use: [dot-platform](/learn/godot/addons/dot-platform)'s `DotPlatformIdentity` builds it on the server's integration credential and routes only keys the site issued to it (the `scoped_key` claim). A key derived locally is one the backbone answers 404 for, so it stays on the local store. `DotUserStore.open()` runs one attempt at a time and a second caller waits for its result, so a manager's `_ready` and its host's `setup()` can both open it.
   </Param>
   <Param name="DotUserManager.name_filter" type="Callable">
     The policy hook for what a name may be, on top of the structural

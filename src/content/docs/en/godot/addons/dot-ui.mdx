@@ -59,12 +59,23 @@ takes rows of dictionaries.
 | `DotCrosshair` | Opens by the actual spread angle through the actual camera projection. |
 | `DotStarfield` | A parallax starfield drawn into any `CanvasItem`. Hashed, so nothing is stored. |
 | `DotFeedView` | A bounded, self-expiring list of coloured fragments. Kill feed and chat. |
-| `DotChatWindow` | A chat box: a log that fades, a line to type in, and a key that opens it. |
+| `DotChatWindow` | A chat box: a log that fades, a line to type in, and a key that opens it. It runs `!sm` and `/sm` itself (they are never sent as chat) and drops a speaker the player has muted for themselves; `self_mute_enabled` turns that off. |
 | `DotTableView` | Rows and columns. Scoreboard, server browser, ban list. |
 | `DotSettingsPanel` | Builds itself from a `DotConfig`. Never shows a secret. |
 | `DotBindingsPanel` | Rebinding, conflict detection, and a file that survives a restart. |
-| `DotInputBinding` | One binding as a short string — `"Y"`, `"Shift+A"`, `"Mouse 1"` — and back. |
+| `DotHudPiece` and the glance pieces | `DotVitals`, `DotAmmoCounter`, `DotScoreStrip`, `DotHitMarker`, `DotDamageNumbers`, `DotKeyPrompt`, `DotKeyHints`: the HUD a player reads at a glance. Values in, theme colours, bold outlined text that stays readable over a pale map. |
+| `DotInputBinding` | One binding as a short string — `"Y"`, `"Shift+A"`, `"Mouse 1"` — and back. The wheel and the side buttons have names ("Wheel up", "Mouse back"), and an old saved "Mouse 4" still reads. |
 | `DotBallotPanel` | A vote on the HUD: numbered options picked with a number key or a click, a countdown, and each voter's avatar sliding to the row they chose. Takes the dictionary [`dot-vote`](/learn/godot/addons/dot-vote)'s `DotVoteBallotView` builds and emits `chosen`; it names no dot-vote class. |
+
+## The glance pieces and the dark HUD
+
+The pieces draw from what they are handed (`show_vitals`, `show_ammo`, `show_clock`, `flash`, `add`), never from a game object, so a test drives one alone. Their colours are theme colours on the type `DotHudPiece` (`COLOUR_KEYS`), and an absent one falls back to `DotHudPiece.DEFAULTS`, so they need no theme. **The default is a dark HUD**: deep plates, white words ringed in black, dark key caps. A bright look is a theme a player picks, not the default.
+
+`DotHudPiece.theme_from(colours, constants)` builds the `Theme` a game sets on the node above its pieces. Every piece reads its colours when it draws, so setting a new one restyles the whole layer live with nothing rebuilt; plain `Label`s under that node get the theme's text colour outlined in its ink as well. `DotHud.user_scale` multiplies the HUD's fit to the frame (a player's size setting), and `DotHud.fit_control` does the same for a plain `Control` root.
+
+A piece that meets a visible member of the `dot_hud_cover` group (a `DotBallotPanel` joins it) dims, hides or ignores itself according to `cover_mode`, so a ballot never sits on top of the ammunition.
+
+`DotCrosshair` fades out while the player aims down sights: give it `aim_source` or call `set_aim()`, and tune `aim_fade_sec` and `aim_opacity`.
 
 ## `DotSettingsPanel` reads the config you already wrote
 

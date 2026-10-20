@@ -37,6 +37,8 @@ local `quit` quits the client rather than the dedicated server.
 | `DotConsoleBridge` | Wraps anything with `execute` (and uses `complete` when it has one), so a server's console becomes a source without this addon naming a type in it. |
 | `DotConsoleRemote` | A `send_fn` that puts the line on a wire, for RCON or a chat command. |
 
+`DotConsoleKit` puts a ready set of commands on a `DotConsoleLocal`, and since API level 3 that includes `sm`, the player's own block list: `sm` lists who is here and `sm <number|name|#userid>` mutes or unmutes that player's chat and voice on this client only. It is the same list the chat box's `!sm` runs, and `DotConsoleKit.add_self_mute(local)` returns false, adding nothing, when [dot-chat](/learn/godot/addons/dot-chat) is not in the build.
+
 ## Usage
 
 ```gdscript

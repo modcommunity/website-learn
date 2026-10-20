@@ -71,6 +71,10 @@ the past. Every path out of `resolve_shot()` restores it, **including the
 refusal paths** — a rewind that is never undone leaves the world permanently in
 the past, and the symptom is that shots quietly start missing for everyone.
 
+**A team-mate in the way.** A shot passes through a team-mate whose hitboxes already hold its muzzle (a passenger inside a vehicle, someone standing against the shooter), because otherwise the shot hits them or is blocked at once. The server cvar `mp_teammate_passthrough` widens that: `0` a team-mate is hit and blocks the shot, `1` (the default) a shot passes only through one at the muzzle, `2` shots pass through every team-mate in the line. Register it with `DotCombatManager.bind_cvars`, which keeps `DotDamageRules` in step live; `cvar_specs()` gives the same cvars as data for a host that registers its own way. Register it with dot-server's `FLAG_REPLICATED` and call `follow_cvars(source)` on each client's manager, so a client predicts the shot the server will resolve. A game whose "may stand inside whom" is not a team question assigns `pass_through_fn`.
+
+**Registrations that are ignored say so.** `register_hitboxes` and `register_health` with entity id 0 (reserved; register after the entity has a network id) or a null node used to vanish silently; they now log a warning through `DotLog` and are counted.
+
 ## Where a game plugs in
 
 <Params>

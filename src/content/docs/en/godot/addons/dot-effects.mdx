@@ -72,6 +72,8 @@ with 30 health, and the third time is the last.
 
 With `rules.downed_revive_scales` on (it is off by default), a second `begin_revive` joins the revive instead of replacing the reviver, and each reviver adds to the speed. `leave_revive(entity, by)` lets one go while the rest carry on; when the last one leaves, the revive is cancelled.
 
+The bleed-out pool keeps draining while a revive is held, on purpose: a rescue started in the last seconds is a gamble. An effect definition can set `ignores_falloff`, and `DotEffectManager.ignores_falloff(entity)` tells a game whether the damage an entity deals ignores distance falloff (a crit does), the same way it asks for `may_jump` or the scales.
+
 <Callout type="info" title="A cancelled revive throws its progress away">
 If progress were kept, two players could chip at a revive a second at a time
 from behind cover — and the cost of a revive is meant to be a stretch of time

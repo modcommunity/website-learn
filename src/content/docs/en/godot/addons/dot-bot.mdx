@@ -78,6 +78,14 @@ roster.keep(quota.wanted(humans, max_players), bot_ids,
 
 A game that already decides what its bots do can use just `DotBotAim`, so its bots still turn, miss and react like the preset says. For games where bots hide and seek rather than fight, `DotBotNav` bakes a navigation mesh from the map's colliders, `DotBotHiding` scores hiding places by how many of the map's sight lines reach them, and `DotBotSearch` is a seeker's memory: likely places first, crossed off once looked at, places near a sound put back on the list. game-hide-n-seek's `game/hs_bots.gd` is the worked example.
 
+A map too big to bake inside one tick (seconds, not milliseconds) uses `DotBotNav.bake_in_background`, which bakes on a worker thread; `is_baking()` says when it is still running. It gives up the determinism `bake` has, so a test that compares meshes uses `bake`.
+
+## Surfing
+
+Bots can ride surf ramps. A ramp is learned from the map alone: an offline search on the real movement code finds rides, the rides are saved as a cache, and at run time the bot does what the nearest cached state did while checking its next second and a half on the same motor. `DotBotSurfCourse` describes one ride (a start, goals and pits), `DotBotSurfPlanner.build` runs in a tool and never at map load, `DotBotSurfPilot` is the run-time policy, and `DotBotSurfRide` writes the pilot's legs into the brain's intent while the brain keeps the view and the trigger, so a bot can fight on the ramp. The simulator is duck typed, so dot-bot still names no other addon; [dot-player-controller](/learn/godot/addons/dot-player-controller)'s `DotFpsSimulator` fits it.
+
+`DotBotNav` leaves surf ramps out of the mesh (a face steeper than the slope limit is not ground), so a surf map bakes as islands. `add_ride(from, to, id)` is a one-way link between two islands, `route` returns the ride that starts at each corner, and `islands()`, `island_at()` and `on_island()` are what a tool builds its edges from. Set `DotBotWorld.route_detail_fn` so the brain sees those rides. A cache is only as fresh as the movement and collision it was planned on: replan after either changes.
+
 ## Testing
 
 The addon's repository has a headless self-test, `examples/bot_selftest.tscn`, run after the `--import` pass like every other suite ([Installing](/learn/godot/installing#the-two-step-check)). It measures each preset's reaction time, first-shot aim error, settled aim, turn speed and kill/death ratio against one scripted opponent.
