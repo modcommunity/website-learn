@@ -54,14 +54,14 @@ A **summary**, not the record:
     "id": 123,
     "name": "Better Vehicles",
     "slug": "better-vehicles",
-    "path": "/gmod/m/better-vehicles",
-    "url": "https://moddingcommunity.com/gmod/m/better-vehicles",
+    "path": "/example-game/m/better-vehicles",
+    "url": "https://moddingcommunity.com/example-game/m/better-vehicles",
     "description": "…",
     "createdAt": "2026-01-04T10:00:00.000Z",
     "updatedAt": "2026-08-19T22:13:04.000Z",
     "official": false,
     "archived": false,
-    "app": { "id": 4, "name": "Garry's Mod", "slug": "gmod" },
+    "app": { "id": 4, "name": "Example Game", "slug": "example-game" },
     "categories": [{ "id": 9, "name": "Vehicles", "slug": "vehicles" }],
     "tags": [{ "id": 812, "name": "vehicles" }],
     "stats": {
@@ -174,6 +174,45 @@ GET /api/content/article?official=1&limit=20
 
 Anything other than `0`, `false` or `no` reads as true, and the parameter is
 ignored for types that have no such flag.
+
+## The server listing
+
+`GET /api/content/server/list` is where a game's server browser starts: **addresses only**. A browser asks each server directly what it is running and how full it is; the one thing it cannot learn from a server is that the server exists.
+
+```
+GET /api/content/server/list?app=hungario&page=1&limit=200
+```
+
+```json
+{
+  "data": [
+    { "id": 703, "host": "203.0.113.7", "port": 6060, "queryPort": null, "protocols": ["A2S"], "app": { "id": 70, "url": "hungario" } }
+  ],
+  "pagination": { "page": 1, "limit": 200, "total": 1, "totalPages": 1 }
+}
+```
+
+<Params>
+  <Param name="host">
+    The address the site's own connect button uses: the hostname when the team chose one, otherwise the IP.
+  </Param>
+  <Param name="queryPort">
+    Set only when queries go to a different port than `port`. `null` means ask on `port`.
+  </Param>
+  <Param name="protocols">
+    The game's query protocols, a hint for a client that speaks several.
+  </Param>
+  <Param name="appId / app">
+    Optional. `?appId=` or `?app=<url slug>` narrows to one game, matching the game a server is filed under or one it also runs. Both together must name the same game. A game that does not exist, or is hidden, is `404 unknown_app`, never an empty list; a malformed one is `400 invalid_app`.
+  </Param>
+  <Param name="limit">
+    Defaults to and is capped at `api.anon.serverListMax` (200), larger than the general anonymous page because a row is two ports and an address. Newest first by id.
+  </Param>
+</Params>
+
+A server is listed only when it passes everything the anonymous summary requires, is not delisted, is under no current penalty, was seen online inside the removal window, and publishes its address. The online-window rule keeps a typed-in address that never answered from being handed to every player's browser. A row carries no owner, name, roster or counts.
+
+It is the anonymous surface: the same `api.anon.enabled` switch, the same per-address quota and headers, the same response cache. A request carrying a key gets the same answer and counts against the same quota. `GET` and `OPTIONS` only. It is a static segment, so it wins over `/api/content/server/<id>`; item ids are numeric, so no server was ever reachable as `list`.
 
 ## Quotas
 

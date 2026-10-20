@@ -15,7 +15,7 @@ versionless and JSON unless noted. The apex address
 (`https://moddingcommunity.com/api/content`) is proxied to the same service and
 still works — see [the API index](/learn/api#the-apis-live-on-their-own-origin).
 
-Manage your keys under **Account → API keys**.
+Manage your keys under **Dashboard → API keys**.
 
 <Callout type="info" title="Reading a public item needs no key at all">
 `GET /api/content/<type>` and `GET /api/content/<type>/<id>` answer with **no
@@ -23,6 +23,8 @@ Manage your keys under **Account → API keys**.
 on this surface needs a key. See [Reading without a
 key](/learn/api/content/reading).
 </Callout>
+
+Games reading the server list should use [the server listing](/learn/api/content/reading#the-server-listing), which needs no key.
 
 <Cards>
   <Card title="Reading without a key" href="/learn/api/content/reading">

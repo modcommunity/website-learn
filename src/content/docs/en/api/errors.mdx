@@ -88,6 +88,9 @@ human sentence, plus a pointer to where a key is minted:
 | `not_found` | 404 | No such item, **or** it is not publicly readable |
 | `api_disabled` | 403 | The item exists and is public on the website, but its team turned key-free API access off |
 | `rate_limited` | 429 | Out of budget. See `retry-after` |
+| `invalid_app` | 400 | The server listing only: `appId` is not a positive integer, or `app` is not an app URL slug |
+| `unknown_app` | 404 | The server listing only: no such game, or it is hidden |
+| `internal` | 500 | Our fault. Carries no detail |
 
 <Callout type="info" title="Two of those are deliberately shaped">
 `not_found` covers both "no such item" and "not readable by you", and the two
@@ -113,7 +116,7 @@ of scope, or blocked by the IP allowlist. Distinguishing them would let somebody
 with a stolen credential map out what it can do.
 
 The specific reason **is** recorded — in the credential owner's own request log,
-under **Account → Integrations → request log**. If your plugin is being refused
+under **Dashboard → Integrations → request log**. If your plugin is being refused
 and you cannot tell why, that log is where the answer is.
 
 Validation errors are the exception and are returned in full, because they help

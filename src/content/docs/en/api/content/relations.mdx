@@ -43,10 +43,10 @@ does**.
 | --- | --- |
 | `tags` | A plain string. Names are case-insensitively unique and normalised; invalid ones are dropped |
 | `media` | `{ id?, type?: "IMAGE" \| "VIDEO", fileId?, externalUrl?, title?, description? }` |
-| `releases` | `{ id?, version, title?, description?, content?, hidden?, files?: string[] }` — `files` are file ids |
+| `releases` | `{ id?, version, title?, description?, content?, hidden?, files?: string[] }` — `files` are file ids (up to 200) |
 | `links` | `{ id?, type?, url }` |
 | `sources` | `{ id?, sourceId, path, externalId?, externalFileId?, externalAdditional? }` |
-| `items` | `{ id?, title?, description?, externalUrl?, assetId?, articleId?, modId?, serverId? }` |
+| `items` | `{ id?, title?, description?, externalUrl?, bannerId?, assetId?, articleId?, modId?, serverId? }` |
 
 For `sources`, `path` is the item's path on that source's site — an absolute URL
 is reduced to its path server-side. The external values fill the source's

@@ -25,8 +25,8 @@ DELETE /api/content/{type}/{id}     delete one
 List items of a type.
 </Endpoint>
 
-`page` defaults to `1`. `limit` defaults to `api.list.limitDefault` (25) and is
-clamped — up to 1, and **down** to `api.list.limitMax` (100) rather than
+`page` defaults to `1`. `limit` defaults to `api.list.limitDefault` (500) and is
+clamped — up to 1, and **down** to `api.list.limitMax` (1000) rather than
 refused. Both are operator settings, and the ceiling is **per role**, so an
 operator can give one role a larger page without a code change. Ask for what you
 want and read what comes back; `pagination.total` is the full match count either
@@ -76,7 +76,7 @@ from the key's user, and the id comes from the URL. Schemas are strict, so a
 misspelled field is a `400` rather than a silent no-op.
 
 A few fields are accepted by the schema and then resolved **against your role**:
-`isOfficial`, the backdating pair `createdAt` / `lastEdit`, `primary` on groups
+`isOfficial`, `officialPack` on assets, the backdating pair `createdAt` / `lastEdit`, `primary` on groups
 and a community's `flagged` state. A key that is not staff cannot set them.
 
 ### Everywhere
@@ -94,7 +94,7 @@ is particular to that type:
 | `usesAi` | Self-declared "contains or was made with AI". Disclosure only — it filters nothing and gates nothing |
 | `archived` | Not on articles or collections |
 | `apiPublic` | Anonymous read access through this API. On by default — see [Reading without a key](/learn/api/content/reading) |
-| `allowRatings`, `allowReviews`, `allowComments`, `allowMedia` | The engagement toggles |
+| `allowRatings`, `allowReviews`, `allowComments`, `allowMedia` | The engagement toggles. Collections have no `allowRatings`: there is nothing on one to like |
 | `bannerId`, `iconId`, `cardId` | File ids. **Servers spell these `banner` / `icon` / `card`** |
 | `categoryIds` | The taxonomy set. **Replaces the whole set** when present |
 | `tags` | Tag names, up to 100. `undefined` leaves them; `[]` clears them |
@@ -110,12 +110,12 @@ exist because the edit form posts both. **Groups have only `categoryIds`** — a
 
 | Type | Required on create | Also accepts |
 | --- | --- | --- |
-| `asset` | `name` | `appId`, `communityId`, `categoryId`, `environment`, `license`, `virusScanLink`, `subDisabled`, `media`, `releases`, `sourceItems` |
-| `mod` | `name`, `content`, `appId` | `install`, `communityId`, `categoryId`, `environment`, `license`, `virusScanLink`, `subDisabled`, `media`, `releases`, `links`, `sourceItems`, `redirect` |
+| `asset` | `name` | `appId`, `communityId`, `categoryId`, `environment`, `license`, `virusScanLink`, `repoName`, `subDisabled`, `media`, `releases`, `sourceItems` |
+| `mod` | `name`, `content`, `appId` | `install`, `communityId`, `categoryId`, `environment`, `license`, `virusScanLink`, `subDisabled`, `media`, `releases`, `links`, `sourceItems`, `team`, `redirect` |
 | `server` | `appId` | See [servers](#servers-are-an-allow-list-in-three-tiers) below |
 | `community` | `name` | `ageRequirement`, `appIds`, `categoryId`, `media`, `links` |
 | `article` | `title`, `content` | `appId`, `communityId`, `categoryId`, `modId`, `serverId`, `assetId`, `userTargetId`, `media` |
-| `collection` | `name` | `items`, `includeItemMedia`, `subDisabled` |
+| `collection` | `name` | `appId`, `items`, `media`, `includeItemMedia`, `subDisabled` |
 | `group` | `name` | `inviteOnly`, `appIds`, `appId`, `articleId`, `collectionId`, `communityId`, `modId`, `serverId`, `assetId`, `serverMapId` |
 
 <Callout type="warning" title="Three spelling traps">

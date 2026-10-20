@@ -24,8 +24,8 @@ Two **rolling windows**, and both must have budget or the request is rejected:
 
 | Window | Setting | Default |
 | --- | --- | --- |
-| 5 hours | `api.rate.5h` | 500 requests |
-| 7 days | `api.rate.week` | 5000 requests |
+| 5 hours | `api.rate.5h` | 300 requests |
+| 7 days | `api.rate.week` | 2000 requests |
 
 Both are **per role**: an operator sets one base figure for everybody and
 overrides the roles that get more. That replaced a pair of environment variables
@@ -35,7 +35,7 @@ to "supporter or not" and could not give a moderator its own number.
 The quota is counted against the **user**, not the individual key, so a second
 key does not buy a second budget.
 
-Live usage for both windows is shown under **Account → API keys**, alongside an
+Live usage for both windows is shown under **Dashboard → API keys**, alongside an
 audit log carrying every request's method, path, status, address and the item it
 touched.
 
@@ -43,8 +43,8 @@ touched.
 
 | Setting | Default | |
 | --- | --- | --- |
-| `api.list.limitDefault` | 25 | The page size when you ask for none |
-| `api.list.limitMax` | 100 | The ceiling. Per role |
+| `api.list.limitDefault` | 500 | The page size when you ask for none |
+| `api.list.limitMax` | 1000 | The ceiling. Per role |
 | `api.list.cacheSec` | 30s | How long an identical list response is served from cache |
 
 A `limit` above the ceiling is **clamped down rather than refused**, so a caller

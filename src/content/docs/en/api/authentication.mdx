@@ -69,7 +69,7 @@ Every one of these rules is enforced:
   </Param>
   <Param name="iss" required>
     Must equal `kid`, and `kid` must be the key id shown on your credential. It
-    is prefixed `tmcak_` and is **not** a secret.
+    is prefixed `tmcak_` for a content key and `tmck_` for an integration, and is **not** a secret.
   </Param>
   <Param name="iat" type="unix seconds" required>
     Within 300 seconds of our clock.
