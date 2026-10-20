@@ -97,11 +97,8 @@ adding a "scatter some rubble" pass changes the room layout. `DotProcGenRandom`
 derives a child stream by hashing a name, and two children never disturb each
 other.
 
-It is a second implementation of what
-[dot-core](/learn/godot/addons/dot-core#reproducible-randomness) also carries,
-and it predates that module arriving there: `DotProcGenRandom` names nothing
-outside this addon, and what a caller supplies is the **seed**, through a
-duck-typed `seed_source` with one `seed_for(name)` method.
+`DotProcGenRandom` is this addon's names (`stream(name)`, `at(index)`) over
+[dot-core](/learn/godot/addons/dot-core#reproducible-randomness)'s `DotRandomStream`, which draws every number; `core()` reaches the underlying stream. It once carried its own copy of the mixer. Comparing the two over several seeds found them identical, so no seed's map changed when it became a wrapper, and it should not grow a mixer of its own again. What a caller supplies is the **seed**, through a duck-typed `seed_source` with one `seed_for(name)` method.
 
 ## A spanning tree is a bad level
 

@@ -115,6 +115,12 @@ addon layered on top does not overrule the operator. `join_spectators` moves the
 player **and** starts them watching, because a spectator staring at a black
 screen is indistinguishable from a crash.
 
+## Who takes a role this round
+
+`DotTeamRotation.pick(keys, want, mode, history, seed_value, wishes, may_repeat, rest_first)` chooses who takes a role (the hunters, the activators, the drivers) and returns who and why, so a console can answer "why am I hunter again". It is pure and static. `RANDOM` is a seeded draw that passes over last round's holders, `QUEUE` gives everybody an equal share of the rounds they played, and `SWAP` hands the role to whoever did not have it. A wish comes first in every mode: a player who asked for the role is ahead of everybody, one who asked to stay out is picked only when the round would otherwise be short.
+
+`rest_first` changes that for `RANDOM`: last round's holders rest even ahead of their wish and return only when the round is otherwise short. A trap course wants it, since an activator who volunteers every round would otherwise never let anybody else press a button. The draw comes from dot-core's `DotRandomStream` (a child stream named by the key), not a hash of the key, so the same seed gives the same side across engine versions.
+
 <Related>
 - [dot-match](/learn/godot/addons/dot-match) — the match-scoped sides this drives
 - [dot-spectate](/learn/godot/addons/dot-spectate) — the cameras

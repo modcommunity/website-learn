@@ -146,6 +146,10 @@ their low bits, so their digests differ — and the digest is the whole mechanis
 by which a client knows its cached copy of another player is stale.
 </Callout>
 
+<Callout type="warning" title="The digest sorts slots by text, and the backbone store needs the tree">
+The digest walks the filled slots in alphabetical order by their text. `sort()` on `StringName`s orders them by when they were interned, which differs per process, so digests disagreed with the site's and a client re-fetched every avatar on every join with nothing failing. The backbone store also parents the `DotHttp` it builds to the root when it opens (an HTTP client outside the tree fails every request before touching the network, and every member got the default look), frees only that client on close, and runs one `open()` attempt at a time, so a manager's own setup and its host's explicit one do not race.
+</Callout>
+
 <Related>
 - [`dot-user`](/learn/godot/addons/dot-user)
 - [`dot-platform`](/learn/godot/addons/dot-platform)

@@ -70,6 +70,8 @@ timers handing over to each other. The last hand-over is the one a game that
 writes this itself usually misses, leaving the player looking at their killer
 until they respawn.
 
+A chase or death camera computed blind can end up inside a wall. Set `camera_world` (and `camera_mask` to the level's collision layers) on any client that draws a 3D spectator camera, and both are pulled out of the level through dot-core's `DotCameraProbe`: the chase camera toward the target's eye, the death camera toward a point above where they fell, then re-aimed at the killer. If the level is between the death camera and the killer, it stands back from the body on the side away from the killer and looks at the body instead, decided once per death so a killer stepping through a doorway does not cut the camera between two places. There is one probe per viewer, kept until `forget`. Its easing exists only to stay out of a wall; it is not smoothing. Unset, the transform is exactly what it was, which is what a server or a 2D game wants.
+
 Call it where the timers run — the authority. A mirroring client runs no timers, so `on_death` there is refused; the client is told the chain through the view's wire form instead, which carries the death position so a death camera is not drawn from the world origin.
 
 <Related>

@@ -77,10 +77,11 @@ Give them different ports and they bind separately. Give them the same one and
 DQP binds it and hands A2S the datagrams that are A2S's. Neither arrangement
 changes a byte of either protocol.
 
-<Callout type="warning" title="A UDP game transport already holds the game port">
-With ENet in front, that bind fails and the log says exactly that. Set
-`query_port` to a free one — and know that most trackers will not look there.
+<Callout type="warning" title="A UDP transport that does not share the game port holds it">
+Behind dot-server's default transport (`DotTransportDual`) both protocols share the transport's UDP socket: `share_udp_port` registers them on its demux and nothing binds a second socket. Only a UDP transport with no demux (plain ENet), or another process, still holds the port, so the bind fails and the log says so. Set `query_port` to a free one — and know that most trackers will not look there.
 </Callout>
+
+The A2S version field carries the running game's version (`game_version`) when one is known and falls back to the framework's `version` otherwise. It used to answer the framework constant whatever release the server was on.
 
 ## Why every query is challenged
 

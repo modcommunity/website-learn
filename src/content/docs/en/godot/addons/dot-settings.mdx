@@ -61,6 +61,12 @@ already has.
 | `ACCOUNT` | Sensitivity, crosshair, subtitles, language. Stored under `shared_namespace`, so two games that opt into the same name share one sensitivity. |
 | `SERVER_CLAMPED` | Field of view, view models, third person. A server may cap these. |
 
+**The newest choice of an account setting wins, key by key.** Both the game's own document and the shared one hold every account key, and each records when a value was last chosen (`stamps` beside `values`, `_stamps` beside the flat values in the shared document). Load takes the shared value when its stamp is at least as new, and a save reads the shared document again first and does the same, so a game left open for an hour neither writes back a sensitivity another game changed nor keeps showing the old one. "The shared document always wins" would only move the lost change one save later, and "the local copy wins" would mean a change never reaches a game that has saved once. A reset is stamped like any other choice. Files from before stamps count as never chosen, so the shared value wins once. Stamps use wall clocks, so two machines whose clocks disagree decide it between them.
+
+## A value nobody chose follows its default
+
+A document stores every value, so a value equal to its default looks like a choice. The document therefore records the default each value was saved under (a `defaults` section beside `values`): a value still on the default it was saved under moves to the new one when a build changes it, once, and a value that differs from its recorded default is kept. A document saved before that record has no defaults, so a setting declares what it used to be with `with_previous_defaults([...])` (`previous_defaults` on the `DotSettingsDef`), and a stored value equal to one of those moves once. A player who really chose the old default loses that one choice, the price of not leaving everybody else on the old key for ever. Never strip the `defaults` section: it is neither a setting nor an unknown key, and is rewritten on every save.
+
 ## A server may clamp, and may never read
 
 Capping field of view is a legitimate competitive rule. Asking a client to
