@@ -81,10 +81,20 @@ what mode it is running.
   </Param>
   <Param name="Signals">
     `state_changed`, `round_started`, `round_ended`, `match_ended`,
-    `player_added`, `player_left`, `player_idle`, `score_changed`,
+    `round_preparing`, `players_released`, `freeze_changed`, `player_added`, `player_left`, `player_idle`, `score_changed`,
     `team_changed`, `balanced`, `kill_recorded`, `respawn_due`.
   </Param>
 </Params>
+
+## The countdown places everyone, then lets go
+
+Every round is preceded by a countdown, entered from warmup and from an intermission or a match end with players present. The round is reset and everyone placed when the countdown *begins*; `round_started` at LIVE places nobody. A game builds its map or round layout on `round_preparing(round_number)`, which increments the round number and fires just before the placement, and holds bodies still while `is_frozen()` is true (the rules' `freeze_during_countdown`; `freeze_changed(frozen)` is the edge, and a player spawned mid-countdown is spawned frozen too). `DotMatchNetSync` replicates the flag as `net_frozen`, so a client holds its own player without asking the server. `countdown_sec` of 0 keeps the older live-then-place order for games that build their round in `round_started`.
+
+`players_released(tick)` fires just before `round_started` when players were placed in a countdown. Spawn protection granted at placement can run out inside the freeze, so a game re-arms it here, counting from this tick.
+
+`begin_round_now()` starts a fresh round on this tick from any state but idle, which is what a map change needs. It emits no `round_ended` for the round it replaces, because that round was called off, not won, and an ended round reaches progress, achievements and the "X wins" banner. Inside a countdown it just goes live on the prepared round, with no second reset or placement. `stop()` in a countdown hands the round number back and clears the placement queue.
+
+A spawn point freed under the match is forgotten rather than reset. With no `spawns_ref`, the match collects every `DotSpawnPoint` under the current scene, which in a process holding two games includes the other one's; resetting a freed point crashed the engine.
 
 ## Three failure modes it is built around
 

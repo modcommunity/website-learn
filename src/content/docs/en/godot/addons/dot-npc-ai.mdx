@@ -82,6 +82,29 @@ Otherwise the guard is asked exactly once. `DotNpcAiSequence.reactive_with()` is
 that; a plain sequence is for steps in order.
 </Callout>
 
+## Map annotations
+
+A bot on an imported map walks to the edge of a balcony and stops, because the mesh has no polygon in the air between the balcony and the floor. `DotNpcAiNavAnnotator` (API 2) measures what the map has once it is loaded, a baked `NavigationMesh` and the physics space, and needs no authoring. It finds links the mesh does not join (a drop, a jump up, a jump across a gap), hiding and cover spots beside walls, and the chokepoints routes crowd through. It keeps only floors a body can reach (seeds, roof and solid tests).
+
+```gdscript
+var job := DotNpcAiNavAnnotator.new(nav.mesh, map.get_world_3d())
+var cached := DotNpcAiNavAnnotations.load_file("user://nav/%s.json" % job.cache_key(), job.cache_key())
+if cached.ok:
+    annotations = cached.value
+else:
+    scheduler.submit(job)
+    var res: DotResult = await job.finished
+    if res.ok:
+        annotations = res.value
+        annotations.save("user://nav/%s.json" % annotations.key)
+```
+
+It is a `DotJob` stepped in slices, because a physics query may only be made on the main thread and that is the only thread a browser has. Each step also ends after `slice_ms` (4 by default); without that one step took 40 to 80 ms on a large map, and the old fixed slice cost ten times as much on a dense map as on a sparse one. It is deterministic, so the cache key (a SHA-256 over the mesh, colliders, settings and `random_seed`) means a cached file and a fresh run agree. `DotNpcAiNavAnnotations` answers `hiding_spots()`, `cover_from(threat, near)` and `links_of(kind)`; `DotNpcAiNavDebug` draws it. Assign `los_fn` for a game whose glass or foliage blocks sight but not rays, override `_keep_link` and `_hide_score`, or `declare()` the links geometry cannot see (ladders, teleports). The settings are also the cvars `npc_nav_jump_up`, `npc_nav_drop`, `npc_nav_gap` and `npc_nav_spot_spacing`.
+
+## Squads ask once per tick
+
+`surround` used to have every waiting member walk every member and copy each holder list, which is quadratic at eighty zombies. The squad now keeps a per-clock-reading answer (`DotNpcAiSquad.memo` / `remember`), so the first waiter works out the waiting group, their positions and the target's facing and the rest reuse it; `holder_ids()` lists the holders. A brain that makes no headway for `stuck_seconds` (1.5) while steering with spacing asks dot-npc's `DotNpcPath.go_rough` for unsmoothed corners, and tolerates a dot-npc that predates it.
+
 ## Character, not difficulty
 
 A tree decides what an NPC does. It does not make two of them feel like
@@ -89,7 +112,7 @@ different people — same tree, same NPC: they notice at the same instant and
 shoot with the same accuracy.
 
 ```gdscript
-brain.character = DotNpcAiCharacter.hard().with_seed(npc.instance_id)
+brain.character = DotNpcAiCharacter.hard().with_seed(npc.seed)
 
 # In the "shoot at it" branch:
 if not ctx.has_reacted(npc.engaged_at):
@@ -106,7 +129,7 @@ character is the difficulty, per NPC, so a game can mix them.
 Everything random in it is a hash of the character's seed and a number you pass,
 so the same shot always misses the same way and a replay agrees with the server
 that recorded it. **Give each NPC its own seed**, or twenty of them fire one
-volley.
+volley. Use `npc.seed`, the spawner's per-spawn number (needs [dot-npc](/learn/godot/addons/dot-npc) API 2), not the object id: an object id moves when anything else is allocated first, so every NPC's choices moved with unrelated changes. The brain's own rolls (the strafe period in `hold_range`, the patrol pick) draw from it too.
 
 <Related>
 - [dot-npc](/learn/godot/addons/dot-npc) — what it is deciding for

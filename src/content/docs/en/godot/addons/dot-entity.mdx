@@ -119,6 +119,8 @@ is stable, plausible, and not the one the health and the hitboxes use.
 returns how many and **warns when that is not zero**, because an orphan is
 recoverable but it means a despawn path somewhere is not calling `close()`.
 
+Set `auto_sweep` on the table and every listing sweeps first (`count_of_kind`, `ids_of_kind`, `handles_of_kind` and `handles_of_owner` included; until recently those four did not, and could hand back a freed node's handle).
+
 ## The record lives beside the node, never on it
 
 Metadata on a node is invisible to anything that did not put it there, survives

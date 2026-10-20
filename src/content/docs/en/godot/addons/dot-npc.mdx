@@ -112,6 +112,14 @@ var path := graph.find_smooth_path(from, to, 2.0, true)   # smoothed, may be par
 var spot := nav.cover_position_from(npc.position(), enemy_position)
 ```
 
+Native search is the default: `find_path` runs `AStar3D` (one per filter signature, built on first use), which took a busy wave's path from about 3 ms to tens of microseconds. `use_native_search = false` keeps the script search, which the suite uses as its reference. `can_walk_straight` probes no wider than three quarters of a grid spacing, so smoothing no longer cuts an obstacle's corner, and `DotNpcSpawner.smooth_horizon` smooths only a path's first points. A follower pressed into a door jamb its smoothed path clipped can be told `DotNpcPath.go_rough(now, seconds)`: unsmoothed corners and a half-metre arrive radius for a few seconds.
+
+## Seeds are per spawn, not per object
+
+Every NPC has a `DotNpcInstance.seed` (API 2), set by the spawner before the brain binds, so a brain's first choice already sees it. It comes from `DotNpcSpawner.seed_base` (set it from the session's seed so a replay can be given the recorded run's; left at zero every server makes the same choices for the same sequence of spawns) and the spawner's count of spawns, or from the game's own number when `seed_source` answers one, usually the NPC's entity id. **Never return `get_instance_id()`:** an engine object id depends on how many objects the process created first, which made two servers running the same round diverge. `instance_id` stays the identity everything keys by; the seed is only for choices.
+
+The spawner holds every scene and brain it loads, and `warm()` loads every kind's at map load, because a kind's first spawn used to cost a script compile in the middle of play.
+
 ## Three addons, on purpose
 
 **dot-npc** is what an NPC is.

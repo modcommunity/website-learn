@@ -127,6 +127,14 @@ router.command_entered.connect(func(peer, command, args, raw):
 
 That is how a game hands `!rtv` to [dot-vote](/learn/godot/addons/dot-vote) without either addon knowing the other exists. [dot-server](/learn/godot/addons/dot-server)'s own commands do not come through here: its chat manager turns a prefixed line into a console command itself, before the line reaches this router, so a game running both hooks dot-server's `player_command` event as well.
 
+## Muting somebody for yourself
+
+`DotChatSelfMute` is a player's own block list, typed as `sm` in the console or `!sm` / `/sm` in chat: `sm` lists who is here, numbered; `sm 2`, `sm ada` or `sm #14` (a userid) toggles one. It is a preference and never crosses the wire: the chat box consumes the line before it can be sent, the muted player cannot tell, and the server keeps no list it could leak. That is the difference from a moderator's gag, which is the server's and applies to everybody.
+
+`DotChatClient` drops a muted player's say, action and whisper lines before they reach history, backlog included; join and leave notices stay. Voice is muted too: the list binds the manager that [dot-voice](/learn/godot/addons/dot-voice) publishes as `dot_voice_client` (or anything passed to `attach_voice()` with a `set_local_mute(peer, muted)`), so neither addon loads the other.
+
+There is one list per process, in the registry as `dot_self_mute` (`DotChatSelfMute.shared()`), kept in `user://dot_self_mute.json` so a game the shell switches to finds the same list. It is keyed by the server scoreboard's per-player `key`, which survives a reconnect where the session's userid does not, and falls back to the name for a server without one. A sender key finds a roster row only when the name agrees, so a game whose chat key is its own player number is not decided by somebody else's row.
+
 <Related>
 - [dot-moderation](/learn/godot/addons/dot-moderation) — gags, and who they apply to
 - [dot-voice](/learn/godot/addons/dot-voice) — the same audience question, spoken

@@ -60,6 +60,20 @@ seconds. And the distance is the **least-travelled** player's, because one
 person scouting ahead has not moved the party anywhere.
 </Callout>
 
+## A schedule for a hold-out
+
+The stress cycle paces a team that *moves*; its relax waits for distance, which a team holding a place never travels. `DotNpcDirectorWaves` (API 2) is the other half, a fixed schedule in one of three styles a server owner picks:
+
+| Style | Shape |
+| --- | --- |
+| `ROUNDS` | Quiet, wave 1, quiet, wave 2 and so on. Each wave is a count of enemies, cleared by killing them, and bigger than the last. |
+| `CYCLE` | Day, night 1, day, night 2. A night is a length of time, survived rather than cleared; `daylight()` gives a ramp for the sky. |
+| `CLOCK` | One stretch, harder as it goes; 0 seconds lasts as long as anybody does. |
+
+It spawns nothing and owns nothing. The game calls `begin(players)` and `tick(delta, alive, players)`, asks `take(room)` for how many of the wave to spawn now and `give_back(n)` for spawns it refused, and reads `strength()` for how hard this stretch is. A wave is released a few at a time at `release_rate()`, which rises with the wave, so wave 1 trickles in and wave 10 arrives as a flood instead of a hundred bodies in one frame at one door. `stage_changed(stage, index)` and `finished()` are the signals.
+
+A ROUNDS wave ends when all of it is released and none is alive. Two backstops stop one body stuck behind a crate holding the breather off for ever: it ends `overtime_seconds` after its last release, and sooner, `straggler_seconds` (30) after the last release, once no more than `straggler_count` (3) are left. The stage change says so through `overtime`; what to do with the stragglers is the game's call.
+
 <Related>
 - [dot-npc](/learn/godot/addons/dot-npc) — the spawner it drives
 - [dot-npc-ai](/learn/godot/addons/dot-npc-ai) — what each one does once it arrives

@@ -108,6 +108,10 @@ were **one object**, and every board on the server ended up with the last scope
 anybody asked for. The same aliasing was then found in three other places.
 </Callout>
 
+<Callout type="warning" title="Scope keys sort by text">
+`scope_key()` builds the board's address from the scope's keys in order. `Array.sort()` orders StringNames by where each was interned, not by their text, so the same scope could address a different board (a store row, a site address) in each process. It sorts by text now, and `StringName` and mixed `String` / `StringName` keys give the same board.
+</Callout>
+
 <Related>
 - [`dot-stats`](/learn/godot/addons/dot-stats)
 - [`dot-timer`](/learn/godot/addons/dot-timer)

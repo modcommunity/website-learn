@@ -90,6 +90,32 @@ put anything anywhere.
   </Param>
 </Params>
 
+## A server owner's rules (API 2)
+
+The schema is the game's design and entitlements are what one player unlocked; both are fixed when the game ships. What one *server's* owner decided tonight is a third thing, and `DotLoadoutRules` holds it, so a cvar change never rebuilds the schema or re-conforms every saved loadout. Hand it to `manager.rules` (or `set_rules()`, which emits `rules_changed`):
+
+```gdscript
+# Snipers only: the primary is any scoped weapon, everything else as usual.
+manager.rules = DotLoadoutRules.parse(true, "primary=tag:scoped", "").value
+```
+
+The text is the three cvars' grammar, which `DotLoadoutCommand` registers for you:
+
+```
+mp_loadout_allow "primary=rifle,carbine secondary=pistol"   # items by id
+mp_loadout_allow "*=-tag:explosive"                         # a leading - forbids; * is every slot
+mp_loadout_fixed "primary=marksman thrown=none"             # the server fills these; none keeps a slot empty
+mp_loadout_menu 0                                           # nobody chooses: defaults and fixed only
+```
+
+Entries are whitespace-separated and never use semicolons, because a server console splits lines on them. `parse` fails naming the entry it cannot read, and the caller keeps the rules it had: a typo must not unlock everything. The cvars refuse such a value at the console too, rather than keeping it and failing every later change.
+
+The rules are applied as a copy on the way out of `active_for`, refused in `publish` and passed as the optional `rules` argument of `DotLoadoutValidator.validate` / `conform`. `manager.offer_for(user_key)` is what a loadout screen lists: per slot, the choices this player may make under tonight's rules, as ids, names and numbers only (a dedicated server may have no art).
+
+`DotLoadoutCommand` is the server half of the B menu. A client sends `/loadout`, the server answers with a `loadout_menu` notice carrying that offer, and choosing sends `/loadout primary=rifle secondary=pistol`, which goes through `publish`, so a hostile client typing the line gets exactly what the screen would have let it pick. It names no dot-server class: the host only needs `add_command` and `add_cvar`. A mode that hands out the weapons itself (a gun game, a weapon pool) sets `closed_fn` so the offer says the menu is closed and a choice is refused in the same words, without touching the owner's rules.
+
+A loadout's `digest()` is a fingerprint two processes must agree on, so `filled_slots()`, the entitlements' `to_list()` and the catalogue's `ids()` come out in text order. `Array.sort()` on StringNames orders by where each was interned, which differed between processes.
+
 ## Pickups are not `Area3D`s
 
 Respawn timers count **ticks**, not seconds, and reach is a distance test rather

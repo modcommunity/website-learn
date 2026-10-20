@@ -58,6 +58,17 @@ economy.bought.connect(func(key, id, price, balance):
 A shop item holds no scene, no mesh and no item resource, so a purchase
 validates on a server that does not have the content.
 
+## Per life, not per purchase
+
+`DotShopItem.per_life_limit` and `requires` count what a player holds *now*, not what they bought. Holdings fell only on a refund or a reset, so a player who died with a rifle could not buy it again and a helmet stayed sold to somebody whose kevlar was gone. Tell the manager when that changes:
+
+```gdscript
+economy.on_death("ada")                 # empties what ada held; the money stays
+economy.lost("ada", &"grenade", 1)      # thrown, dropped or used: takes that many away
+```
+
+A game that calls neither behaves as before.
+
 ## Why the defaults are what they are
 
 A buy economy looks arbitrary and is not. Each default is a number the

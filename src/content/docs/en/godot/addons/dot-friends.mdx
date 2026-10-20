@@ -86,7 +86,7 @@ client posts them:
   and a burst that ends where it began is none.
 - **`go_offline()`** posts immediately and stops the heartbeat. Call it on quit,
   or friends see the player online — and try to join them — for up to two more
-  minutes.
+  minutes. It waits for a heartbeat post already in flight, so the offline post cannot be overtaken by a late "online" one.
 
 ## Joining a friend
 
@@ -96,9 +96,11 @@ because the list can be half a minute old, and then:
 1. joins their **party** through `join_party_fn`, if it is joinable, or
 2. connects to their **server** through `connect_fn` — also when the party
    refuses, because the player asked to be where their friend is (the party's
-   refusal is kept in the result as `partyRefused`), or
+   refusal is kept in the result as `partyRefused`, in `value` on success and in `error.context` when the server connect then fails too), or
 3. refuses with `friends.join.deny.notFriend`, `.offline`, `.notJoinable` or
    `.unsupported` — the last when the game can reach neither their party nor their server.
+
+A `join_party_fn` that returns anything but a `DotResult` is an error rather than a silent success. A bare 404 from the app routes means the site is older than the friends routes (or a different site); the client recognises it by a flag on the error's context, not by the wording of the hint.
 
 A presence carries the site's server **id**; turning it into an address is
 `connect_fn`'s job, usually through [dot-browser](/learn/godot/addons/dot-browser).

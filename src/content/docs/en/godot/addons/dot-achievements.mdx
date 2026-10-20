@@ -91,6 +91,8 @@ description withheld by the interface that drew it was still sent to the client.
 
 Set `report_to_backbone` and the tracker drives its own `DotAchievementReporter`: every `report_interval` seconds (ten by default) it declares the catalogue once — retried on a doubling delay while the backbone is unreachable, dropped after a refusal — and sends the queued unlocks in one batch, so a round's end that awards a dozen is one request. `report_app` is the app id sent with the declaration, and `await tracker.report()` sends on demand, which is what a host does before shutdown. The tracker owns the timer because it is the one node a host already places; before it did, nothing in the family ever flushed the queue and every unlock sat there until the queue limit dropped it.
 
+The site serves the three routes the reporter speaks (`define`, `unlock` and `player`) in the shape the reporter sends. When a 200 names `refused` unlocks, achievements the site has no definition for, the reporter logs them at ERROR: those unlocks are gone, and before this nothing said so.
+
 <Related>
 - [dot-stats](/learn/godot/addons/dot-stats) — the natural source of the numbers
 - [dot-leaderboard](/learn/godot/addons/dot-leaderboard) — the other thing the backbone stores
