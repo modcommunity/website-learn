@@ -153,7 +153,7 @@ invite list nobody can manage.
 A server-scoped credential creates parties on its own server (and a `404` says that server no longer exists). An app-scoped one
 may name a `serverId`. Any other kind of credential is refused with `403`.
 
-An owner already hosting a live party cannot have another created, and one past the daily party budget is refused too. Today both reach you as a bare `500` with `Internal error.` rather than a named error, because the create is shared with the website; the reason is in the credential owner's request log. Treat a `500` on create as "do not retry now".
+The checks run in this order: a bad body is `400` first; then an owner already hosting a live party is `409` (a `code` of `conflict`, and it costs none of the credential's daily budget); then a spent budget is `429` (a `code` of `rate_limited`). The `429` carries `retryAfter` in seconds in the body and as a `Retry-After` header when the refusal states a wait (the credential's own budget always does; the owner's daily figure says hours, so it has none). A `409` or `429` on create means do not retry straight away.
 
 ## Ending a party
 
@@ -312,7 +312,7 @@ watching.
 | --- | --- | --- |
 | Recorded matches per party | 500 | `match start` opens nothing. The response carries `capped: true`, a `note` and a null `matchId` |
 | Parties created per credential, per day | 200 | **`429`** with `retryAfter` in seconds — this one IS an error, because everything you do next is about a party that does not exist |
-| Parties created per owner, per day | 50, per role | Refused. Your parties are your owner's parties, and count against the same figure their own account has; the `429` is currently reported as a `500`, see above |
+| Parties created per owner, per day | 50, per role | Refused. Your parties are your owner's parties, and count against the same figure their own account has; the `429` is named, see above |
 
 <Callout type="info" title="Why a per-day party budget exists">
 The one-live-party rule already stops a credential holding more than one party
