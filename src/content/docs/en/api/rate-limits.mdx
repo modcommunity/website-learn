@@ -158,9 +158,35 @@ front door, and a cache outage must not turn it into an unmetered row factory.
 | `GET /version` | 60 per minute |
 | `POST /report` | 10 per hour, durable |
 | `POST /reviews/write` | 10 per minute, durable; `DELETE` 20 per 5 minutes; `PUT` 60 per minute |
-| `GET /apps` | 120 per minute |
+| `GET /me` | 120 per minute |
+| `PATCH /me` | 30 per minute, durable |
+| `GET /apps`, `GET /apps/{id}/build`, `GET /facets` | 120 per minute |
+| `GET /browse` | 300 per minute |
+| `GET /content/{kind}/{id}` | 300 per minute |
+| `GET /servers/lookup` | 30 per minute |
+| `GET /subscriptions`, `GET /installs` | 120 per minute |
+| `POST /subscriptions`, `POST /subscriptions/prefs` | 60 per minute, durable |
+| `POST /installs` | 20 per 5 minutes, durable; `PATCH` 60 per minute; `DELETE` 30 per 5 minutes |
+| `POST /installs/items` | 120 per minute, durable; `PATCH` 240 per minute; `DELETE` 120 per minute |
+| `GET /downloads` | 120 per minute |
+| `POST /downloads` | 600 per 5 minutes; `DELETE` 60 per 5 minutes |
+| `GET /reviews` | 120 per minute |
+| `POST /play/launch` | 120 per 5 minutes |
+| `GET /play/page`, `GET /play/playable` | 240 per 5 minutes |
+| `POST /play/quick-match` | 60 per 5 minutes |
+| `POST /play/scope-key` | 30 per minute |
+| `GET /avatar` | 60 per minute; `PUT` 20 per minute |
+| `POST /packs` | 60 per minute; `claim` also 10 per minute, durable |
 | `POST /stats/submit` | 30 per minute |
-| `GET /stats/me`, `GET /stats/top` | 60 per minute |
+| `GET /stats/me`, `GET /stats/top`, `GET /stats/defs` | 60 per minute |
+| `GET /workshop`, `POST /workshop/scope` | 60 per minute (the scope route durable) |
+| `POST /presence` | 60 per minute; `GET` 120 per minute |
+| Friends: `GET /friends`, `GET /friends/requests` | 120 per minute |
+| Friends: request, respond, cancel, remove | 20, 60, 20 and 30 per 5 minutes, durable |
+| Parties | Per route, per 5 minutes, listed on [the parties page](/learn/api/app/social#parties); `GET /party/mine` is 600 and `GET /party/invites` 240 |
+| `POST /releases`, `GET /update/…` | None |
+
+Over a limit is a `429` with `rate_limited`, a `retryAfter` and a `Retry-After` header. A request whose source address cannot be determined is refused with `429 unidentified`.
 
 A token is what a limit is counted against wherever there is one — which is why
 `/apps` accepts a bearer despite needing none: the alternative is charging a

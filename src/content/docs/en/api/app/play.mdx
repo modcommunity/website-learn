@@ -37,8 +37,7 @@ visitor reads a page at a time on the site. A bearer token is *accepted* so the
 rate limit is charged per account rather than per address, which matters for a
 household behind one address.
 
-Takes `search`, `ids`, `slugs`, `type`, `playable`, `managed`, `installable`
-and `sort`.
+Takes `search` (up to 120 characters), `ids` and `slugs` (up to 100 each), `type` (`GAME`, `GAME_SINGLEPLAYER`, `GAME_ENGINE`, `VOIP` or `OTHER`), `playable`, `managed`, `installable`, `sort` (`players` by default, or `servers`, `content`, `name`), `cursor` and `limit` (1 to 100, default 50). The answer is `{ apps, nextCursor, total, playEnabled }`. Limited to 120 per minute.
 
 `installable=true` narrows the list to the games this app could actually put on
 disk, so a launcher does not draw an install button it will then have to
@@ -59,7 +58,7 @@ anything a signed-out visitor could not already read.
 </Endpoint>
 
 The same handoff the website's own player performs, on the app's transport.
-Every decision is made server-side and the client is told the answer:
+Every decision is made server-side and the client is told the answer. The body is `appId`, `mode` (`web` or `app`), and optionally `serverId`, `locale` (default `en`), `options` and `build` (a build name, letters, digits and `._-`). The answer is `data: null` when it is not available from here; otherwise for `web` it is `{ mode, loaderUrl, boot }`, where `boot` is the descriptor the game loader reads (including a single-use handoff code when the member is signed in), and for `app` it is `{ mode, uri, solo }`, the `tmc://` link to hand the installed app. A `build` the game does not offer is refused, unlike everything else here, with `400 build_unsupported` or another `400 build_…` code naming why, because a silent substitute would be a different build than the one a bug report is about. Limited to 120 per 5 minutes.
 
 <Params>
   <Param name="null means &quot;not from here&quot;">
@@ -86,10 +85,30 @@ Every decision is made server-side and the client is told the answer:
 A server's address is gated on its own `showNetInfo`, by the same helper the
 server page uses.
 
+## The play centre lists
+
+<Endpoint method="GET" path="/api/app/v1/play/page">
+The play centre's page: games, servers, lobbies or invites. Authentication is **optional**; a token adds the viewer's party. Limited to 240 per 5 minutes.
+</Endpoint>
+
+Query: `tab` (`games`, `servers`, `lobbies` or `invites`), `q` (up to 120 characters), `appId`, `mode`, `sort` (`players`, `recent`, `name`, `servers`, `popular`, `trending` or `newest`), `populated`, `joinable` and `cursor` (an offset, not an opaque string). The answer is `{ tab, apps, servers, lobbies, nextCursor, anyPlayable, party, totals }` and is `null` when the play centre is switched off. Rows carry only what a card draws; a server row has `curUsers`, `maxUsers`, `map` and, when the owner shows it, `host` and `port`.
+
+<Endpoint method="GET" path="/api/app/v1/play/playable">
+Which games can be played, so a button is drawn only where it will work. Authentication is **optional**. Limited to 240 per 5 minutes.
+</Endpoint>
+
+The answer is `{ enabled, appIds, directIds, soloIds }`: the games playable at all, the ones that can be joined with no server chosen, and the ones that run solo.
+
+<Endpoint method="POST" path="/api/app/v1/play/quick-match">
+Rank a game's servers and pick one. Authentication is **optional**, because nothing in the ranking is relative to the viewer. Limited to 60 per 5 minutes.
+</Endpoint>
+
+The body is `{ "appId": 12, "rotation": false }`. The answer is `null` when play is off, or `{ appName, country, rotation, scanned, full, stale, rotationHits, top, best, tookMs }`, where `best` is a server row and `top` the ranked candidates with a `score` and the reasons (`why`) for it.
+
 ## Finding a server from a link
 
 <Endpoint method="GET" path="/api/app/v1/servers/lookup?host=&port=">
-Which listed server is at that address. Authentication is **optional**.
+Which listed server is at that address. Authentication is **optional**. The answer is `{ servers }`, at most 10 browser rows.
 </Endpoint>
 
 What the app calls when it is handed a `tmc://play/<host>:<port>` link. The
@@ -100,11 +119,11 @@ it is rather than shown nothing.
 
 <Params>
   <Param name="host" type="string" required>
-    Hostname or IP literal, unbracketed. The app strips the brackets off an
+    Hostname or IP literal, unbracketed, up to 255 characters. The app strips the brackets off an
     IPv6 address before it asks.
   </Param>
   <Param name="port" type="number">
-    Optional, because `tmc://play/example.com` is a legitimate link. Absent
+    Optional (1 to 65535), because `tmc://play/example.com` is a legitimate link. Absent
     matches any port on that host, and a host running two servers answers with
     both — which the app renders as a choice rather than guessing.
   </Param>
@@ -126,7 +145,7 @@ The caller's identifier on one server.
 { "scope": "server:412" }
 ```
 
-A player's client asks for this on its way into a game and hands the answer to
+The answer is `{ "scope": "server:412", "key": "…" }`. A game session may call this one, and it is limited to 30 per minute because each key writes a row. A player's client asks for this on its way into a game and hands the answer to
 the server, which is then able to read and write that player's avatar — and file
 their statistics — **without ever learning their account id**. See [the
 derivation](/learn/api/integration/avatars#the-player-key).
@@ -148,17 +167,19 @@ that *different* scopes cannot be correlated — not that any particular scope i
 off limits. A player asking for `global` is opting into being recognised
 everywhere, which is theirs to choose.
 
-A scope is letters, digits and `_ . : -`, up to 64 characters.
+A scope is letters, digits and `_ . : -`, up to 64 characters; anything else is `400 bad_request`.
 
 ## The player's own avatar
 
 <Endpoint method="GET" path="/api/app/v1/avatar" auth="Token">
-The caller's own avatar document.
+The caller's own avatar document. A game session may read it (60 per minute).
 </Endpoint>
 
 <Endpoint method="PUT" path="/api/app/v1/avatar" auth="Token">
-Save it.
+Save it. A game session is refused: an avatar is authored on the site, and a loader that could publish one could quietly replace a member's appearance everywhere it is shown. Limited to 20 per minute.
 </Endpoint>
+
+Both answer `404 not_found` when avatars are switched off on the site. A document the avatar code refuses is a `409` whose `code` is the reason.
 
 The same documents [the integration
 endpoints](/learn/api/integration/avatars) move, addressed as "me" and
@@ -180,8 +201,8 @@ document naming another schema is refused for the same reason.
 A game running **in the browser** is third-party code on its own origin — that
 iframe boundary is the point, not an accident of hosting — so the handful of
 routes it needs answer a preflight and are callable from it: `auth/handoff`,
-`auth/refresh`, `auth/revoke`, `me`, `play/scope-key`, `avatar`, and the three
-[statistics](/learn/api/integration/stats#self-reported-figures) routes.
+`auth/refresh`, `auth/revoke`, `me`, `play/scope-key`, `avatar`, the four
+[statistics](/learn/api/integration/stats#self-reported-figures) routes and the two workshop routes. All of them accept a game session, with two limits: `me` and `avatar` only for reading, and the token routes only for its own session. Every other route refuses one with `403 wrong_credential`.
 
 Nothing else on the app API does. The rest is one installed client talking to
 us, and has no reason to be reachable from a web page.

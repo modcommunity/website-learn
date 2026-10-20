@@ -6,9 +6,11 @@ source:
   - src/types/app-api/contract.ts
 ---
 
-<Endpoint method="GET" path="/api/app/v1/browse" auth="Token">
+<Endpoint method="GET" path="/api/app/v1/browse" auth="Optional">
 Browse any content kind. One response shape, whatever the kind.
 </Endpoint>
+
+A token is optional: a signed-out app browses the same public rows, and the token is used for counting the limit (300 per minute, sized for a shared address) and to resolve `mine`. `mine` with no token has nothing to resolve to and filters nothing.
 
 ## One row for every kind
 
@@ -28,16 +30,16 @@ than rejected**. A filter panel that survives a kind switch is worth more than a
 
 | Param | |
 | --- | --- |
-| `kind` | Required |
+| `kind` | Required: `asset`, `mod`, `server`, `serverMap`, `article`, `community`, `collection` or `user` |
 | `search` | Free text, up to 128 characters |
-| `apps` | App ids |
-| `categories` | Category ids |
-| `tags` | Tag ids |
+| `apps` | App ids, at most 50 |
+| `categories` | Category ids, at most 50 |
+| `tags` | Tag ids, at most 50 |
 | `tagsOr` | **AND across tags by default**; `true` switches to ANY |
 | `communityId` | |
 | `ownerId` | |
 | `nsfw`, `archived` | |
-| `mine` | The signed-in user's own items. Resolved server-side from the token |
+| `mine` | The signed-in user's own items. Resolved server-side from the token, and it wins over an explicit `ownerId` |
 | `environment` | `ALL` / `SERVER` / `CLIENT` — mods and assets |
 
 Tags are AND by default because the app's chips read as "all of these".
@@ -48,14 +50,14 @@ Tags are AND by default because the app's chips read as "all of these".
 | --- | --- |
 | `onlineOnly` | |
 | `mapName` | Substring match on the current map |
-| `countries` | Country ids, from `/facets` |
+| `countries` | Country ids, from `/facets`, at most 50 |
 | `os` | `WINDOWS` / `LINUX` / `MAC` |
 | `password`, `secure`, `isOfficial` | |
 | `hideEmpty`, `hideFull` | |
 | `minUsers`, `maxUsers` | Current **population** |
 | `minSlots`, `maxSlots` | **Capacity** — named differently to keep the two apart |
 | `wasOnline` | Seen online inside the inactivity window |
-| `adultAges` | Restrict to servers whose **community** states one of these minimum ages |
+| `adultAges` | Restrict to servers whose **community** states one of these minimum ages (`NONE`, `ADULT_18`, `ADULT_21`, …), at most 8 |
 
 <Callout type="warning" title="`wasOnline` is not `has ever been online`">
 It means "seen online inside the inactivity-removal window". The website's own
@@ -71,13 +73,13 @@ community says about itself. See
 
 | Param | Default |
 | --- | --- |
-| `sort` | `createdAt` |
+| `sort` | `createdAt`. Also `lastEdit`, `name`, `views`, `downloads`, `rating`, `reviews`, `favorites` and, for servers, `curUsers`, `maxUsers`, `avgUsers`, `bots`, `map`, `lastOnline`, `lastScanned` |
 | `sortDir` | `desc` |
 | `timeRange` | `all` — also `24h`, `7d`, `30d` |
-| `limit` | 30, maximum 50 |
+| `limit` | 30, from 1 to 50 |
 | `cursor` | — |
 
-**Cursor paging only.** The app's grids are infinite, never numbered.
+A sort a kind does not support is ignored rather than rejected, and `players` is the old spelling of `curUsers`, still accepted because installed apps keep sending it. **Cursor paging only.** The app's grids are infinite, never numbered.
 
 ```json
 {
@@ -98,19 +100,17 @@ reads as false. That is deliberate: a naive coercion would read the string
 
 ## Facets
 
-<Endpoint method="GET" path="/api/app/v1/facets" auth="Token">
+<Endpoint method="GET" path="/api/app/v1/facets" auth="Optional">
 Sidebar facets, so the app's filters are populated from real data rather than a
-hard-coded list.
+hard-coded list. Takes the `kind` as a query parameter (required), and is limited to 120 per minute.
 </Endpoint>
 
-Returns apps, categories, tags and countries with counts — and, per app, the
-**query configuration** the app needs to probe that game's servers itself:
-which protocols they speak and the port rules.
+Returns `apps`, `categories` and `countries`, each with a `count` for that kind. There are no tags facet. Kinds with no game (communities, collections, users) get no apps, and only servers get countries, limited to those that host at least one. The query configuration the app needs to probe a game's servers is **not** here: it is the `query` block on each server's summary (`protocols`, `timeoutMs`, `swapGamePort`, `portOffset`), which is `null` when the game declares no protocol or the owner hid the network details.
 
 ## One item
 
-<Endpoint method="GET" path="/api/app/v1/content/{kind}/{id}" auth="Token">
-A single item's full page.
+<Endpoint method="GET" path="/api/app/v1/content/{kind}/{id}" auth="Optional">
+A single item's full page. Limited to 300 per minute. An unknown kind or an id that does not resolve is `404 not_found`.
 </Endpoint>
 
 The detail payload embeds a `summary` that is **byte-identical to that item's

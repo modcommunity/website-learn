@@ -10,8 +10,10 @@ source:
 ## Subscriptions
 
 <Endpoint method="GET" path="/api/app/v1/subscriptions" auth="Token">
-The library, as a delta or a full list.
+The library, as a delta or a full list. Limited to 120 per minute.
 </Endpoint>
+
+Query: `since` (the last `revision` you were given) and `limit` (1 to 200, default 200). The answer is `{ items, removed, revision, full }`. `removed` lists the ids of subscriptions to drop. Each item carries `kind`, `itemId`, `name`, `description`, `image`, `webUrl`, `app`, the switches `autoUpdate`, `notifyUpdates` and `paused`, `viaCollectionId` (set when a collection created it), `installable`, and `release` with the newest release's `version` and `file` (`url`, `size`, `sha256`, `name`).
 
 Three kinds can be subscribed to, and the closed list is load-bearing: `asset`,
 `mod`, `collection`. A server is not something you install; an article is not
@@ -37,12 +39,20 @@ to install yet" rather than fail to parse the whole list.
 </Callout>
 
 <Endpoint method="POST" path="/api/app/v1/subscriptions" auth="Token">
-Subscribe or unsubscribe.
+Subscribe or unsubscribe. Limited to 60 per minute, durable.
 </Endpoint>
 
+```json
+{ "kind": "mod", "itemId": 123, "subscribed": true }
+```
+
+`subscribed` is optional and toggles when it is left out. The answer is `{ subscribed, propagated, skipped }`: for a collection, `propagated` is how many item subscriptions it created (or, on unsubscribe, removed) and `skipped` how many it could not. An item that cannot be subscribed to is `400 not_installable` with a message the app can show as it is; an item that is missing or hidden is `404 not_found`.
+
 <Endpoint method="POST" path="/api/app/v1/subscriptions/prefs" auth="Token">
-Per-subscription preferences.
+Per-subscription preferences. Limited to 60 per minute, durable.
 </Endpoint>
+
+Send `kind`, `itemId` and any of the booleans `autoUpdate`, `notifyUpdates` and `paused`; the answer is `{ "ok": true }`. Preferences for an item you are not subscribed to are `404 not_found`.
 
 Subscribing to a collection creates item subscriptions on your behalf; those
 remember which collection created them, so cleanup is correct. An item can opt
@@ -52,12 +62,20 @@ out of one-click installs entirely with `subDisabled` — see
 ## Installs
 
 <Endpoint method="GET" path="/api/app/v1/installs" auth="Token">
-The sandboxes on this account's machines.
+The sandboxes on this account's machines, as `{ installs: [...] }`. An optional `appId` query narrows it to one game. Limited to 120 per minute.
 </Endpoint>
 
-<Endpoint method="POST" path="/api/app/v1/installs/items" auth="Token">
-Add or remove items from an install.
+<Endpoint method="POST" path="/api/app/v1/installs" auth="Token">
+Create a sandbox. Answers `201` with the install. Limited to 20 per 5 minutes, durable.
 </Endpoint>
+
+`PATCH` on the same path updates one (60 per minute, durable) and `DELETE` removes it (30 per 5 minutes, durable) with `{ "deleted": true }`. The body of `POST` takes `appId`, `name` (1 to 64 characters) and optionally `description`, `gameVersion`, `loader`, `isDefault`, `strategy`, `environment` and a `launch` block of `args`, `env` and `options`. `PATCH` and `DELETE` identify the sandbox by `id` in the body; `PATCH` can also clear `description`, `gameVersion` and `loader` with `null`, and takes `playedSeconds` (up to a day) to add to the install's play time. A game the official app cannot manage is `400 app_unsupported`, more than 50 installs for one game `400 too_many`, and an install that is not yours or not there `404 not_found`.
+
+<Endpoint method="POST" path="/api/app/v1/installs/items" auth="Token">
+Add an item to an install.
+</Endpoint>
+
+The body is `installId`, `kind` (`asset`, `mod` or `collection`), `itemId`, and optionally `enabled` and `order`. `PATCH` on the same path changes `enabled` or `order` (240 per minute) and `DELETE` removes the item (120 per minute); `POST` is 120 per minute, all durable. Each answers with the whole updated install. A missing item or install is `404 not_found`, and an install holds at most 1,000 items (`400 too_many`).
 
 An install is a game, a set of deployed items, and launch options.
 
@@ -68,17 +86,16 @@ How the app puts a sandbox's files in front of the game:
 | Strategy | |
 | --- | --- |
 | `direct` | Copies into the game folder, backing up whatever it displaced |
-| Link strategies | Leave the game folder made of pointers |
+| `hardlink`, `symlink` | Leave the game folder made of pointers |
 | `usvfs` | Runtime API hooking — declared, not yet implemented |
 
-The server stores this as a **string** and validates it against a list, but a
-value it does not recognise is **not fatal to the app** — it falls back to its
+The server accepts `direct`, `hardlink`, `symlink` and `usvfs` and defaults to `hardlink`; a value it does not recognise is **not fatal to the app** — it falls back to its
 own default. That is what lets a new strategy ship in the app before it ships
 here.
 
 ### Environment
 
-`client`, `server` or `shared`. Not decoration: it decides which mods are
+`client`, `server` or `shared` (default `client`). Not decoration: it decides which mods are
 offered for the sandbox and which of the game's own options are shown. A
 dedicated server and a player's game are the same files arranged differently,
 and a manager that cannot tell them apart offers everybody both halves of every
@@ -88,7 +105,7 @@ list.
 
 ### Launch options
 
-Every field optional, every one with a "leave it alone" meaning. The
+Every field optional, every one with a "leave it alone" meaning. They are `graphics` (`default`, `low`, `medium`, `high`, `ultra`), `windowMode` (`default`, `windowed`, `borderless`, `fullscreen`), `width`, `height`, `monitor`, `fpsLimit` (0 for none), `vsync`, `memoryMb`, `hideOnLaunch` and `confirmUpdates`, each range-checked, next to `launch.args` (up to 64) and `launch.env`. The
 overwhelmingly common install overrides nothing, and a launcher that silently
 forces 1920×1080 on somebody who never asked is worse than one with no settings
 at all.
@@ -99,8 +116,14 @@ plugin, not by this API.
 ## Downloads
 
 <Endpoint method="GET" path="/api/app/v1/downloads" auth="Token">
-What each of this user's devices is downloading.
+What each of this user's devices is downloading, as `{ devices: [...] }`, most recently heard from first and at most 25. Each device has a `deviceName`, `isThisDevice`, the counts `active`, `queued`, `paused`, `failed` and `finished`, `speedBps`, `remainingBytes`, up to 25 `items` (`id`, `label`, `status`, `done`, `total`, `speedBps`) and `updatedAt`. Limited to 120 per minute.
 </Endpoint>
+
+<Endpoint method="POST" path="/api/app/v1/downloads" auth="Token">
+The app reports its queue (answers `{ "ok": true }`). Limited to 600 per 5 minutes.
+</Endpoint>
+
+The row is keyed on the token, so two machines are two rows and signing one out deletes its row. A session that is not tied to a device is `400 no_device`, and a device that has since been signed out `401 no_device`. `DELETE` on the same path clears the account's rows (`{ "cleared": true }`, 60 per 5 minutes).
 
 Somebody starts a 40 GB modpack on their desktop and then wants to know, from
 their phone, whether it has finished. There is no other way to answer that: the

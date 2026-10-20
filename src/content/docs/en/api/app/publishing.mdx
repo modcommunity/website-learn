@@ -25,6 +25,8 @@ source:
 The publishing tool's endpoint. Three actions on one route.
 </Endpoint>
 
+The route is limited to 60 per minute, and `claim` has its own limit of 10 per minute, durable (`429 rate_limited`). The body is `{ "action": "claim" | "complete" | "fail", … }`, and every answer is the usual `{ ok, data }` envelope.
+
 <Callout type="warning" title="Behind a switch that ships off">
 Publishing is gated on the `uploads.packsEnabled` setting and answers **`503`**
 until an operator turns it on. The site does write the bytes (a worker job
@@ -47,18 +49,18 @@ starts.
 
 <Params>
   <Param name="claim">
-    Takes `version`, `fileCount`, `byteSize`, and either `repoName` or an
-    `assetId` to publish under that asset's name. Returns the row id and the
-    resolved `contentId`. The row is created **pending** and holds the version
+    Takes `version` (up to 64 characters), `fileCount`, `byteSize`, and either `repoName` (up to 64) or an
+    `assetId` to publish under that asset's name, and optionally a `releaseId`. Returns `{ id, contentId }`: the row id and the
+    resolved content id. The row is created **pending** and holds the version
     from this moment.
   </Param>
   <Param name="complete">
     Takes the row `id`, the final `fileCount` and `byteSize`, an optional
     `manifestSha`, and an optional `contains` bill of materials (at most 200
-    entries). Marks the pack ready.
+    entries; each key up to 200 characters and each value up to 64). Marks the pack ready and answers `{ id, status: "READY" }`.
   </Param>
   <Param name="fail">
-    Takes the row `id` and an `error` string. Closes the claim out as failed —
+    Takes the row `id` and an `error` string. Closes the claim out as failed (`error` is 1 to 500 characters) and answers `{ id, status: "FAILED" }` —
     and the version stays spent.
   </Param>
 </Params>
@@ -100,16 +102,21 @@ Shape, then ownership, then collision, then quota. Telling somebody they are out
 of space for a version number that was already taken sends them to delete
 something they did not need to.
 
-| Denial | What it means |
-| --- | --- |
-| `BAD_ID` | The id or the version cannot survive being a path component. |
-| `NOT_YOUR_NAMESPACE` | That `<owner>/<repo>` belongs to somebody else. |
-| `VERSION_TAKEN` | That exact version has already been published. |
-| `RETIRED` | That id was renamed away from; the denial names the new one. |
-| `MOVING` | A rename of that pack is still running; try again when it ends. |
-| `TOO_MANY_FILES` | Over `uploads.maxFilesPerVersion` for your role. |
-| `TOO_MANY_VERSIONS` | Over `uploads.maxVersions` for that content id. |
-| `OUT_OF_SPACE` | Over `uploads.maxBytesPerUser` for your role. |
+The denial is the lower-cased `code` on the error envelope (`version_taken`), with the status below. `claim` and `complete` ask the same questions.
+
+| Denial | Status | What it means |
+| --- | :-: | --- |
+| `BAD_ID` | 400 | The id or the version cannot survive being a path component. |
+| `NOT_YOUR_NAMESPACE` | 403 | That `<owner>/<repo>` belongs to somebody else. |
+| `VERSION_TAKEN` | 409 | That exact version has already been published. |
+| `RETIRED` | 409 | That id was renamed away from; the denial names the new one. |
+| `MOVING` | 409 | A rename of that pack is still running; try again when it ends. |
+| `RACE` | 409 | Another claim for the same version won the race. |
+| `TOO_MANY_FILES` | 413 | Over `uploads.maxFilesPerVersion` for your role. |
+| `TOO_MANY_VERSIONS` | 413 | Over `uploads.maxVersions` for that content id. |
+| `OUT_OF_SPACE` | 413 | Over `uploads.maxBytesPerUser` for your role. |
+
+Around the gates: `unavailable` (503) while publishing is off, `bad_request` (400) when neither `repoName` nor `assetId` is given or the asset has no usable name, `not_found` (404) for an asset or publish that is not yours, `conflict` (409) when another of your assets already publishes under that name or when `complete` or `fail` names a publish that is no longer pending, and `under_review` (409) when the asset or release is held for review, which also fails a pending publish on `complete`.
 
 <Callout type="warning" title="A version is never republished">
 Not "should not" — **cannot**. Godot has no API to unmount a resource pack, so

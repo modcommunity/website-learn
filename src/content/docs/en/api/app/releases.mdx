@@ -34,11 +34,11 @@ confuse:
 
 ## Is there a newer app?
 
-<Endpoint method="GET" path="/api/app/v1/version" auth="Token">
-The newest desktop app there is.
+<Endpoint method="GET" path="/api/app/v1/version">
+The newest desktop app there is. **No authentication**, because a signed-out app is the normal state of one just installed; limited to 60 per minute.
 </Endpoint>
 
-A version string and a download page. No artifact URL, no signature and no
+The answer is `{ "latest": "1.4.0", "download": "https://…" }`. `latest` is `null` until a release has been published, and `download` is `null` unless the operator's URL is `https`, since it is handed to the operating system's opener. A version string and a download page. No artifact URL, no signature and no
 checksum — this is the endpoint behind a *banner*, and the app compares its own
 version against `latest` to decide whether to draw one.
 
@@ -71,6 +71,9 @@ checking looks exactly like an updater with nothing to report.
 </Callout>
 
 <Params>
+  <Param name="The manifest">
+    `{ version, notes, pub_date, platforms }`, where `platforms` is keyed by target (for example `linux-x86_64`) and holds the artifact's `url` and `signature`. `target` and `arch` come from the plugin's placeholders, and `current` is URL-encoded. An unknown target, a version that cannot be ordered, or no enabled artifact for the machine is the same `204` as being current. The answer is Tauri's own shape, not the `{ ok, data }` envelope.
+  </Param>
   <Param name="204 means you are current">
     Not a `200` carrying the version you already have. The plugin treats
     anything that is not a `204` as a manifest it should act on, so answering an
@@ -102,7 +105,7 @@ checking looks exactly like an updater with nothing to report.
 
 <Endpoint method="GET" path="/api/app/v1/apps/{id}/build?platform=LINUX_X64">
 Resolve **one** installable build, for the machine asking. Authentication is
-**optional**.
+**optional**, and it is limited to 120 per minute.
 </Endpoint>
 
 The install half of [`/play/launch`](/learn/api/app/play#resolving-a-launch),
@@ -110,7 +113,7 @@ and built the same way for the same reasons.
 
 <Params>
   <Param name="platform" type="enum" required>
-    The machine asking. There is deliberately no "all of them" — the whole
+    One of `WINDOWS_X64`, `WINDOWS_ARM64`, `LINUX_X64`, `LINUX_ARM64`, `MACOS_UNIVERSAL`, `ANDROID_ARM64` or `IOS_ARM64`. The machine asking. There is deliberately no "all of them" — the whole
     reason this is a second request is that a device receives one download
     address, for itself.
   </Param>
@@ -124,6 +127,8 @@ and built the same way for the same reasons.
     chooses a file.
   </Param>
 </Params>
+
+The answer is `data: null`, or `{ appId, platform, version, url, sha256, sizeBytes, format, entry, args, minClientVersion, notes }`, where `format` is `ZIP`, `TAR_GZ` or `RAW` and `entry` is the file to start. An id that is not a positive integer is also `null`, not an error. A missing or invalid `platform` is `400 bad_request`.
 
 The catalogue at [`/apps`](/learn/api/app/play#the-app-catalogue) says a build
 *exists*; this says where it is. A device browsing the app list must not come
@@ -158,8 +163,7 @@ reaches every app that reads the bucket's manifest.
     Shown in the app before it installs. Plain text.
   </Param>
   <Param name="artifacts" type="array" required>
-    One to sixteen. Each names a target, an architecture, a URL and the
-    signature the updater verifies.
+    One to sixteen, each `{ target, url, signature }`. `target` is one of `DARWIN_X86_64`, `DARWIN_AARCH64`, `DARWIN_UNIVERSAL`, `LINUX_X86_64`, `LINUX_AARCH64`, `WINDOWS_X86_64` or `WINDOWS_AARCH64`; the URL must be `https` with no credentials in it; the signature is the updater's (at least 64 characters). A target may appear once.
   </Param>
   <Param name="promote" type="boolean" default="false">
     Also move the `app.version.latest` setting, which is what actually offers
@@ -167,6 +171,8 @@ reaches every app that reads the bucket's manifest.
     unreachable — the right shape for a pre-release somebody wants staged.
   </Param>
 </Params>
+
+The secret goes in an `Authorization: Bearer` header. The answer is `{ "ok": true, "data": { "version", "published", "promoted" } }`, where `published` lists the targets written. A body that is not JSON, fails validation, repeats a target or names a URL that is not `https` is `400` with `code: "invalid"`. There is no rate limit; the shared secret is the gate. `notes` is limited to 20,000 characters and `version` to 64.
 
 ### Why a shared secret, and why it 404s
 

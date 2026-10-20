@@ -80,6 +80,18 @@ Failure:
 reworded at any time. `retryAfter` appears on `429` and on the device poll's
 slow-down.
 
+The refusals the pipeline itself makes, before any route runs:
+
+| `code` | Status | Means |
+| --- | :-: | --- |
+| `unauthorized` | 401 | A token is required and none was sent |
+| `token_expired` | 401 | The access token has expired or been revoked. Refresh once and retry |
+| `wrong_credential` | 403 | A publishing token on a route that refuses it, or a game session on a route that has not opted in |
+| `rate_limited` | 429 | Out of budget, with `retryAfter` |
+| `unidentified` | 429 | The request's source address could not be determined |
+| `bad_body` | 400 | The body is missing or not JSON |
+| `bad_request` | 400 | The body or query failed validation; `message` is the first problem |
+
 <Callout type="info" title="The contract is mirrored in the app, verbatim">
 The app parses every response through the same schemas the server validates
 with. A drift between the two shows up as a loud validation error on the very
@@ -109,8 +121,7 @@ The app queries game servers **itself**, so a player sees latency and player
 counts measured from *their* connection rather than from our scanner's. That is
 the whole reason the app can do something a browser tab cannot.
 
-`/facets` therefore exposes an app's **query configuration** — which protocols
-its servers speak, and the port rules. Those are the site's own scanner
+Each server's summary therefore carries a **query configuration**, the `query` block — which protocols its servers speak, and the port rules. Those are the site's own scanner
 settings, exposed rather than reimplemented, because getting the query port
 wrong is the single most common reason a live server shows as dead and the site
 has already worked out the right answer per game.

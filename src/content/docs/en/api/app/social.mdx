@@ -76,30 +76,32 @@ disagrees. A device credential is bound to no app and is not narrowed.
 Ids are decimal **strings** — they can pass 2^53. Dates are ISO strings. For
 what the stages and roles mean, see [the party lifecycle](/learn/parties/lifecycle).
 
-| Route | Body / query | `data` |
-| --- | --- | --- |
-| `GET party/mine` | — | the party, or `null` |
-| `GET party/{id}` | — | the party |
-| `POST party/create` | the website's create input; `appId` optional on a game token | the party |
-| `POST party/join` | `{ id, password?, token? }` | `{ partyId, role, leftPartyId }` |
-| `POST party/leave` | `{ id, silent? }` | `{ left, ended }` |
-| `POST party/heartbeat` | `{ id }` | `null` |
-| `POST party/kick` | `{ id, userId, ban? }` | `null` |
-| `POST party/role` | `{ id, userId, role }` — `CO_HOST` or `MEMBER` | `null` |
-| `POST party/transfer` | `{ id, userId }` | `null` |
-| `POST party/invite` | `{ id, userIds[1..25], message? }` | the invite ids made |
-| `GET party/invites` | — | `[{ id, partyId, partyName, inviterId, message }]` |
-| `POST party/invite/respond` | `{ inviteId, accept }` | `null`, or as `join` when accepted |
-| `POST party/start` | `{ id, serverId? }` | the ready view |
-| `GET party/{id}/ready` | — | the ready view |
-| `POST party/ready` | `{ id, ready? }` — `ready` defaults to `true` | the ready view |
-| `POST party/connected` | `{ id }` | `null` |
-| `POST party/force-start` | `{ id }` | `null` |
-| `POST party/cancel` | `{ id }` | `null` |
-| `POST party/end` | `{ id }` | `null` |
-| `GET party/{id}/reserve/offer?serverId=` | — | the booking offer |
-| `POST party/reserve` | `{ partyId, serverId, minutes, private?, note? }` | the reservation |
-| `POST party/reserve/cancel` | `{ reservationId }` | the reservation |
+| Route | Body / query | `data` | Per 5 min |
+| --- | --- | --- | --: |
+| `GET party/mine` | — | the party, or `null` | 600 |
+| `GET party/{id}` | — | the party | 200 |
+| `POST party/create` | the website's create input; `appId` optional on a game token | the party | 5 |
+| `POST party/join` | `{ id, password?, token? }` | `{ partyId, role, leftPartyId }` | 30 |
+| `POST party/leave` | `{ id, silent? }` | `{ left, ended }` | 60 |
+| `POST party/heartbeat` | `{ id }` | `null` | 120 |
+| `POST party/kick` | `{ id, userId, ban? }` | `null` | 60 |
+| `POST party/role` | `{ id, userId, role }` — `CO_HOST` or `MEMBER` | `null` | 60 |
+| `POST party/transfer` | `{ id, userId }` | `null` | 10 |
+| `POST party/invite` | `{ id, userIds[1..25], message? }` | the invite ids made | 3 |
+| `GET party/invites` | — | `[{ id, partyId, partyName, inviterId, message }]` | 240 |
+| `POST party/invite/respond` | `{ inviteId, accept }` | `null`, or as `join` when accepted | 60 |
+| `POST party/start` | `{ id, serverId? }` | the ready view | 20 |
+| `GET party/{id}/ready` | — | the ready view | 400 |
+| `POST party/ready` | `{ id, ready? }` — `ready` defaults to `true` | the ready view | 60 |
+| `POST party/connected` | `{ id }` | `null` | 60 |
+| `POST party/force-start` | `{ id }` | `null` | 20 |
+| `POST party/cancel` | `{ id }` | `null` | 30 |
+| `POST party/end` | `{ id }` | `null` | 20 |
+| `GET party/{id}/reserve/offer?serverId=` | — | the booking offer | 240 |
+| `POST party/reserve` | `{ partyId, serverId, minutes, private?, note? }` | the reservation | 10 |
+| `POST party/reserve/cancel` | `{ reservationId }` | the reservation | 30 |
+
+Each limit is per member and, except the two polling reads below, shared with the website's own bucket of the same name. `POST party/start` with a `serverId` also draws from the website's set-server bucket (30 per 5 minutes), so it cannot be used to change a party's server faster than the website allows. `POST party/create` has the website's gates too: a host who already has a live party is refused with a `409` (`conflict`), and one past the daily party budget gets a `429` (`rate_limited`) with the wait in the message. Both are named refusals here, where the integration API's create still answers a bare `500` for them. A limit hit is a `429` with `retryAfter`.
 
 ### The party object
 
@@ -185,7 +187,7 @@ app-only buckets:
 | `GET party/mine` | `app:party-mine` |
 | `GET party/invites` | `app:party-read` |
 
-`party/mine` is sized for **three clients on one account** polling the ready
+The limits are in the table above (600 and 240 per 5 minutes). `party/mine` is sized for **three clients on one account** polling the ready
 round every 1.5 seconds. The two used to share one bucket, until a player with
 the web player open in a tab *and* the desktop game running 429'd themselves
 mid-round.
@@ -200,14 +202,14 @@ The website's friend flow, rule for rule:
   re-uses the row, turned round to face the new asker.
 - Only the addressee may answer. Removing deletes the row.
 
-| Route | Body / query | `data` |
-| --- | --- | --- |
-| `GET friends` | — | `[{ userId, displayName, avatarUrl, presence }]` |
-| `GET friends/requests` | — | `{ incoming: [Request], outgoing: [Request] }` |
-| `POST friends/request` | `{ userId }` | `{ id }` |
-| `POST friends/respond` | `{ requestId, accept }` | `null` |
-| `POST friends/cancel` | `{ requestId }` — an `outgoing` request's `id` | `null` |
-| `POST friends/remove` | `{ userId }` | `null` |
+| Route | Body / query | `data` | Limit |
+| --- | --- | --- | --- |
+| `GET friends` | — | `[{ userId, displayName, avatarUrl, presence }]` | 120 per minute |
+| `GET friends/requests` | — | `{ incoming: [Request], outgoing: [Request] }` | 120 per minute |
+| `POST friends/request` | `{ userId }` | `{ id }` | 20 per 5 minutes, durable |
+| `POST friends/respond` | `{ requestId, accept }` | `null` | 60 per 5 minutes, durable |
+| `POST friends/cancel` | `{ requestId }` — an `outgoing` request's `id` | `null` | 20 per 5 minutes, durable |
+| `POST friends/remove` | `{ userId }` | `null` | 30 per 5 minutes, durable |
 
 A `Request` is `{ id, userId, displayName, createdAt }`. `id` is an **integer**
 and goes back as `requestId`; `userId` is always the *other* person.
@@ -242,7 +244,7 @@ What a game reports about where its player is, so their friends can follow them
 in.
 
 <Endpoint method="POST" path="/api/app/v1/presence" auth="Token">
-Report where the player is. Answers `{ ttlSec }`.
+Report where the player is. Answers `{ ttlSec }`. Limited to 60 per minute.
 </Endpoint>
 
 ```json
@@ -250,7 +252,7 @@ Report where the player is. Answers `{ ttlSec }`.
 ```
 
 <Endpoint method="GET" path="/api/app/v1/presence?userIds=a,b" auth="Token">
-Friends' presence, keyed by user id. At most 100 ids, comma-separated.
+Friends' presence, keyed by user id. At most 100 ids, comma-separated. Limited to 120 per minute.
 </Endpoint>
 
 ```json

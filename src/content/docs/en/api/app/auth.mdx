@@ -35,7 +35,7 @@ Unauthenticated by necessity — the app has no credentials at this point.
 ```
 
 The client info is **self-reported and untrusted** — it is a label for the
-approval screen, nothing more.
+approval screen, nothing more. `codeChallenge` is 43 to 128 characters. `expiresIn` is in seconds and `interval` is the polling gap the app should keep.
 
 `verificationUriComplete` is what the app actually opens; `verificationUri` is
 where the user goes when the code has to be typed.
@@ -63,6 +63,8 @@ Every other outcome is an error envelope whose `code` the app branches on:
 | `slow_down` | **202** | Polling too quickly |
 | `access_denied` | 400 | The device was not approved |
 | `expired_token` | 400 | The attempt expired. Start again |
+
+`expired_token` is deliberately the answer to **several** different things: an unknown or expired device code, a grant already claimed, too many polls against one grant, and a wrong PKCE verifier. A wrong verifier is never a user mistake (the verifier never leaves the app that made it), so it means someone else holds the device code and the grant is deleted rather than left to be guessed against. `deviceCode` is 8 to 128 characters and `codeVerifier` 43 to 128. A poll that loses the race to claim a grant gets `slow_down`.
 
 <Callout type="info" title="Pending and slow-down are 202, not 4xx">
 Waiting on a human is not a client error. Naming them as codes keeps the app
@@ -103,7 +105,13 @@ Rotate the credential pair.
 
 Unauthenticated in the bearer sense: **the refresh token is the credential**, and
 requiring a live access token alongside it would make refresh impossible in the
-one situation it exists for.
+one situation it exists for. The limit is 30 per minute, durable.
+
+```json
+{ "refreshToken": "…" }
+```
+
+The answer has the same shape as a successful poll: `accessToken`, `refreshToken`, `expiresIn` and `user`. The old refresh token is retired by the rotation. Failures are `401`: `invalid_grant` for an unknown, expired or revoked token (and for an account that no longer exists), and `token_reuse` for a retired one coming back. The route accepts cross-origin calls, because a game session rotates its own pair from its own origin.
 
 <Callout type="warning" title="Reuse signs every device out">
 A retired refresh token coming back is reported as its own code, because it
@@ -120,7 +128,9 @@ Sign this device out.
 
 Revokes the **whole lineage** rather than the presented pair, so a sign-out is
 final: a refresh token the app still holds in its keychain cannot resurrect the
-session after the user asked for it to end.
+session after the user asked for it to end. The body is ignored (send `{}`), the answer is `{ "revoked": true }`, and the limit is 20 per minute.
+
+A game session may call it too: the lineage is the one the caller presented, so a loader tidying up after itself ends its own session and never signs the member out of their devices.
 
 ## The web player handoff
 
@@ -134,6 +144,12 @@ already signed into the site presses Play, the boot descriptor carries a
 single-use code, and the game's loader posts it here to get a credential for the
 player it is about to seat.
 
+```json
+{ "code": "…", "client": { "name": "…", "platform": "web", "version": "1" } }
+```
+
+`client` is optional and untrusted, a label for the member's device list; it defaults to "Web game player" on the `web` platform. The answer is the poll's success shape plus `appId` and `serverId`, echoed so a loader that serves several games from one bundle can check it got what it asked for. A code that is unknown, expired, already spent or whose account has gone is one `400 invalid_grant`, so the route cannot be used to test whether a code was ever real. The route accepts cross-origin calls, since the game runs on its own origin.
+
 What bounds it is what the code *is*: one use, sixty seconds, one member, one
 app — plus a durable rate limit, because it mints credentials and a cache outage
 must not turn it into an unmetered one.
@@ -145,8 +161,8 @@ bound to the app the code was minted for, and **every route refuses it unless it
 has explicitly opted in**.
 
 A member's installs, subscriptions, reviews and profile are all on the other
-side of that line. What a game token can do is learn who is playing, read and
-write that player's own avatar, and file their
+side of that line. What a game token can do is learn who is playing, read that
+player's own avatar (it cannot publish one), and file their
 [statistics](/learn/api/integration/stats#self-reported-figures).
 </Callout>
 
@@ -156,8 +172,22 @@ is **refused rather than obeyed**.
 ## Identity
 
 <Endpoint method="GET" path="/api/app/v1/me" auth="Token">
-Identity plus the settings that sync.
+Identity plus the settings that sync. A game session may call this one; it is how a loader learns who is playing.
 </Endpoint>
+
+```json
+{ "user": { "id": "…", "name": "…", "username": "…", "avatar": "…", "role": "…" }, "settings": { }, "serverTime": 1790000000 }
+```
+
+`serverTime` is the server's clock in whole seconds, so the app can notice a badly skewed device. The limit is 120 per minute.
+
+<Endpoint method="PATCH" path="/api/app/v1/me" auth="Token">
+Write the synced settings.
+</Endpoint>
+
+The body is a partial of the `settings` object, so two devices editing different toggles do not overwrite each other, and the answer is the full settings object. A game session is refused. The limit is 30 per minute, durable.
+
+`settings` holds `timezone` and `locale` (short strings), `emailNotifications` and `pushNotifications`, and one boolean per notification topic: `notifySystem`, `notifyComments`, `notifyReviews`, `notifyReleases`, `notifyMentions`, `notifyModeration`, `notifyCredits`, `notifyFriends`, `notifyFollowers`, `notifyMessages`, `notifyStatus`, `notifyParties` and `notifyGroups`.
 
 The app calls this on every launch. It is also how a **stale access token is
 discovered**: a `token_expired` here triggers one refresh-and-retry before the
