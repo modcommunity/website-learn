@@ -126,6 +126,12 @@ winning, silently. `mapinfo` answers both questions without taking a name
 somebody else has.
 </Callout>
 
+## Surface materials and Workshop maps
+
+`DotMapSurfaces` gives a map generator a photo material per surface kind (`&"brick"`, `&"asphalt"`, `&"tile_dark"` and so on, fifteen CC0 kinds), mapped in world space so code-built boxes need no UVs. `kinds()` lists them, `has_kind()` and `resolve()` map a name, `material(kind, tint)` returns the `StandardMaterial3D` and `try_material()` the same as a `DotResult`; `metallic_scale` turns the metal down for a renderer that overdoes it. `tools/sync-surfaces.sh` vendors just the kinds a game uses. This is API level 4.
+
+`DotMapCatalogue.follow_content(index, accepted_kinds)` lists the maps a player's subscribed Workshop packs provide, marked with the pack in their labels. A map the catalogue already holds under the same id always wins, a `map_kind` the game does not accept is left in the index and offered to nobody, and `unfollow_content()` stops.
+
 ## Where a game plugs in
 
 <Params>

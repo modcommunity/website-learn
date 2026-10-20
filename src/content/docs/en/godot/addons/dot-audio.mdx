@@ -84,6 +84,13 @@ not a mock: the real catalogue, culling, cooldowns, caps and music state machine
 run above it, and only the lines that would create an `AudioStreamPlayer` are
 replaced. It is also what lets a game that generates its own audio keep doing so.
 
+## Footsteps, ambience and one loudness for every game
+
+- **`DotAudioFootsteps`** gives the player, other players and bots a step per stride of distance travelled, so a body moved by the network steps at the rate it moves. `track(body, opts)` follows one body and `keep(bodies, opts)` follows a whole group. It picks the surface from the shape the ray hit first (a collider's `surface` meta, a `surface_wood` group, a name like `Floor_Wood`, or the `dot_fps_surface` meta dot-player-controller reads), and `stepped(body, surface, loudness)` fires for each step. When the body's own `is_on_floor()` is stale it asks the ground instead.
+- **`DotAudioAmbience`** plays a bed per map (`set_map_bed()`) and swaps it inside zones (`add_zone(box, bed, priority)`), crossfaded, so a game is never digital silence between events.
+- **`DotAudioStock`** holds the stock footsteps and ambience beds (all CC0). `DotAudioStock.add_to(catalogue)` adds them as ordinary defs, a game's own def with the same id wins, and `ids()` lists every stock id for a whole-list check. They play from an addon pack too: a file with no imported output is decoded from its own bytes.
+- **A loudness standard.** `DotAudioLoudness` states the target (`TARGET_LUFS` -17) and a true-peak ceiling of -1 dBTP. `DotAudioManager.limit_master` is on by default and installs a master limiter whose sample ceiling is -2 dBFS. `loudness_trim_db` is the whole-game nudge and is added to every voice's gain, because **a browser export runs no bus effects**: the limiter does nothing there, but the per-voice levels and the trim still apply.
+
 ## A volume slider is not decibels
 
 Mapping a 0..1 slider onto `volume_db`, even scaled to -60..0, gives a control

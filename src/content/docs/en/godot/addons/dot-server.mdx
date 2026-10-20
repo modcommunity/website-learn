@@ -130,12 +130,23 @@ A game's id may name its owner — `gamemann/game-arena` — so a fork and its o
 ## The signon state machine
 
 ```
-CONNECTING → AUTHENTICATING → DOWNLOADING → LOADING → SPAWNED
+CONNECTING → AUTHENTICATING → PROFILE → DOWNLOADING → LOADING → SPAWNED
 ```
 
 Each stage has its own timeout, deliberately: a player stuck downloading has a
 *different* problem from one stuck authenticating, and an operator has to be
 able to tell which without guessing.
+
+`PROFILE` is a stage a module can hold a session in, and refuse from, before anything spawns: a profile store or an avatar the player must have first. A module calls `DotServer.hold_profile(session, holder)`, then `release_profile(session, holder)` when it is ready or `refuse_profile(session, reason)` to drop the player with a reason; `DotServerConfig.profile_timeout_sec` drops a session a holder never released. Nothing is added on the wire: a client waits through it inside its own authenticating phase, so every shipped client still joins.
+
+## What a client can ask for
+
+- **Replicated cvars.** A cvar registered as replicated reaches every client (`DotEnvelope.CVARS`). `DotClientLink.replicated_cvar(name, fallback)` reads one, `replicated_cvars` is the whole table and `replicated_cvar_changed` fires on a change. It is optional on the wire: an older client is sent nothing and keeps its defaults.
+- **One scoreboard.** `DotClientLink.request_scoreboard()` asks for a single board without subscribing to it. Rows carry `key` (`DotServer.player_key()`, a per-server salted digest of the account, so a client can keep a block list without learning accounts) and `peer`.
+- **Joining a public host and port.** A native WebSocket join to a bare public `host:port` tries `wss://` first, because a listed server's game port is a TLS port; `DotClientLink.tls_connect_timeout_sec` bounds that attempt before it falls back.
+- **A WebSocket player and an ENet player in one match** is the `mixed_transports` example.
+
+The addon's API level is 10 (`LEVEL` in `dot_server_api.gd`).
 
 ## The wire: six RPCs, and everything else a kind
 

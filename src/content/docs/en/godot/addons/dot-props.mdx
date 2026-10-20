@@ -90,6 +90,18 @@ everything it touches.
 
 `DotPropCarry` is what makes a crate an object rather than scenery: a character motor sweeps a shape and slides, so without it a crate is exactly as solid and as immovable as the floor. `stand()` presses a player's weight into the prop under them, `ride()` carries them with it — angular velocity included, or a player on a spinning crate drifts toward the middle — and `push()` shoves one. It reads the motor's `ground_id`, which is a local handle and deliberately not part of the simulation.
 
+## Props from a folder of models
+
+`DotPropFolder.load_into()` turns a folder of `.glb` and `.gltf` files into catalogue props with no code: a model that appears in a scanned directory is a prop, a subfolder is its category, and a `props.json` or a JSON sidecar next to a model (and a `.png` thumbnail) says anything else, such as a name, category or credit. `DotPropModel` is the model file as a body's picture, hull and mass. The collision is shaped like the model, so a prop is not a box around its bounds. `DotPropCatalogue.follow_content()` lists a player's subscribed Workshop props in solo; online shows none, and the game's own ids win.
+
+## Toys
+
+Toys are networked physics toys and interactables a map places by data: balls, a see-saw, a roundabout, a trampoline, a bell. `DotPropToyBox` holds them. The server simulates and clients draw what it sends.
+
+- **Shooting and blasting.** `shot(collider, point, direction, damage)` turns a hit-scan's damage into a push and returns the toy's index (or -1 when it was not one). `shot_along(origin, direction, reach, damage, wall_mask)` is for a game whose own trace never meets a toy, because a toy's footprint is never in the physics space. `blast(at, radius, speed)` throws toys at the same speed whatever they weigh, and a shot bell rings.
+- **Carrying.** A roundabout carries the people standing on it round its hub, through `DotPropCarry.toys`.
+- **Cvars.** `sv_toys` switches them off, `sv_toys_awake` caps how many simulate at once, and `sv_toys_push` sets how hard walking into one pushes it. `DotPropToyCatalogue.merge_json()` adds or retunes toys.
+
 ## Where a game plugs in
 
 <Params>

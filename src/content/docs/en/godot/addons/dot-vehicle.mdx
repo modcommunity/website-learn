@@ -109,6 +109,10 @@ Confirmed against the engine source and by running it:
 the translation once, so no game has to.
 </Callout>
 
+## Brakes are forces (API level 2)
+
+`brake_force` and `handbrake_force` in `DotVehicleTunables` are newtons, applied as a force times the physics step on each wheel (`DotVehicleWheeled.step_seconds()`), so mass and distance mean something. Before level 2 Godot read them as an impulse per step, so a pack built earlier still compiles and runs but its brakes now mean their figures: retune it. `linear_damp` is written onto the body in replace mode, so it is the whole damping rather than something added to the project's. `handbrake_grip_fraction` (1.0 by default, no change) lets a handbrake slide. `DotVehicleCommand.brake_then_reverse()` is the opt-in single key that brakes while the car is still moving and then reverses (below `STOPPED_BELOW`).
+
 ## Driving without a person
 
 ```gdscript

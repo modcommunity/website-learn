@@ -192,6 +192,7 @@ special-cased, and every value is in `DotFpsTunables`.
 | Crouching | Resizes the collider, keeps the feet planted on the ground and the head planted in mid-air, and refuses to stand up under a low ceiling. |
 | Coyote time, jump buffering | Both configurable, both off at zero. |
 | Ground snapping | So walking down slopes and stairs does not give air physics every other tick. |
+| Wall running, wall jumping, wall slide | Off by default: `wall_run_enabled` and `wall_jump_enabled` in `DotFpsTunables`. A run needs `wall_run_min_speed` along the wall and ends under `wall_run_end_speed` or after `wall_run_max_time`; gravity drops to `wall_run_gravity_scale` meanwhile. `wall_slide_speed` is the controlled descent a finished run decays into, and `wall_jump_max_per_wall` and `wall_jump_max_per_air` bound the jumps. A wall beside you wins over a nearer face behind you. It is part of the deterministic motor, so prediction replays it. |
 
 <Callout type="warning" title="Build level geometry against `step_height`, not around it">
 Until late September 2026 a fast enough runner could ride the capsule's rounded
@@ -211,6 +212,16 @@ unreachable rise answers `0.0` / `-1.0`. Four games had each carried the same
 arithmetic over their own copies of three of these numbers, with a check that
 their copy agreed — and one of them shipped a flat-jump airtime the motor did
 not actually achieve. Ask the tunables when laying out gaps and ledges.
+
+### Rules, a second motor and the drawn body
+
+The addon has an API level (`LEVEL` in the addon's `dot_player_controller_api.gd`, currently 5, read through dot-core's `DotAddonApi`); a game that needs a newer feature checks it rather than the addon's version.
+
+- **`mp_forceview`** (`DotPlayerViewRules`, API 2): 0 leaves the view key to the player, 1 forces first person, 2 forces third person. The server decides because a third-person camera sees round corners; the camera boom is dot-core's `DotCameraBoom`.
+- **`mp_solidplayers`** (`DotPlayerBodyRules`, API 2): other players stop a sweep. `DotFpsBody.pass_out_mask`, set through `DotFpsController.set_pass_out_layers()`, names layers a player stops at but is never held inside, so two players placed on one spot walk apart instead of standing still for good.
+- **`DotFpsSimulator`** (API 3): a second motor over a copy of a player's body, from `DotFpsController.simulator()`, for a bot that plans ahead. It never touches the real player.
+- **`DotFpsViewMotion`** (API 4): the view's motion cues without nodes. `body_roll()` and `body_yaw()` with the `wall_run_body_roll`, `wall_run_body_yaw` and `wall_run_body_response` fields give a drawn body its pose on a wall; `DotFpsView` exports and forwards them.
+- **Wheel on jump** (API 5): `DotFpsSampler` latches button presses between samples, so one mouse-wheel tick bound to jump is exactly one press of jump in a command. Feed it every event through `handle_event`.
 
 ### Where a game plugs in
 

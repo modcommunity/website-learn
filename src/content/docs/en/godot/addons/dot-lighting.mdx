@@ -97,6 +97,14 @@ everything. That is not so much a limitation as the division of labour a baked
 world already has, and those four are most of the difference between a faithful
 conversion and one that feels like the engine it came from.
 
+## A contact shade where boxes meet: `DotContactShade`
+
+The Compatibility renderer has no ambient occlusion, so in a world built of flat boxes a crate meets the floor and a wall meets the ceiling with no shade in the corner, and nothing seems to stand on anything. Hand `DotContactShade` the boxes once at load, `DotContactShade.box(transform, size, casts, shaded)` for each, and `DotContactShade.node(boxes)` returns one `MeshInstance3D` of thin bands that darken both faces of every concave crease. It is its own mesh rather than the game's, one unshaded draw call for the whole map, and nothing runs per frame. `casts` is false for glass and water; `shaded` is false for a prop whose bounding box should darken the floor round it but take no bands of its own. `mesh()`, `material()` and `build()` are there for a game that draws the bands itself.
+
+## Baked light for a world built in code: `DotLightBake`
+
+A map generated from a document at load time does not exist in the editor, so the editor has nothing to bake. The game builds it exactly as a client would and copies the drawn meshes into a scene with a `LightmapGI` (`DotLightBake.prepare`), and the editor bakes that scene through the runner behind the `--dot-bake-lightmaps=` flag. `DotLightBake.store` saves one `LightmapGIData` per map. At runtime the client rebuilds the same meshes under the same names with the same second UV set (`DotLightmapSheet`, a deterministic packer for meshes of flat quads) and calls `DotLightBake.attach(map_node, path, DotLightBake.fingerprint(parts))`, which returns a `DotResult`. A bake made from other geometry is refused and the world is drawn with its live lights; a headless process refuses and touches nothing, and `can_draw()` says whether this process can. Baking needs Vulkan.
+
 ## Three things that are easy to get wrong
 
 - **A brightness is not an energy.** Worlds from the older BSP-family formats
