@@ -57,7 +57,7 @@ and only the changed ones move.
 { "ok": true, "created": 4, "updated": 0 }
 ```
 
-Ceilings: **25 stats per request, 200 per owner.**
+Ceilings: **25 stats per request, 200 per owner.** Per stat, `key` is an identifier of at most 64 characters (letters, digits, dot, underscore, colon, hyphen, starting with a letter or digit), `name` is 1 to 120 characters, `description` at most 500, `kind` defaults to `COUNTER`, `decimals` is 0 to 6 (default 0), `unit` at most 16 characters and `visible` defaults to `true`. `define` and `submit` accept `POST` and `PUT`; the two reads are `GET` only, and any other verb is a `405` with an `Allow` header. A credential bound to neither an app nor one of its servers is a `400`.
 
 ### The kind is the whole contract
 
@@ -109,6 +109,8 @@ Up to fifty players per request, one reading per stat each.
 { "ok": true, "players": 1, "readings": 4 }
 ```
 
+`players` holds 1 to 50 entries. Each `player` is the server's key (up to 64 characters of letters, digits, dot, underscore, colon, hyphen), `name` is 1 to 64 characters, and `stats` is a map of 1 to 200 readings, each a finite number within ±1e12. A refused reading is named in `refused`, which is left out when empty.
+
 **What arrives is a delta, not a total.** A reporter coalesces everything that
 happened to a player since its last flush into one row, by the same kind rules —
 so `kills: 3` means "add three" and `top_speed: 41.2` means "the best since last
@@ -153,7 +155,7 @@ GET /api/integration/v1/stats/player?player=srv-scoped-pseudonym
 }
 ```
 
-For a scoreboard that shows lifetime figures beside session ones.
+`player` is required. For a scoreboard that shows lifetime figures beside session ones. A player with nothing on file answers an empty `stats` list and a `null` name.
 
 <Endpoint method="GET" path="/api/integration/v1/stats/top" auth="Integration" scope="STATS_READ">
 One stat read as a ranking.
@@ -171,6 +173,8 @@ GET /api/integration/v1/stats/top?stat=kills&offset=0&limit=25&player=srv-scoped
   "self": { "rank": 37, "player": "…", "name": "…", "value": 412 }
 }
 ```
+
+`stat` is required, `offset` is 0 to 100,000 (default 0), `limit` is 1 to 100 (default 25), and `player` is optional and fills `self` (otherwise it is `null`). A stat that was never declared is a `404` with `No such stat.`
 
 A `LOWEST` ranks ascending, everything else descending. Ranks are derived and
 `self` is a count of strictly better values plus one, exactly as [the

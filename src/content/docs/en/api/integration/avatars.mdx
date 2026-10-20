@@ -65,6 +65,10 @@ Publish a document on the player's behalf.
 Forget it. The next read falls back to the asset set's defaults.
 </Endpoint>
 
+The `PUT` body is the avatar document itself: `version` (a whole number), `schema_id` (at most 64 characters), `parts` (slot to part id, both at most 64 characters) and `colours` (slot to at most three colour strings of at most 16 characters). Every field is optional. The answer is the stored document in the same shape as the read. `DELETE` answers `{ "ok": true }`.
+
+A `{key}` that is not 8 to 64 characters of letters, digits, `_` or `-` cannot belong to anybody and answers `404` with `No such player.`, like a key from another scope. When the site has avatars switched off, every verb answers `404` with `Avatars are not available on this site.` instead.
+
 Writing is a **separate scope from reading** because it changes how that member
 looks on the site and in every other game. Nearly every server needs to draw its
 players; almost none needs to dress them.
@@ -130,7 +134,7 @@ an error would refuse to admit every new player.
 
 ## What is repaired, and the one thing that is not
 
-On write, a document naming a **different `schema_id` is a `409`**: nothing in it
+On write, a document naming a **different `schema_id` is a `409`** (`{ "error": "…", "reason": "…" }`): nothing in it
 means anything here, so there is nothing to repair — and quietly resetting the
 player to the defaults while reporting success is how somebody loses an avatar
 they spent ten minutes on.

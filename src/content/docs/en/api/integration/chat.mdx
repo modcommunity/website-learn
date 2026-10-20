@@ -33,8 +33,10 @@ Relay a line of in-game chat.
 }
 ```
 
+`player.name` is required (1 to 128 characters), `steamId` and `gameId` are optional, and `body` is at least one character and at most the site's chat message limit (4,000 by default). The answer is `{ "ok": true, "id": "8815" }`, the id of the line that was posted.
+
 Omit `partyId` to post into the **server's own** in-game relay room instead.
-That form requires a server-scoped credential.
+That form requires a server-scoped credential; any other kind is refused with `403`. A `serverId` is not needed and, if you send one, must be your credential's own server. With a `partyId` the usual party checks apply (`403` outside your server or app, `404`, `409` once the party has ended).
 
 <Callout type="warning" title="The body is plain text and is escaped on the way in">
 It is rendered through the same Markdown pipeline as the rest of the site, and
@@ -56,6 +58,8 @@ Lines typed on the site that should be injected into the game.
 GET /api/integration/v1/chat/outbound?since=8813&limit=50
 ```
 
+`since` is a message id and `limit` is 1 to 100 (default 50). Messages come back oldest first, and `newest` is the id to send as `since` next time, or `null` when there are none (also when the server has no relay room yet).
+
 ```json
 {
   "ok": true,
@@ -73,13 +77,15 @@ GET /api/integration/v1/chat/outbound?since=8813&limit=50
 }
 ```
 
-**Server-scoped credentials only.** It serves the server's own relay room **plus**
+**Server-scoped credentials only**; any other kind gets `403`. It serves the server's own relay room **plus**
 the room of any live party on that server.
 
 ### The cursor is an id, not a timestamp
 
 Poll with the highest `id` you have already injected. Two messages can share a
 millisecond, and a timestamp cursor would either skip or re-deliver a line.
+
+A page is the **newest** `limit` lines after `since`, not the oldest. If more than `limit` lines arrived since your last poll, the older ones are skipped, so poll often enough that one page covers the gap, or raise `limit` to 100.
 
 Calling it with **no** `since` returns the most recent page, so a freshly
 restarted mod does not replay the whole history into the game.
@@ -111,12 +117,12 @@ changed.
 
 <Params>
   <Param name="commands" type="array" required>
-    Up to 256. Each has a `name` (one word, no prefix on it), and optionally
-    `usage` (`<map_id>`, `[reason]`), a one-line `description`, `chatAllowed`,
-    and `permission`.
+    Up to 256, and the field must be present. Each has a `name` (one word of letters, digits and `_ . + -`, at most 64 characters, no prefix on it), and optionally
+    `usage` (`<map_id>`, `[reason]`, at most 128), a one-line `description` (at most 256), `chatAllowed` (a boolean, `false` when left out),
+    and `permission` (at most 64).
   </Param>
   <Param name="prefix" type="string">
-    The prefix members type in front of them — **for the menu's label only**.
+    The prefix members type in front of them, at most 4 characters — **for the menu's label only**.
     The site's own trigger is `/` and stays `/` whatever this says: it is what
     a member's keyboard does, not what your server parses. A server whose
     prefix is `!` still gets a `/` menu here and receives the line it expects,
@@ -143,7 +149,7 @@ one transaction, so a server reporting while a member has the menu open can
 never show them an empty list followed by a full one.
 
 An app-scoped credential is refused with a `403`: it covers every server the
-app has, and a command list posted under one would have no server to belong to.
+app has, and a command list posted under one would have no server to belong to. The answer is `{ "ok": true, "count": 12 }`, the number of commands kept after duplicates were dropped.
 
 ## Retention
 

@@ -69,6 +69,8 @@ or one of its servers.
   request is a `400`. Ones the site refuses by name come back in `refused`,
   and the rest still apply.
 - A top-level `app` the reporter sends is ignored.
+- `category` and `series` are at most 64 characters, `icon` at most 128, `description` at most 500 and `name` at most 120. `tier` is 0 to 1000, and `hidden`, `secret` and `require_all` are booleans (`require_all` defaults to `true`). A rule's `value` is within ±1e12, `op` defaults to `at_least` and `merge` to `sum`.
+- A credential bound to neither an app nor one of its servers is a `400`, and `define` and `unlock` accept `POST` and `PUT` while the read is `GET` only.
 
 ## Filing unlocks
 
@@ -92,6 +94,7 @@ Up to **fifty** `{ player, key, unlockedAt }` rows per request, `unlockedAt` in
 - `unlockedAt` is accepted between the years 2000 and 2100, which is what
   refuses milliseconds loudly. A time in the future is clamped to now rather
   than refused.
+- A `player` shaped like an account id (`backbone:…`) is refused with a `400`, for the reason ratings refuse it.
 - A malformed batch is a `400`. The reporter drops it rather than retrying
   forever.
 
@@ -104,6 +107,7 @@ Takes `player` in the query string.
 
 ```json
 {
+  "ok": true,
   "player": "…",
   "points": 10,
   "unlocks": [

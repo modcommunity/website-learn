@@ -115,12 +115,11 @@ Two budgets, both enforced, both operator-configurable:
 | Per credential | This integration | `integration.rate.max` |
 | Per source address | Every integration reporting from one host | `integration.rate.perIp` |
 
-You choose your own per-credential figure at creation (600/minute by default),
-and it is **clamped to the operator's current ceiling at request time** — so
+You choose your own per-credential figure at creation (600 a minute by default, 6,000 at the site's default ceiling, and never above 60,000), and it is **clamped to the operator's current ceiling at request time** — so
 lowering the ceiling reins in credentials created under a higher one rather than
 grandfathering them.
 
-The per-address budget is what bounds a leaked-token farm: somebody holding
+The per-address budget (12,000 a minute by default, counted across every integration from one host) is what bounds a leaked-token farm: somebody holding
 fifty credentials still only gets one address's worth of budget.
 
 Over either limit is a `429` for the rest of the minute. Back off; do not retry
@@ -128,6 +127,8 @@ immediately.
 
 There is also a cap on how many integrations may exist against one content item
 at a time (10 by default). Revoked ones do not count.
+
+The `429` an integration receives carries the same `Unauthorized.` body as any other refusal and no retry hint, so wait out the minute. The one `429` with a `retryAfter` is the daily party-creation budget, and the enrollment routes answer theirs with a `Retry-After` header.
 
 ### Row budgets are separate
 
@@ -152,6 +153,11 @@ front door, and a cache outage must not turn it into an unmetered row factory.
 | `POST /auth/device` | 10 per minute |
 | `POST /auth/token` | 60 per minute — a well-behaved client polls about 12 times a minute |
 | `POST /auth/handoff` | 20 per minute, also durable — it mints credentials |
+| `POST /auth/refresh` | 30 per minute, durable |
+| `POST /auth/revoke` | 20 per minute |
+| `GET /version` | 60 per minute |
+| `POST /report` | 10 per hour, durable |
+| `POST /reviews/write` | 10 per minute, durable; `DELETE` 20 per 5 minutes; `PUT` 60 per minute |
 | `GET /apps` | 120 per minute |
 | `POST /stats/submit` | 30 per minute |
 | `GET /stats/me`, `GET /stats/top` | 60 per minute |

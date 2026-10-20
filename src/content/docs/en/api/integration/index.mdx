@@ -90,6 +90,23 @@ the wrong surface.
 [Signed Ed25519 assertions](/learn/api/authentication#signed-assertions-ed25519)
 are the stronger option and are available here too.
 
+Which header carried the token does not matter, and the token's shape does the routing: `tmci_` followed by 64 hex characters is a bearer secret, three dot-separated segments is a signed assertion, and anything else is refused before the database is touched.
+
+A request body is JSON of at most 512 KB. A route that takes no body (every `GET`) reads its input from the query string, where only `ts`, `offset` and `limit` become numbers.
+
+### Refusals
+
+Every authentication failure sends the same body, `{ "error": "Unauthorized." }`, whatever the cause, and the cause goes to the owner's request log:
+
+| Status | Cause |
+| --- | --- |
+| `401` | No token, a malformed token, an unknown one, or a signature that does not verify |
+| `403` | The credential is revoked or inactive, has expired, calls from an address outside its allowlist, or lacks a scope the route needs (**all** the route's scopes are required) |
+| `429` | Over the per-credential or the per-address request budget; the body still says `Unauthorized.` |
+| `400` | A `ts` outside five minutes of our clock, or a nonce or `jti` already seen |
+
+A payload that fails validation is the one exception: `400` with `{ "error": "Invalid payload.", "detail": "…" }`. An internal failure is a `500` with `{ "error": "Internal error." }` and nothing else. No response is cacheable.
+
 ## Scopes
 
 Every integration is bound to **exactly one content item** — an app or a server,
@@ -116,6 +133,10 @@ in practice — and to a set of scopes:
 | `AVATAR_WRITE` | Publish or erase a player's avatar on their behalf |
 | `RATING_READ` | Read players' skill ratings on the item's own queues |
 | `RATING_WRITE` | Declare queues, and file finished matches to be rated |
+| `ACHIEVEMENTS_READ` | Read one player's unlocks on the item's own catalogue |
+| `ACHIEVEMENTS_WRITE` | Declare the catalogue, and file unlocks |
+| `PROFILE_READ` | Read a player's game profile, by the scoped key this credential was given |
+| `PROFILE_WRITE` | Write that profile |
 
 A server-scoped credential may only touch parties **on that server**. An
 app-scoped one may only touch parties **for that app**. Anything else — a

@@ -7,6 +7,32 @@ source:
   - src/app/api/integration/v1/party/reservation
 ---
 
+Every party route takes the party as a `partyId` string in the body (or in the path for the read), and every one of them checks the party against the credential first:
+
+| Status | `error` | Why |
+| --- | --- | --- |
+| `400` | `Invalid party id.` | The id is not a party id |
+| `403` | `Party is not on this server.` / `Party does not belong to this app.` | The party is outside the item the credential is bound to |
+| `403` | `An integration scoped to a … cannot report party state.` | The credential is bound to some other kind of item |
+| `404` | `Party not found.` | No such party |
+| `409` | `Party has ended.` | Reporting on a finished party; stop sending |
+
+A payload that fails validation is `400` with `error: "Invalid payload."` and a `detail` naming up to five failing fields. Authentication, scope and rate-limit failures are the vague ones described under [errors](/learn/api/errors#integration-failures-are-deliberately-vague).
+
+### A player in a report
+
+State, session and match reports describe a player the same way. Only `name` is required.
+
+| Field | Limit |
+| --- | --- |
+| `name` | 1 to 128 characters |
+| `steamId`, `gameId` | Text, up to 32 and 128 characters |
+| `score` | Whole number within a million either way |
+| `kills`, `deaths`, `assist` | Whole number from 0 to a million |
+| `seconds` | Whole seconds from 0 to a year |
+
+`ts` is a positive Unix-seconds integer, and `nonce` rides along for [replay protection](/learn/api/authentication#replay-protection-on-writes). In a **match** report each player may also carry `place`, from 1 to 1,024. `mapName` is at most 128 characters and `gameMode` at most 64; a blank one means "I do not know" and leaves the stored value alone.
+
 ## Reporting state
 
 <Endpoint method="POST" path="/api/integration/v1/party/state" auth="Integration" scope="PARTY_STATE">
@@ -36,7 +62,7 @@ usually normal, since other people are on the server too. A persistently high
 `matched: 0` is the signature of a name-matching problem, and the same figures
 land in your request log so you can see it without instrumenting anything.
 
-Up to **256 players** per report.
+Up to **256 players** per report, in `players`, which defaults to an empty list (an empty list marks everyone as not in the game).
 
 ## Exact join and leave times
 
@@ -88,6 +114,8 @@ A round started or finished.
 { "ok": true, "matchId": "913", "recorded": 1 }
 ```
 
+`event` is `start` or `end`, and at most 256 players are accepted.
+
 `event: "start"` closes any open round and opens a new one. `event: "end"`
 closes the current one and records the results.
 
@@ -116,12 +144,16 @@ Never a player you name. An integration acts as the member who created it —
 that is the only account it can be held to, and the only one that can revoke it.
 </Callout>
 
+The body is all optional: `name` (at most 128 characters), `maxUsers` (2 to 256, default 8), `type` (default `PUBLIC`), `serverId` and `categoryId`. The answer carries `partyId` and `url`.
+
 `type` is limited to `PUBLIC` or `FRIENDS`. A password party created by a
 machine has a password only the machine knows; a private one would have an
 invite list nobody can manage.
 
-A server-scoped credential creates parties on its own server. An app-scoped one
-may name a `serverId`, validated against the app.
+A server-scoped credential creates parties on its own server (and a `404` says that server no longer exists). An app-scoped one
+may name a `serverId`. Any other kind of credential is refused with `403`.
+
+An owner already hosting a live party cannot have another created, and one past the daily party budget is refused too. Today both reach you as a bare `500` with `Internal error.` rather than a named error, because the create is shared with the website; the reason is in the credential owner's request log. Treat a `500` on create as "do not retry now".
 
 ## Ending a party
 
@@ -133,7 +165,7 @@ End the party.
 { "partyId": "4471" }
 ```
 
-Ends it with reason `SERVER` — **not** `HOST`. The party's own history should say
+The answer is `{ "ok": true, "ended": true, "members": 4, "seconds": 5400 }`, where `ended` is `false` when something else had already ended it. Ends it with reason `SERVER` — **not** `HOST`. The party's own history should say
 what actually happened, and "the game side closed it" is not the same as the
 host pressing End.
 
@@ -248,6 +280,8 @@ Resolve an in-game name to a member.
 GET /api/integration/v1/user/lookup?partyId=4471&name=Ashley
 ```
 
+`partyId` is required, plus at least one of `name` or `steamId` (a `400` says `Provide a name or a steamId.` otherwise). A player nobody matches answers `{ "ok": true, "found": false, "ambiguous": false }`.
+
 ```json
 {
   "ok": true,
@@ -276,9 +310,9 @@ watching.
 
 | Limit | Default | At the ceiling |
 | --- | --- | --- |
-| Recorded matches per party | 500 | `match start` opens nothing. The response carries `capped: true` and a null `matchId` |
-| Parties created per credential, per day | 200 | **`429`** — this one IS an error, because everything you do next is about a party that does not exist |
-| Parties created per owner, per day | 50 | **`429`**. Your parties are your owner's parties, and count against the same figure their own account has |
+| Recorded matches per party | 500 | `match start` opens nothing. The response carries `capped: true`, a `note` and a null `matchId` |
+| Parties created per credential, per day | 200 | **`429`** with `retryAfter` in seconds — this one IS an error, because everything you do next is about a party that does not exist |
+| Parties created per owner, per day | 50, per role | Refused. Your parties are your owner's parties, and count against the same figure their own account has; the `429` is currently reported as a `500`, see above |
 
 <Callout type="info" title="Why a per-day party budget exists">
 The one-live-party rule already stops a credential holding more than one party

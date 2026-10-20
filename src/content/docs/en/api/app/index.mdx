@@ -123,8 +123,8 @@ be handed one. An app configured with both simply receives `A2S`.
 
 ## Version checking and updating
 
-<Endpoint method="GET" path="/api/app/v1/version" auth="Token">
-The newest desktop app there is.
+<Endpoint method="GET" path="/api/app/v1/version">
+The newest desktop app there is. No token is needed; 60 per minute.
 </Endpoint>
 
 This one is for a **banner**: a version string and a download page, with no
@@ -151,6 +151,8 @@ It also does two things the schema cannot: it **checks the item exists** (a
 report naming a missing id is a row a moderator has to open to discover is
 meaningless), and it **refuses a duplicate from the same person**.
 
+A new report answers `201` with `{ "reported": true }`. An unknown `kind` is a `400` (`unsupported_kind`) and a missing item a `404` (`not_found`). The limit is 10 per hour, durable.
+
 ## Reviews
 
 <Endpoint method="GET" path="/api/app/v1/reviews">
@@ -164,8 +166,10 @@ column, and doing it in the app would mean fetching every review to draw five
 bars.
 
 <Endpoint method="POST" path="/api/app/v1/reviews/write" auth="Token">
-Leave, edit or vote on a review.
+Leave or edit a review.
 </Endpoint>
+
+The write is limited to 10 per minute, durable. `DELETE` on the same path removes your own review (20 per 5 minutes) and `PUT` votes on someone else's (60 per minute). An unknown `kind` is `400 unsupported_kind`, a missing or hidden target `404 not_found`, and voting on your own review `400 own_review`.
 
 Every invariant here is the website's own, **called rather than copied** — the
 penalty check, the engagement check, the operator's configured text limits, the

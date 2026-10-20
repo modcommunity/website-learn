@@ -48,7 +48,7 @@ for, who left, and where each side placed. **It carries no rating.** The server
 computes the new ones and hands them back.
 
 The rule is **Glicko-2** as published (Glickman 2012, with the Illinois
-iteration for the volatility), τ 0.5, rated per match, plus the team extension
+iteration for the volatility), τ 0.5 unless a playlist sets its own, rated per match, plus the team extension
 below.
 
 <Callout type="warning" title="The rule runs in two places">
@@ -85,7 +85,7 @@ A free-for-all is sides of one.
 
 <Params>
   <Param name="participation">
-    0 to 1, and weights the player's result. Under **0.25** the player is not
+    0 to 1 (default 1), and weights the player's result. Under **0.25** (a playlist's `minParticipation` default) the player is not
     rated at all and gains no game — joining for the last minute should not
     count as a match played.
   </Param>
@@ -96,7 +96,7 @@ A free-for-all is sides of one.
   </Param>
   <Param name="Absence">
     A rating's deviation widens with inactivity — one rating period per 14 idle
-    days — before it is used. Somebody back after a year is uncertain again,
+    days by default (a playlist's `ratingPeriodDays`) — before it is used. Somebody back after a year is uncertain again,
     and moves like it.
   </Param>
 </Params>
@@ -122,11 +122,11 @@ The queues this app or server runs. Idempotent — send the whole list at boot.
 ```
 
 Up to 25 per request and 50 per owner; past the owner's ceiling, `refused[]`
-names the ones not taken.
+names the ones not taken. Per playlist, `id` is an identifier of at most 64 characters, `name` is 1 to 120, `game` at most 64, `teams` is 1 to 64 (default 2), `teamSize` 1 to 64 (default 1), `ranked` defaults to `true` and `placementGames` to 0 (at most 1,000). Four optional tuning fields, which leave the stored value alone when omitted: `tau` (above 0, up to 3; 0.5), `ratingPeriodDays` (above 0, up to 3,650; 14), `minParticipation` (0 to 1; 0.25) and `leaverTakesLoss` (default `true`). `define` and `submit` accept `POST` and `PUT`; the read is `GET` only. A credential bound to neither an app nor one of its servers is a `400`.
 
 An **unranked** queue is known and never rated: its results are accepted and
 change nothing. That lets a matchmaker file every match the same way and leave
-the decision to the playlist.
+the decision to the playlist; the answer is `ratings: {}`.
 
 ## Filing a match
 
@@ -157,8 +157,8 @@ floor is absent. The keys are `DotMmRating.to_dict`'s, `last_played` in Unix
 seconds included, so the addon stores the answer as it comes.
 
 `placements` has one entry per side; lower is better, and equal is a draw. At
-least two sides, at most 64 players per side and 128 in all, and a player may
-appear once.
+least two sides and at most 64 of them, at most 64 players per side and 128 in all, and a player may
+appear once. `matchId` is at most 128 characters of letters, digits, dot, underscore, colon and hyphen.
 
 <Callout type="warning" title="Idempotent by matchId">
 The same match filed twice rates **once**: the second answer carries the
@@ -171,12 +171,13 @@ unique for longer than that.
 | Refusal | When |
 | --- | --- |
 | `404` | The playlist was never defined |
+| `400` | The match does not fit the playlist: more sides than its `teams`, or a side larger than its `teamSize` (the message says which), `placements` not one per side, or a `player` filed twice |
 | `400` | A `player` shaped like a dot-auth **account** uid (`backbone:…`). The addon refuses it before it leaves the server, for the reason [dot-stats](/learn/godot/addons/dot-stats) does: an account id here would let every game correlate a player across the platform |
 
 ## Reading ratings
 
 <Endpoint method="GET" path="/api/integration/v1/rating/players" auth="Integration" scope="RATING_READ">
-Current ratings for the players about to be queued. Up to 100, comma-separated.
+Current ratings for the players about to be queued. `playlist` and `players` are both required; up to 100 players, comma-separated. An unknown playlist is a `404`.
 </Endpoint>
 
 ```

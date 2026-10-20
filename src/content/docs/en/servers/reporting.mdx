@@ -55,7 +55,7 @@ A server the site already lists and that someone has [claimed](/learn/servers/li
 can fetch its own integration credential, with nobody copying a token to the box:
 
 1. `POST /api/integration/v1/server/enroll` (no credential; anyone may open
-   one) with `{ "host", "ports": [1 to 4 ports] }`. The answer carries a public
+   one) with `{ "host", "ports": [1 to 4 ports] }`; `host` is optional and at most 253 characters. The answer carries a public
    `challenge`, a secret `enrollment`, `rule` (`tmc_enroll`), `server_id`,
    `query_address` and `expires_at` (valid for ten minutes).
 2. The server publishes the challenge as the A2S rule `tmc_enroll`.
@@ -68,8 +68,20 @@ can fetch its own integration credential, with nobody copying a token to the box
 Answering on the stored address proves you control the server, and holding the
 secret proves you are the process that asked; neither alone completes. A server
 nobody has claimed cannot enroll. The credential holds the scopes a Dot game
-server calls (statistics, leaderboards, ratings, achievements writes, party and
-profile access) and no more.
+server calls and no more: `SERVER_STATS`, `SERVER_USERS`, `USER_LOOKUP`, `AVATAR_READ`, `PARTY_READ`, `PARTY_STATE`, `PARTY_SESSION`, `PARTY_STATS`, `STATS_READ`, `STATS_WRITE`, `LEADERBOARD_WRITE`, `RATING_READ`, `RATING_WRITE`, `ACHIEVEMENTS_WRITE`, `PROFILE_READ` and `PROFILE_WRITE`. Completing again **rotates**: the credential the previous enrollment of this server made is revoked, and one you made by hand is left alone.
+
+Neither route takes a credential, so each is limited per source address instead, and the count is durable: `enroll` 10 a minute and `enroll/complete` 30. Over it is a `429` with `code: "rate_limited"` and a `Retry-After` header. A body over 4 KB is a `413`, and a body that is not JSON or does not fit the shape is a `400`. Every failure carries a machine-readable `code`:
+
+| Status | `code` | Meaning |
+| --- | --- | --- |
+| `400` | `no_port` | The request named no port |
+| `404` | `unknown_server` | The site has no server at that address; add it and let it be scanned first |
+| `409` | `unclaimed` | Nobody has claimed the server (also returned by `complete` if the claim was dropped meanwhile) |
+| `409` | `no_address` | The site has no address it can query for this server |
+| `404` | `unknown_enrollment` | `complete` was given an `enrollment` that does not exist |
+| `409` | `already_completed` | That enrollment already produced its credential; start a new one |
+| `410` | `expired` | The ten minutes ran out |
+| `202` | `challenge_not_seen` or `no_answer` | Not an error: the site did not see the rule yet, `pending` is `true`; ask again shortly |
 
 Both routes are **deliberate acts recorded against the server**, which is what
 makes "this server has been reporting false numbers" an answerable question.
@@ -87,7 +99,7 @@ idempotent, and which verb a game-server HTTP client happens to support should
 not decide whether it can report.
 
 The credential is bound to **one** server, so **no payload names a server**. A
-leaked token cannot be pointed at somebody else's listing.
+leaked token cannot be pointed at somebody else's listing. A credential bound to anything else is a `400`, and one whose server has since been deleted is a `404`. Any other method is a `405` with an `Allow: POST, PUT` header. Authentication failures are the integration API's usual vague `401` and `403`; a body is at most 512 KB and every unknown field is ignored rather than refused.
 
 ### Statistics
 
@@ -128,6 +140,8 @@ that change every tick without re-sending the ones that do not.
 
 A payload that sets no reportable field is a `400`, not a silent no-op.
 
+Bounds: `curUsers`, `maxUsers` and `bots` are whole numbers from 0 to 10,000 (a figure past that is obviously a lie, and is refused with a `400` rather than clamped); `map` is 1 to 128 characters; `gameMode` and `version` at most 64; `os` is `WINDOWS`, `LINUX` or `MAC`; `vars` holds at most 1,000 rules, each key at most 128 characters and each value at most 1,024.
+
 ```json
 { "ok": true, "applied": ["curUsers", "maxUsers"] }
 ```
@@ -161,6 +175,8 @@ Unlike the scan path there is **no grace window**. A scan tolerates one missing
 player because the query protocol drops them on a busy server; a plugin
 enumerating the real player list has no such failure mode.
 
+A roster holds at most **512** players per report. Each needs a `name` (1 to 128 characters) and may carry `steamId` (at most 32), `score` (within a million either way) and `seconds` (whole seconds, up to a year). The answer is `{ "ok": true, "users": 2, "applied": true }`, where `users` is the number of players filed, and a throttled or capped report changes it as the table below says.
+
 `setCount` also sets `curUsers` from the list length. It is **off by default**,
 because a protocol that truncates its player list would otherwise understate the
 count every tick.
@@ -178,9 +194,9 @@ the exact moment nobody is watching.
 
 | Limit | Default | At the ceiling |
 | --- | --- | --- |
-| Tracked players per server | 5,000 | Players already on file keep updating; **new** names are not filed. The response carries `dropped` |
+| Tracked players per server | 100,000 for a claimed server (set per owner role), 50,000 for an unclaimed one | Players already on file keep updating; **new** names are not filed. The response carries `dropped` |
 | Maps per game | 2,000 | A report naming an unknown map leaves the server on the map it was already on — it is **not** cleared. The response carries `mapSkipped: true` |
-| Gap between roster reports | 5s | Accepted (`200`) and applied to nothing: `applied: false`, `throttled: true`, `retryAfter` |
+| Gap between roster reports | 5s | Accepted (`200`) and applied to nothing: `applied: false`, `throttled: true`, `retryAfter`, `users: 0` |
 
 <Callout type="info" title="The roster gap is not a rate limit">
 Every roster report opens and closes session rows, so a reporter alternating its

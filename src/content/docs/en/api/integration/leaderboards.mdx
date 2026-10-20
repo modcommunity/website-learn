@@ -25,6 +25,8 @@ these are** — a credential scoped to anything but an app or one of its servers
 is refused, because "leaderboards for an article" is not a thing and a broader
 surface is a broader surface.
 
+Declare and file accept `POST` and `PUT` alike; reading is `GET` only, and a wrong verb is a `405` with an `Allow` header. A credential bound to neither an app nor one of its servers is a `400`, and one whose app or server has been deleted is a `404`.
+
 ## Declaring a board
 
 <Endpoint method="POST" path="/api/integration/v1/leaderboard/define" auth="Integration" scope="LEADERBOARD_WRITE">
@@ -52,6 +54,8 @@ the changed ones move.
 ```json
 { "ok": true, "created": 1, "updated": 0 }
 ```
+
+`boards` holds 1 to 25 entries. Per board, `key` and every scope name and value are identifiers of at most 64 characters (letters, digits, dot, underscore, colon, hyphen, starting with a letter or digit), `name` is 1 to 120 characters, `description` at most 500, `decimals` is 0 to 6 (default 3), `unit` at most 16 characters, `kind` defaults to `TIME` and `visible` to `true`. A board the call refuses is listed in `refused` as text and the rest still apply; `refused` is left out when empty.
 
 ### A board is a key **and** a scope
 
@@ -120,6 +124,8 @@ twenty POSTs to one endpoint.
 { "ok": true, "accepted": 3, "improved": 1, "unchanged": 2 }
 ```
 
+Per entry, `player` is the server's own key (up to 64 characters of letters, digits, dot, underscore, colon and hyphen), `name` is 1 to 64 characters, `value` is a finite number no larger than 10^12 either way, and `setAt` is an optional Unix-seconds time. An entry that cannot be filed (an undeclared board, a value that is not sane for the board's kind) is listed in `refused` and the rest of the batch still applies.
+
 **Only an improvement is written**, unless `overwrite` is set. "Keep the best"
 is what a leaderboard means, and a reporter that sent every attempt would
 otherwise replace the record with the most recent failure. `overwrite` is for a
@@ -185,6 +191,8 @@ GET /api/integration/v1/leaderboard/board
 `scope` is the canonical `k=v;k=v` string, because a query string cannot carry
 an object — and it is re-sorted server-side all the same, so a caller who writes
 the segments out of order still reaches the board they meant.
+
+`board` is required, `scope` defaults to the board with no dimensions, `offset` is 0 to 100,000 (default 0) and `limit` is 1 to 100 (default 25). `player` is optional and, when it has an entry, fills `self`; otherwise `self` is `null`. A board that was never declared is a `404` with `No such leaderboard.`
 
 ```json
 {

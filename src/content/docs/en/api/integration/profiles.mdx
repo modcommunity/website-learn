@@ -44,6 +44,8 @@ Replace the profile with the document sent. Answers `{ "ok": true, "profile": â€
 Erase it. Answers `{ "ok": true }`.
 </Endpoint>
 
+The `PUT` body is the profile document, and **its `user_key` must equal the `{key}` in the path**, or the call is a `400`. Every other field has a default: `version` (0 to 1), `scope` (at most 64 characters), `display_name`, `avatar_id`, `locale`, `created_at` and `updated_at` (Unix seconds), `visit_count`, `onboarded` and `preferences`. A `{key}` that is not a usable player key is a `400`, and an `{key}` that resolves to nobody in this credential's scope is a `404`; a body that breaks a bound below is a `400` with `error: "Invalid payload."`. A `backbone:` account id is not a player key.
+
 Bounds the site enforces:
 
 - A display name is 2 to 24 characters, may be empty, needs a letter or number,
@@ -62,7 +64,7 @@ be able to rename anybody.
 Just `{ user_key, display_name, avatar_id }`, returned bare rather than wrapped.
 </Endpoint>
 
-This is what a scoreboard reads. It is a separate route because it returns less:
+Any verb other than `GET` is a `405`. This is what a scoreboard reads. It is a separate route because it returns less:
 a server drawing thirty names must not be able to read thirty players'
 preferences. The same `404` rules apply.
 
