@@ -1,0 +1,79 @@
+---
+title: Releasing
+description: The order to release an addon, a game and a web shell — tag the addon, let the site publish the pack, bump the lock, let CI build and tag the shell, then tag the game — and why each step comes before the next.
+navTitle: Releasing
+order: 17
+badge: new
+keywords:
+  - "release"
+  - "tag"
+  - "addons.lock"
+  - "lock"
+  - "web shell"
+  - "shell-build"
+  - "dot-ci"
+  - "v1"
+  - "sv_web_build"
+  - "pack"
+source:
+  - dev02:godot/dot-server-deploy/docs/releases.md
+  - dev02:godot/dot-server-deploy/docs/addon-packs.md
+  - dev02:godot/dot-ci/README.md
+  - dev02:CLAUDE.md
+---
+
+A release in this family is three things that must meet in the right order: the **addons** (versioned by tag), the **lock** in `dot-server-deploy` that names the tag each server installs, and the **web shell**, the client that frames a game in the browser. Get the order wrong and the failure is either a CI error or, worse, a player on a client that cannot fetch what the server runs.
+
+## The orders
+
+| Releasing | Order |
+| --- | --- |
+| an addon | tag the addon → the site publishes its pack (hourly, or "Pull now") → bump `addons.lock` in dot-server-deploy and push → restart the servers |
+| a game | tag every addon it needs → lock them and push → wait for the web-shell workflow's tag → tag the game |
+| a new shell | nothing by hand: push the lock (or a `client/` change) and the web-shell workflow exports, uploads, pins and tags |
+
+- **Push the lock only after the packs are on the origin.** A client that cannot fetch an addon pack joins on its own addons and does not retry that server this session. Check with `curl <origin>/<owner>/<repo>/<version>/manifest.json`.
+- **Publish content before the build that needs it.** A build published without its packs is a client that can mount no game.
+- **Each skipped step fails in CI**, not on a player's machine: the CI of dot-server-deploy parses every script against the lock at the locked refs, and a game's release refuses a pack that no released server tool can run.
+
+## Tagging, and what CI does with the tag
+
+Every repository calls the shared [`dot-ci`](/learn/godot/tooling#dot-ci) workflows, pinned to the major tag. The current line is **`v1`** (at the time of writing, `v1.3.5`), so `@v1` follows compatible fixes without you editing each repository.
+
+- On every push, `validate` runs the two-step check from [Installing](/learn/godot/installing#the-two-step-check).
+- On a `v*` tag, `release` attaches the artifact and a `SHA256SUMS` file, and for a game builds its content pack. It signs nothing: the signature is made by the site when it publishes the pack.
+- The pack is published as `<site username>/<repository>`, and the owner segment is the site username, not the GitHub owner.
+
+## `addons.lock`
+
+The lock names a release tag per addon repository. `setup.sh` clones at it and moves its own clones there on `--update`. Before the lock, every install took each addon's newest `main` while shells were exported whenever, and a server ahead of the shell refused the join.
+
+- `tools/addons-lock.sh check` before an export: a shell exported from a tree that is not at the lock matches no locked server.
+- `tools/addons-lock.sh write` locks every repository to its newest `v*` tag (by version order, not by date), or `write v0.1.3` to one tag. It refuses a lock with a hole in it, because a missing entry would install that addon at `main`.
+- Only clones that `setup.sh` owns are ever moved. A developer's sibling checkout is never detached onto a tag.
+
+## What needs a new shell
+
+An addon release reaches players by a server restart. A **new shell** is needed for a change to the engine version, to the boot stage, to the shell's own `client/` code (admin menu, loading screen, notices, party and friends UI), to the signon revision (an older shell is refused with "This server needs a different build of the game client"), to files an addon puts outside its own folder, or to the page the engine runs in.
+
+## The shell publishes itself
+
+Nobody exports, uploads or pins a shell by hand. A push to `main` that touches a shell input starts the **web-shell workflow**, which:
+
+1. compares the tree's fingerprint with the one recorded for the pinned shell and stops if they match;
+2. otherwise sets up fresh addon clones at the lock and exports the web build;
+3. uploads it, writes `web/shell-build`, commits "Pin the web shell", tags the next `v0.1.x` and pushes both together;
+4. dispatches the release workflow on that tag.
+
+Servers then pick the new shell up on their next start, and the site registers the build the first time one reports it. A release refuses to go out with a shell that is not its own, which is why you **do not tag a lock bump by hand**: push it and release the workflow's tag.
+
+<Callout type="warning" title="Check the deployed bytes, not the export">
+An export that was never published looks identical to a fix that did not work, because the browser runs the previous build and prints the previous errors byte for byte. Believe nothing about client behaviour until you have checked what the page actually loaded.
+</Callout>
+
+<Related>
+- [Operator guide](/learn/godot/operator-guide)
+- [Tooling: dot-ci](/learn/godot/tooling#dot-ci)
+- [dot-cloud](/learn/godot/addons/dot-cloud)
+- [Build your first game](/learn/godot/build-a-game)
+</Related>

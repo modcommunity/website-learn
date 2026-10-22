@@ -1,0 +1,74 @@
+---
+title: Bot soak testing
+description: Run a game's bots headless for N simulated minutes and have the run judged — stuck, fell-out and unreachable movers, kills, tick cost and memory growth — with ./game.sh soak and dot-bot's DotBotSoak.
+navTitle: Bot soak testing
+order: 55
+badge: new
+keywords:
+  - "soak"
+  - "bot soak"
+  - "DotBotSoak"
+  - "DotBotSoakConfig"
+  - "game.sh soak"
+  - "stuck"
+  - "memory leak"
+  - "tick cost"
+  - "SOAK"
+source:
+  - dev02:godot/dot-bot/docs/soak.md
+  - dev02:godot/game-arena/game.sh
+---
+
+A short test shows a game starts and a round ends. It does not show a bot that wedges itself in a corner after four minutes, a mover that falls out of the world, or an object count that climbs every round. A **soak** runs the game's bots headless for a number of simulated minutes and answers one question: did anything go wrong that a short test would not show.
+
+## Run one
+
+In a reference game:
+
+```bash
+./game.sh soak                  # the default map, the default length
+./game.sh soak some_map 10      # a map and a number of minutes
+```
+
+It runs the game's `tools/soak.tscn`, prints the `SOAK` lines and any errors, writes the report to `.godot/test-logs/soak-<map>.json`, and exits non-zero when the run failed. A game with no `tools/soak.tscn` says so. Like any headless run it is capped by `--timeout`.
+
+## What it samples, and what fails a run
+
+`DotBotSoak` samples every `sample_sec` and judges the run at the end against thresholds, returning a report with `ok` and a list of `reasons`.
+
+| Check | Reason prefix | Default |
+| --- | --- | --- |
+| a mover with a goal that has not progressed | `stuck:` | 10 s (`max_stuck_sec`) |
+| a mover that fell out of the world | `fell_out:` | none allowed |
+| movers off the navigation mesh, or unable to reach a player | `off_nav:`, `unreachable:` | off until you set a limit |
+| growth in object count and static memory after the warm-up | `leak:` | 25 % and 50 % |
+| a slow tick | `tick cost:` | p95 over 16 ms |
+| a long run with no kills at all | `combat:` | after 120 s |
+
+Thresholds are a `DotBotSoakConfig`, which is a [`DotConfig`](/learn/godot/addons/dot-core): defaults, a JSON file, `DOT_SOAK_*` environment variables, then `--soak-*` on the command line. Growth is measured from the first sample after the warm-up, so loading the map is not counted as a leak.
+
+## Wiring a game
+
+A game owns `tools/soak.tscn`, which builds its normal headless world with bots and runs the harness. `dot-bot` needs only `dot-core`; stuck, fell-out and unreachable detection come from `dot-spawn`'s `DotSpawnWatch`, handed in by duck typing, and are skipped (the report says `"watch": false`) without one.
+
+```gdscript
+var soak := DotBotSoak.new(cfg)   # cfg = DotBotSoakConfig.new(), cfg.apply_cli()
+soak.movers_fn = func() -> Array: return world.bots_as_movers()   # {id, position, kind, has_goal}
+soak.stats_fn = world.combat_totals                               # {kills, deaths, damage}
+var report := await soak.run(get_tree())
+print(DotBotSoak.summary(report))
+print(DotBotSoak.report_line(report))                             # one SOAK {...} line for CI to grep
+get_tree().quit(0 if report["ok"] else 1)
+```
+
+A host that steps its own world sets `step_fn` and calls `advance(tick)` in a loop. Optional hooks are `players_fn`, `object_count_fn`, `tick_cost_fn` and `describers`, whose `describe_lines()` output is copied into the report.
+
+<Callout type="info" title="Prove the detectors before trusting a pass">
+`examples/soak_selftest.tscn` in dot-bot exercises every detector and the report schema against a trivial arena of fake movers. A soak that passes because a detector is switched off looks exactly like a good one.
+</Callout>
+
+<Related>
+- [dot-bot](/learn/godot/addons/dot-bot)
+- [Build your first game](/learn/godot/build-a-game)
+- [dot-core](/learn/godot/addons/dot-core)
+</Related>

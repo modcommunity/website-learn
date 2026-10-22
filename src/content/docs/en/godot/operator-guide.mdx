@@ -1,0 +1,146 @@
+---
+title: Operator guide
+description: Installing a server with dot-server-deploy and keeping your changes safe across upgrades — which games and addons it installs (cfg/content), where each setting can live, which layer wins, and why secrets stay in files.
+navTitle: Operator guide
+order: 16
+badge: new
+keywords:
+  - "operator"
+  - "install"
+  - "dot-server-deploy"
+  - "setup.sh"
+  - "cfg/server"
+  - "addons.yml"
+  - "games.yml"
+  - "merge"
+  - "override"
+  - "upgrade"
+  - "layers"
+  - "secrets"
+  - "from_yaml.cfg"
+source:
+  - dev02:godot/dot-server-deploy/docs/operator-config.md
+  - dev02:godot/dot-server-deploy/docs/content-lists.md
+  - dev02:godot/dot-server-deploy/docs/configuration.md
+  - dev02:godot/dot-server-deploy/README.md
+  - dev02:godot/dot-core/docs/addon-config.md
+---
+
+This is the page for the person who **runs** a server. [Hosting a server](/learn/godot/hosting) is the walk-through of what each setting does; this page is about where your changes go so that an upgrade keeps them.
+
+## Install
+
+```bash
+git clone https://github.com/modcommunity/dot-server-deploy
+cd dot-server-deploy
+./setup.sh              # find or fetch a runtime, link the addons, write ./server
+./server                # start it
+```
+
+With no Godot on the machine, `setup.sh` downloads one that is pinned and checked against a checksum kept in the repository (`--no-download` refuses to fetch; `--godot PATH` uses yours). `./setup.sh --full` is the guided install: about ten questions, each with its answer in brackets, from a vanilla Linux box to a public server. On Windows use `setup.bat` and then `.\server.ps1`. Containers and panels are covered in [Hosting a server](/learn/godot/hosting#in-a-container).
+
+The server tool ships no game. Each game is a signed pack that the server installs from a content origin, and the next section is how you choose which.
+
+## Edit `cfg/server/`, and nothing else
+
+<Callout type="warning" title="Never edit addons/, content/, the game, or the rest of cfg/">
+An upgrade replaces those, or they are the shipped defaults, and your change is gone. Everything you tune goes in `cfg/server/`, and an upgrade leaves it alone.
+</Callout>
+
+Each addon (the party system, the map rotation, the vote) has a folder named after it with `-` written as `_`: `dot-party` is `dot_party`. A setting can live in four places, weakest first:
+
+| Layer | Folder | Written by |
+| --- | --- | --- |
+| addon default | `cfg/addons/<addon>/` | the addon |
+| game default | `cfg/game/<game>/<addon>/` | the game |
+| **your server** | `cfg/server/addons/<addon>/` | **you** |
+| **your server, one game** | `cfg/server/game/<game>/<addon>/` | **you** |
+
+The strongest layer wins, and only the keys you write change: every other setting keeps its default.
+
+### The whole order, schema to runtime
+
+Across every source, a setting is decided in this order, weakest to strongest:
+
+1. the **schema**: the default in the addon's code;
+2. the **addon** tier, `cfg/addons/<addon>/`;
+3. the **game** tier, `cfg/game/<game>/<addon>/`;
+4. the **server** tier, `cfg/server/…` (yours);
+5. the **environment** (`TMC_*` and `DOT_*` variables);
+6. the **command line**;
+7. a **runtime** change, such as a console command or rcon.
+
+`TMC_*` is not a layer of its own: each variable becomes the matching launcher argument, so it outranks the YAML. That is for a container or a panel with no `cfg/` to edit.
+
+<Callout type="warning" title="Secrets are file-only">
+Passwords and keys are refused from the environment and from argv (`--rcon-password` is rejected outright), because both are visible in a process list. Put them in a file under `cfg/server/`.
+</Callout>
+
+### Worked examples
+
+**Change a setting.** To hold a party's seats for 30 seconds, create `cfg/server/addons/dot_party/party.yml` containing `party_seat_hold_sec: 30`.
+
+**Replace a list.** A list file such as a map rotation is replaced whole by yours, which is what you want for "exactly these maps": create `cfg/server/addons/dot_map/maps.yml` and list only those.
+
+**Add to a list.** Start your file with `merge: true` and it is added to the list below instead of replacing it; `remove:` drops an entry.
+
+```yaml
+merge: true
+remove: [dm_old_map]
+maps: [dm_new_map]
+```
+
+**Change one game only.** Put the file under `cfg/server/game/<game>/<addon>/`, for example `cfg/server/game/game-arena/dot_map/maps.yml`. Other games on the same box are unaffected.
+
+<Callout type="info" title="The old paths still load, until 2026-12-31">
+A flat file such as `cfg/party.yml` and the older `cfg/server/<addon>/` folder both still work, with one WARN per file that tells you where to move it. If the new file exists, the old one is ignored whole. After 2026-12-31 the old paths are ignored.
+</Callout>
+
+### Which layer won
+
+`data/from_yaml.cfg` is written on every boot and is exactly what your files became. A key the server does not know is listed at boot as unknown and never stops it, because refusing to start over a setting from a newer version is worse than ignoring it.
+
+## Choose what gets installed
+
+Which addon repositories and which games or packs this server installs is data you own, in two files:
+
+- `cfg/server/content/addons.yml`, the addon repositories;
+- `cfg/server/content/games.yml`, the games and packs.
+
+(`cfg/content/` works too and is the weaker of the two.) The shipped defaults are used when you write none.
+
+```yaml
+merge: true            # absent or false: your file IS the list; true: added to the default
+remove: [dot-voice]    # ids dropped after the lists are merged
+entries:
+  - dot-core                      # a git repository
+  - dot-vote@v0.2.1               # pinned to a tag or commit
+  - repo: game-arena
+    pin: v1.0.0
+    content: arena                # games.yml only: the content directory
+    maps: [dm_one, dm_two]        # the rotation, in this order
+    rotation: sequential          # sequential, random or vote
+  - pack: gamemann/surf_mesa      # a dot-cloud pack id
+    pin: 1.2.0
+```
+
+- A **pin** is respected as written; an unpinned entry follows the origin's newest.
+- A **pack** is still checked against its signature by [dot-cloud](/learn/godot/addons/dot-cloud). The list says what to fetch, never what to trust.
+- With no rotation given, a game rotates through its installed maps sorted by name, and several games rotate in the order of `games.yml`. A `maps.yml` rotation file with weights and per-map settings still wins when it exists.
+- A bad entry (both or neither of `repo` and `pack`, a name with a path in it, a pin with odd characters) fails naming the file and the entry number.
+
+<Callout type="info" title="games.list is gone">
+The old `games.list` at the project root still works with one WARN until 2026-12-31 if there is no `games.yml`. Move it to `cfg/server/content/games.yml`.
+</Callout>
+
+## Keeping up with releases
+
+A server's addons move when the server is restarted onto a newer lock, not when somebody remembers to reinstall. The behaviour is set by `TMC_AUTO_UPDATE` (or `--auto-update`, the panel's "Update addons automatically"): `when-needed` (the default) updates when the lock or the pinned web shell on the branch has moved, `always` updates every start, `never` does not. If a game needs newer addons than the lock provides, the installer refuses it and the launcher updates itself once and tries again. What publishes a lock and a shell is on [Releasing](/learn/godot/releasing).
+
+<Related>
+- [Hosting a server](/learn/godot/hosting)
+- [Tooling: TMC's server tool](/learn/godot/tooling#tmcs-server-tool)
+- [Releasing](/learn/godot/releasing)
+- [Conventions: layered configuration](/learn/godot/conventions)
+- [Listing your server on the site](/learn/servers/listing)
+</Related>

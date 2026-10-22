@@ -90,6 +90,10 @@ Bots can ride surf ramps. A ramp is learned from the map alone: an offline searc
 
 The addon's repository has a headless self-test, `examples/bot_selftest.tscn`, run after the `--import` pass like every other suite ([Installing](/learn/godot/installing#the-two-step-check)). It measures each preset's reaction time, first-shot aim error, settled aim, turn speed and kill/death ratio against one scripted opponent.
 
+## Soak testing
+
+`DotBotSoak` runs a game's bots headless for N simulated minutes and judges the run for stuck, fell-out and unreachable movers, kills, tick cost and memory growth. In a reference game it is `./game.sh soak`; see [Bot soak testing](/learn/godot/soak-testing).
+
 <Related>
 - [Reference games](/learn/godot/games) — nine games fill empty seats with these bots
 - [dot-npc-ai](/learn/godot/addons/dot-npc-ai) — decisions for creatures that are not players

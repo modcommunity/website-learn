@@ -1,0 +1,125 @@
+---
+title: Build your first game
+description: The path for a developer who wants to make a game on Dot — copy the template, rename it, link the addons, run it offline and against a local server with game.sh, test it, and the five dot-core ideas every line of it leans on.
+navTitle: Build a game
+order: 6
+badge: new
+keywords:
+  - "template"
+  - "dot-game-template"
+  - "game.sh"
+  - "third party"
+  - "tutorial"
+  - "coin grab"
+  - "rename"
+  - "DotResult"
+  - "DotNodeRef"
+  - "DotRegistry"
+  - "DotConfig"
+  - "DotLog"
+source:
+  - dev02:godot/dot-game-template/README.md
+  - dev02:godot/dot-game-template/CLAUDE.md
+  - dev02:godot/game-arena/game.sh
+  - dev02:godot/dot-game/docs/client-migration.md
+  - dev02:godot/dot-core/README.md
+  - dev02:CLAUDE.md
+---
+
+[Getting started](/learn/godot/getting-started) gets the collection onto your machine and a game running. This page is for the next step: you want to **make** a game that anybody running a server can install and anybody with the client can play, without downloading anything but your game.
+
+## 1. Start from the template
+
+[`dot-game-template`](https://github.com/modcommunity/dot-game-template) is a small, complete, networked game, **Coin Grab**, written the way the platform wants a game written: server-authoritative, predicted on the client, delivered as a signed pack, and playable offline from the same scene. Press **Use this template** on GitHub, or clone it, then rename it once:
+
+```bash
+git clone --depth 1 https://github.com/modcommunity/dot-game-template crate-rush
+cd crate-rush && rm -rf .git && git init -b main
+tools/rename.sh cr crate-rush
+```
+
+The prefix (`cr`) is what keeps your files apart from every other game a server has installed, because a delivered game has **no `class_name`**: the script renames every `tpl_` file and `Tpl` name, and every mention of the template's repository, to yours. Use your repository's exact name.
+
+<Callout type="warning" title="No class_name in a game, and no bare res:// paths">
+A game is mounted at runtime under a path that depends on its version, so it cannot declare a global class name and must wrap the paths of its own files (`TplPaths.rebase()` in the template). The template's pack suite refuses both, and CI runs it.
+</Callout>
+
+## 2. Link the addons
+
+The addons are not copied into your repository. The `/addons/<name>` lines in `.gitignore` are the list, and one script reads it and links them:
+
+```bash
+git clone https://github.com/modcommunity/dot-ci ../dot-ci
+../dot-ci/scripts/resolve-deps.sh .
+godot --headless --path . --import
+```
+
+Re-run the import whenever an addon adds a `class_name`: each project keeps its own class cache, and a stale one reads like a broken addon (`Identifier "DotX" not declared`). To use another addon, add its line to `.gitignore` and link again. Working inside the whole family? [`dot-bootstrap`](https://github.com/modcommunity/dot-bootstrap) does all of this for every repository at once.
+
+## 3. Run it, host it, test it
+
+The template checks itself with `tools/check.sh` (import, parse every script, every suite, and the rename). The **reference games** also carry a `./game.sh` with one verb for each thing you do all day, and the same script is in every one of them, so it is worth knowing what they are:
+
+| Command | What it does |
+| --- | --- |
+| `./game.sh` or `./game.sh play` | Play the game offline, in a window. Arguments after `--` go to the game. |
+| `./game.sh online` | A local server plus the browser client, and it prints the link. `./game.sh online down` stops it. |
+| `./game.sh server` | A dedicated server only. `server check` starts it, loads the game, stops, and exits 0 if that worked. |
+| `./game.sh test` | Parse every script, then run every suite, each under a timeout, and read each suite's stderr. `test NAME...` runs only those suites. |
+| `./game.sh shot` | Save a screenshot to `screenshots/`. |
+| `./game.sh soak [MAP] [MIN]` | Run bots headless for a while and judge the result: [Bot soak testing](/learn/godot/soak-testing). |
+| `./game.sh suites` | List the suites. |
+
+Options go **before** the command: `./game.sh --no-parse test`, never `test --no-parse`. `online` and `server` use [`dot-server-deploy`](/learn/godot/tooling#tmcs-server-tool) beside your repository and rebuild your game's pack first, so what you play is what is on disk now.
+
+<Callout type="info" title="Look at it, too">
+No assertion reaches an interface or a motion. Every view or UI change wants a frame rendered and looked at; that is what `shot` is for.
+</Callout>
+
+The template's README walks the same ground by hand, including publishing a pack into a local server and joining it from two clients; read it when you want to see what `online` is doing for you.
+
+## 4. The five ideas under every line
+
+These are the conventions in [dot-core](/learn/godot/addons/dot-core) that the rest of the family assumes. The longer version, with the reasons, is [Conventions](/learn/godot/conventions).
+
+- **No autoloads.** An autoload reserves a global name in every consumer and cannot be instantiated twice, which would rule out a server and a client in one process. You place nodes yourself and find services through `DotRegistry`.
+- **`DotResult` for anything that can fail.** Never `null`, never a pair. Check `ok`, branch on `error.code` against the `DotError.CODE_*` constants (never on the message), and add context with `wrap()`.
+- **`DotNodeRef` instead of scene paths.** A component that needs a host node exports a `DotNodeRef` (relative, absolute, group, registry, nearest ancestor of a type, or create if missing), so it works wherever you place it.
+- **`DotConfig` for settings.** Declare `@export` properties and they are layered the same everywhere: exported defaults, then a JSON file, then the environment, then the command line. Secrets are refused from the environment and argv.
+- **`DotLog` for logging, with a promise in the level.** TRACE is per-frame detail, DEBUG a decision, INFO what an admin would keep, WARN something recoverable that somebody should look at, ERROR a failed operation, FATAL the process cannot continue. `print` is a program's output, not logging.
+
+```gdscript
+const CHANNEL := "crate"
+
+func join(uid: String) -> DotResult:
+    var seat := _free_seat()
+    if seat < 0:
+        return DotResult.fail(DotError.CODE_CONFLICT, "server is full")
+    DotLog.info(CHANNEL, "seated", {"uid": uid, "seat": seat})
+    return DotResult.success(seat)
+
+# a caller
+var res := join(uid)
+if not res.ok:
+    DotLog.warn(CHANNEL, "join refused: %s" % res.error)
+    return
+```
+
+Everything is `Dot`-prefixed in the addons because `class_name` is global; your game's prefix plays the same part.
+
+## 5. The client starts from `DotGameClient`
+
+Every game client adds [`dot-game`](/learn/godot/addons/dot-game)'s `DotGameClient` first in `_ready`. It is the platform layer every game repeats: the loading cover, the settings and Escape menu, the console, Tab for the board, M for the map menu, and input held while the cover is up or a menu is open. Add your own holds on its gate (`gate.hold(&"map", "Loading the map")`, then `gate.release(&"map")`). The template's `game/tpl_client.gd` is the converted client to copy from, and dot-game's `docs/client-migration.md` lists the steps and what a game deletes afterwards.
+
+## 6. Ship it
+
+Push a `v*` tag and [dot-ci](/learn/godot/tooling#dot-ci) packages the game; the site signs and publishes it as `<your site username>/<repository>`, and a server installs it by that name. The order of tags across addons, the lock and the shell is on [Releasing](/learn/godot/releasing).
+
+<Related>
+- [Getting started](/learn/godot/getting-started)
+- [Conventions](/learn/godot/conventions)
+- [Extension points](/learn/godot/extending)
+- [Reference games](/learn/godot/games)
+- [Bot soak testing](/learn/godot/soak-testing)
+- [Releasing](/learn/godot/releasing)
+</Related>
