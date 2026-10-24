@@ -8,7 +8,7 @@ https://docs.moddingcommunity.com/learn/api/content/authentication/
 https://docs.moddingcommunity.com/es/learn/api/content/authentication/
 ```
 
-The build defaults describe that deploy: `PUBLIC_URL` (canonical, hreflang, sitemap) defaults to the docs host, and production sets `PUBLIC_MAIN_URL` so the shared chrome links back to the main domain. The repo can still be mounted at `/learn` on the main domain: set `PUBLIC_URL` to the main origin and leave `PUBLIC_MAIN_URL` unset.
+The build defaults describe that deploy: `PUBLIC_URL` (canonical, hreflang, sitemap) defaults to the docs host, and `PUBLIC_MAIN_URL` defaults (production builds only) to `https://moddingcommunity.com`, so the shared chrome links back to the main domain and the shared theme/language cookies go on its parent domain. The repo can still be mounted at `/learn` on the main domain: set `PUBLIC_URL` to the main origin and `PUBLIC_MAIN_URL=` to the empty string.
 
 ## No `base: '/learn'`
 
@@ -37,7 +37,7 @@ Those two prefixes cover the whole build, which is what `build.assets: 'learn/_a
 
 The shell's links are bare paths. The shared chrome data holds `/mods`, not an absolute URL, so the shared Header can match them against `activePath`, and a bare path resolves against whatever host served the page. On the docs host every header entry would point at a page the docs host does not have.
 
-`PUBLIC_MAIN_URL` is the fix, applied at render time in `i18n/link.tsx` and in the three places that build an anchor outside it: the shared `AccountButton` (given `cityUrl={MAIN_URL}` in `SiteHeader`), `SiteSidebar`'s share card, and the `a` in `components/docs/mdx.tsx` for prose links. Unset, every link stays relative, so a main-domain deploy costs nothing.
+`PUBLIC_MAIN_URL` is the fix, applied at render time in `i18n/link.tsx` and in the three places that build an anchor outside it: the shared `AccountButton` (given `cityUrl={MAIN_URL}` in `SiteHeader`), `SiteSidebar`'s share card, and the `a` in `components/docs/mdx.tsx` for prose links. Set empty, every link stays relative, so a main-domain deploy costs nothing.
 
 **`PUBLIC_URL` is not that variable**, and setting it instead is the natural mistake: it is this build's own origin (canonical, hreflang, Open Graph and the sitemap), so on a subdomain it is the docs host, not the main site.
 

@@ -41,8 +41,9 @@ INTERNAL_PORT=3000
 # domain — and wrong on their own origin, where every entry in the header would
 # point at a page the docs host does not have.
 #
-# Leave it UNSET for a /learn-on-the-main-domain deploy; the links are already
-# correct there and absolutizing them would only add redirects.
+# A production build defaults to https://moddingcommunity.com when this is unset.
+# Set it EMPTY (PUBLIC_MAIN_URL=) for a /learn-on-the-main-domain deploy; the
+# links are already correct there and absolutizing them would only add redirects.
 # PUBLIC_MAIN_URL=https://moddingcommunity.com
 # PUBLIC_TITLE=The Modding Community Docs
 # PUBLIC_TITLE_MAIN=Documentation - The Modding Community

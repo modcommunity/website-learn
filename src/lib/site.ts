@@ -22,7 +22,14 @@ export const SITE_URL: string = import.meta.env.PUBLIC_URL ?? 'https://docs.modd
  * main domain, where website-city (`/mods`, `/servers`, `/login`) and
  * website-processing (`/tos`, `/community`) both live.
  *
- * Empty by default, and empty means "same origin as this page": the nav configs
+ * Defaults to the production main domain in a production build, like
+ * {@link SITE_URL} defaults to the docs host: a build with no `.env` is the
+ * production build, and without this the shared `tmc_theme` / `tmc_locale`
+ * cookies stayed host-only and never reached the other sites. A dev build
+ * defaults to empty, and an explicitly EMPTY `PUBLIC_MAIN_URL=` opts out (the
+ * `/learn`-on-the-main-domain deploy).
+ *
+ * Empty means "same origin as this page": the nav configs
  * hold bare paths (`/mods`) precisely so the shared Header can match them
  * against `activePath`, and a bare path resolves against whatever host served
  * the page. That is correct — and free — when the docs are mounted at
@@ -36,7 +43,10 @@ export const SITE_URL: string = import.meta.env.PUBLIC_URL ?? 'https://docs.modd
  * The trailing slash is stripped so `PUBLIC_MAIN_URL=https://x.com/` and
  * `…/x.com` both produce `https://x.com/mods` rather than a doubled slash.
  */
-export const MAIN_URL: string = (import.meta.env.PUBLIC_MAIN_URL ?? '')
+export const MAIN_URL: string = (
+    import.meta.env.PUBLIC_MAIN_URL ??
+    (import.meta.env.PROD ? 'https://moddingcommunity.com' : '')
+)
     .trim()
     .replace(/\/+$/, '')
 
