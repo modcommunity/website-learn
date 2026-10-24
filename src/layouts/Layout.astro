@@ -6,6 +6,7 @@ import SiteHeader from "../components/SiteHeader";
 import SiteSidebar from "../components/SiteSidebar";
 import SiteFooter from "../components/SiteFooter";
 import CornerLauncher from "../components/CornerLauncher";
+import { ThemeInitScript } from "@modcommunity/shared/theme";
 import { LOCALES, localizeUrl, stripLocale, type LocaleT } from "../i18n/config";
 import { MAIN_URL, SITE_URL } from "../lib/site";
 
@@ -132,22 +133,11 @@ const desc = descMeta ?? import.meta.env.PUBLIC_DESCRIPTION ?? "Documentation fo
 			})()
 		</script>
 		<!--
-			Apply the stored/OS-default theme before first paint, so toggling to
-			light (via the shared <ThemeToggle/>) has no flash on the next load.
-			Defaults to dark (the site's identity) when no choice is stored; only
-			a stored "light" flips it. Uses the same `tmc:theme` key + `dark`
-			class / `data-theme` signals the shared ThemeToggle writes.
+			Apply the theme before first paint: the shared `tmc_theme` parent-domain
+			cookie, then localStorage `tmc:theme`, then the OS (see `ThemeInitScript`
+			in `@modcommunity/shared/theme`). Sets the `dark` class + `data-theme`.
 		-->
-		<script is:inline>
-			(function () {
-				try {
-					var t = localStorage.getItem('tmc:theme')
-					if (t !== 'light' && t !== 'dark') t = 'dark'
-					document.documentElement.classList.toggle('dark', t === 'dark')
-					document.documentElement.setAttribute('data-theme', t)
-				} catch (e) {}
-			})()
-		</script>
+		<script is:inline set:html={ThemeInitScript()} />
 		<link rel="icon" type="image/svg+xml" href={favIcon} />
 		<meta name="generator" content={Astro.generator} />
 

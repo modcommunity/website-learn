@@ -11,6 +11,7 @@ This is the third site on the same domain:
 | this | `/learn`: the documentation | Astro |
 
 The shell (header, icon rail, footer, language picker, theme toggle, analytics, fonts, styles, i18n machinery) was copied from website-processing deliberately, so the three sites look and behave identically. **When you change shell behaviour here, check whether website-processing needs the same change.**
+- Theme: `Layout.astro` inlines the shared `ThemeInitScript()` (`@modcommunity/shared/theme`: `tmc_theme` cookie, then `tmc:theme`, then OS); `ThemeToggle` gets the same `cookieOptions` as `WriteLocaleCookie`, so the cookie shares the parent domain with `tmc_locale`.
 
 ## Dependencies
 
