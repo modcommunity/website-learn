@@ -48,6 +48,7 @@ The Astro + React static site for The Modding Community's documentation: guides 
 - The chrome comes from `@modcommunity/shared`'s `buildChrome` over tmc-global's hand-edited `site-nav.json`, the same for every site except the Docs leaf, which points at `/learn` (`SITE_CHROME_OVERRIDES`); `check-layout-sync.sh` checks that this site's catalogue covers every key it draws. ([shell](docs/shell.md#one-deliberate-divergence-from-citys-nav))
 - Icons are `lucide-react` (colour with `text-*`), `react-icons/fa6` only for brand marks. Re-run `shared:local` after any `npm install`. ([shell](docs/shell.md#dependencies))
 - Third-party source cloned to be read lives in `/extra/external/` (see its README): look there before designing something from scratch; never a dependency.
+- **The docs home and every section index open with `DocsHero` (`helper/DocsHero.astro`), wired in `DocsLayout`**: eyebrow rule, display headline, two-palette backdrop (pale wash in light, deep in dark; same vocabulary as processing and city). Leaf pages keep the plain header.
 
 ## Read before
 

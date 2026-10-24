@@ -1,0 +1,82 @@
+---
+/**
+ * The docs hero: the editorial family shared with website-processing's front
+ * page and website-city's heroes. An eyebrow with a rule, a big display
+ * headline, and a restrained two-light backdrop with grain and hairlines.
+ *
+ * Image-free and complete without script. Two literal palettes, one per
+ * theme (`hidden dark:block` / `dark:hidden`); the copy uses tokens, so it is
+ * ink on the pale one and white on the deep one with no further switch.
+ * Nothing animates and nothing in it draws a grid.
+ */
+type Props = {
+    eyebrow: string
+    title: string
+    description: string
+    /** Docs home gets the tall band; section indexes a shorter one. */
+    size?: 'home' | 'section'
+    badge?: { label: string; tone: string }
+}
+
+const { eyebrow, title, description, size = 'section', badge } = Astro.props as Props
+
+const NOISE =
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
+---
+
+<section data-hero class="relative isolate overflow-hidden border-b border-border">
+    {/* Deep palette. */}
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10 hidden bg-[#04060d] dark:block">
+        <div class="absolute inset-0 bg-[linear-gradient(160deg,#070c1c,#04060d_55%,#060814)]"></div>
+        <div class="absolute -left-32 top-1/3 h-[26rem] w-[34rem] rounded-full bg-accent/38 blur-[130px]"></div>
+        <div class="absolute -right-24 -top-24 h-[24rem] w-[28rem] rounded-full bg-[#6366f1]/30 blur-[130px]"></div>
+        <div class="absolute inset-0 bg-[linear-gradient(115deg,transparent_28%,rgba(191,219,254,0.06)_46%,transparent_64%)]"></div>
+        <div class="absolute inset-0 opacity-[0.14] mix-blend-overlay" style={`background-image:${NOISE}`}></div>
+        <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-sky-200/20 to-transparent"></div>
+    </div>
+    {/* Pale palette: the same two lights as soft washes over near-white. */}
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10 bg-[#f5f8fe] dark:hidden">
+        <div class="absolute inset-0 bg-[linear-gradient(160deg,#eaf1ff,#f6f8fd_55%,#eef0fc)]"></div>
+        <div class="absolute -left-32 top-1/3 h-[26rem] w-[34rem] rounded-full bg-accent/20 blur-[130px]"></div>
+        <div class="absolute -right-24 -top-24 h-[24rem] w-[28rem] rounded-full bg-[#6366f1]/16 blur-[130px]"></div>
+        <div class="absolute inset-0 bg-[linear-gradient(115deg,transparent_28%,rgba(255,255,255,0.7)_46%,transparent_64%)]"></div>
+        <div class="absolute inset-0 opacity-[0.07] mix-blend-multiply" style={`background-image:${NOISE}`}></div>
+        <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-sky-500/20 to-transparent"></div>
+    </div>
+
+    <div
+        class:list={[
+            'mx-auto w-full max-w-[105rem] px-4 @3xl:px-8',
+            size === 'home' ? 'py-14 @2xl:py-20 @5xl:py-24' : 'py-9 @2xl:py-12',
+        ]}
+    >
+        <div class="flex items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-foreground/55">
+            <span class="h-px w-10 bg-sky-600/70 dark:bg-sky-300/70"></span>
+            <span>{eyebrow}</span>
+            {
+                badge && (
+                    <span class={`rounded px-2 py-0.5 tracking-wide ${badge.tone}`}>{badge.label}</span>
+                )
+            }
+        </div>
+
+        <h1
+            class:list={[
+                'mt-5 max-w-4xl text-balance font-pjs font-extrabold leading-[1.05] tracking-tight text-foreground',
+                size === 'home'
+                    ? 'text-[2.5rem] @2xl:text-6xl @5xl:text-[4.25rem]'
+                    : 'text-3xl @2xl:text-5xl',
+            ]}
+        >
+            {title}
+        </h1>
+        <p
+            class:list={[
+                'mt-5 max-w-2xl text-pretty leading-relaxed text-foreground/70',
+                size === 'home' ? 'text-lg @2xl:text-xl' : 'text-base @2xl:text-lg',
+            ]}
+        >
+            {description}
+        </p>
+    </div>
+</section>

@@ -117,7 +117,12 @@
  * link inside a link.
  */
 .docs-prose .docs-cards a {
-    @apply no-underline;
+    @apply text-foreground no-underline hover:text-accent;
+}
+
+/* The prose heading rhythm (`h3` mt-8) is for the article, not a tile's title. */
+.docs-prose .docs-cards h3 {
+    @apply mt-0;
 }
 
 .docs-prose .docs-cards p {
