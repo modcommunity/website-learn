@@ -23,12 +23,9 @@ source:
 [dot-match](/learn/godot/addons/dot-match) has `report_objective` — a number a
 game increments — and nothing that decides *when* to call it.
 
-Requires `dot-core`.
-
 An objective here is a rule about a place: no body, no collision shape, no node,
 which is what lets it run headless, in 2D on the XZ plane, and in a mirroring
-client. Requires `dot-core` and nothing else — everything it knows about the
-world arrives through six callables.
+client. Requires `dot-core` and nothing else. Everything it knows about the world arrives through callables on a `DotObjectivePresence`: four that `of()` takes and `validate()` insists on (who is playing, where each one is, their team, whether they are alive) and three optional ones (`capture_value_fn`, `may_capture_fn`, `may_block_fn`). Completions leave through one more, the manager's `score_fn`.
 
 ## Six kinds
 
@@ -78,7 +75,7 @@ Each is twenty years old and load-bearing:
 
 - **More cappers capture faster, with diminishing returns.** The nth player adds
   `1/n`. Linear makes a point a headcount.
-- **Two teams at once pauses the capture**, and the defender gets credit only if
+- **Two teams at once pauses the capture** (the default `block_style`; the older break-it style is the other choice), and the defender gets credit only if
   the attackers had got at least half way — rewarding a player for standing on
   their own point teaches players to stand on their own point.
 - **An abandoned capture decays** over ninety seconds rather than snapping back,

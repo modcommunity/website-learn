@@ -112,7 +112,7 @@ var path := graph.find_smooth_path(from, to, 2.0, true)   # smoothed, may be par
 var spot := nav.cover_position_from(npc.position(), enemy_position)
 ```
 
-Native search is the default: `find_path` runs `AStar3D` (one per filter signature, built on first use), which took a busy wave's path from about 3 ms to tens of microseconds. `use_native_search = false` keeps the script search, which the suite uses as its reference. `can_walk_straight` probes no wider than three quarters of a grid spacing, so smoothing no longer cuts an obstacle's corner, and `DotNpcSpawner.smooth_horizon` smooths only a path's first points. A follower pressed into a door jamb its smoothed path clipped can be told `DotNpcPath.go_rough(now, seconds)`: unsmoothed corners and a half-metre arrive radius for a few seconds.
+Native search is the default: `find_path` runs `AStar3D` (one per filter signature, built on first use), which took a busy wave's path searches from most of a tick to a fraction of a millisecond. `use_native_search = false` keeps the script search, which the suite uses as its reference. `can_walk_straight` probes no wider than three quarters of a grid spacing, so smoothing no longer cuts an obstacle's corner, and `DotNpcSpawner.smooth_horizon` smooths only a path's first points (0, the default, smooths all of it), because a follower repaths long before it reaches the far end. A follower pressed into a door jamb its smoothed path clipped can be told `DotNpcPath.go_rough(now, seconds)`: unsmoothed corners and a half-metre arrive radius for a few seconds.
 
 ## Seeds are per spawn, not per object
 

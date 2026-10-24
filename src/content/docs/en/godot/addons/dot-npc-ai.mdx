@@ -121,10 +121,9 @@ if not ctx.has_reacted(npc.engaged_at):
 var at := ctx.character.aim_point(muzzle, target.position, target.velocity, 900.0, shot)
 ```
 
-`DotNpcAiCharacter` sets reaction time, aim accuracy, aim skill, view turn rate,
-aggression, self-preservation, vengefulness and a tendency to camp, with four
-presets from `easy()` to `nightmare()`. There is no difficulty setting: the
-character is the difficulty, per NPC, so a game can mix them.
+`DotNpcAiCharacter` sets reaction time, aim accuracy, aim skill, view turn rate, aggression, self-preservation, vengefulness and a tendency to camp, among others, with four presets: `easy()`, `normal()`, `hard()` and `nightmare()`. The character is the difficulty, per NPC, so a game can mix them.
+
+What a server operator gets on top is an adjustment, not a difficulty setting that replaces those numbers: `DotNpcAiSkill` (the `npc_skill` cvar, -1 to 1 or a preset name, 0 being as authored) moves every character toward `easy()` or `nightmare()` by a fraction, so a brute on a hard server is still slower to notice than a stalker on the same server.
 
 Everything random in it is a hash of the character's seed and a number you pass,
 so the same shot always misses the same way and a replay agrees with the server

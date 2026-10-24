@@ -50,8 +50,9 @@ one it forgets is the one that matters.
 A timer gives every player the same game whether they are winning or losing.
 This is driven by what the players are experiencing — damage taken, enemies
 close, time without a break — so a team that is struggling gets a moment to
-recover and a team that is coasting gets something to do. Same rules, no
-difficulty setting.
+recover and a team that is coasting gets something to do. The pacing needs no difficulty setting to do that.
+
+On top of it, three opt-in layers (API 3, all off by default in `DotNpcDirectorRules`): a per-player skill estimate (`skill_enabled`, read back with `skill_multiplier(id)`, fed by `report_death`, `report_revive` and `report_kill`), a difficulty dial or preset (`difficulty_enabled`; `easy`, `normal`, `hard`, `nightmare`) whose `enemy_accuracy_multiplier()` and `enemy_damage_multiplier()` the game applies to its own enemies, and a cooldown budget on special kinds (`specials_enabled`). The director knows no combat addon; it only publishes the numbers.
 
 <Callout type="warning" title="The relax needs both a clock and a distance">
 Time alone lets a team that has stopped to argue about a door be attacked on
@@ -70,7 +71,7 @@ The stress cycle paces a team that *moves*; its relax waits for distance, which 
 | `CYCLE` | Day, night 1, day, night 2. A night is a length of time, survived rather than cleared; `daylight()` gives a ramp for the sky. |
 | `CLOCK` | One stretch, harder as it goes; 0 seconds lasts as long as anybody does. |
 
-It spawns nothing and owns nothing. The game calls `begin(players)` and `tick(delta, alive, players)`, asks `take(room)` for how many of the wave to spawn now and `give_back(n)` for spawns it refused, and reads `strength()` for how hard this stretch is. A wave is released a few at a time at `release_rate()`, which rises with the wave, so wave 1 trickles in and wave 10 arrives as a flood instead of a hundred bodies in one frame at one door. `stage_changed(stage, index)` and `finished()` are the signals.
+It spawns nothing and owns nothing. The game calls `begin(players)` and `tick(delta, alive, players)`, asks `take(room)` for how many of the wave to spawn now and `give_back(n)` for spawns it refused, and reads `strength()` for how hard this stretch is. A wave is released a few at a time at `release_rate()`, which rises with the wave, so wave 1 trickles in and wave 10 arrives as a flood instead of a hundred bodies in one frame at one door. `stage_changed(stage, index)`, `finished()` and, when a wave set (API 4, a `waves` profile) resolves each wave, `wave_started(spec)` are the signals.
 
 A ROUNDS wave ends when all of it is released and none is alive. Two backstops stop one body stuck behind a crate holding the breather off for ever: it ends `overtime_seconds` after its last release, and sooner, `straggler_seconds` (30) after the last release, once no more than `straggler_count` (3) are left. The stage change says so through `overtime`; what to do with the stragglers is the game's call.
 
