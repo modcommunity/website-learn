@@ -38,6 +38,8 @@ export const en = {
     account: {
         signIn: 'Sign In',
         myAccount: 'My Account',
+        app: 'App',
+        dashboard: 'Dashboard',
     },
     theme: {
         toLight: 'Switch to light mode',
@@ -109,7 +111,7 @@ const es: DeepPartial<Messages> = {
         close: 'Cerrar menú',
         title: 'Menú de navegación',
     },
-    account: { signIn: 'Iniciar sesión', myAccount: 'Mi cuenta' },
+    account: { signIn: 'Iniciar sesión', myAccount: 'Mi cuenta', app: 'Aplicación', dashboard: 'Panel' },
     theme: {
         toLight: 'Cambiar al modo claro',
         toDark: 'Cambiar al modo oscuro',
@@ -139,7 +141,7 @@ const fr: DeepPartial<Messages> = {
         close: 'Fermer le menu',
         title: 'Menu de navigation',
     },
-    account: { signIn: 'Se connecter', myAccount: 'Mon compte' },
+    account: { signIn: 'Se connecter', myAccount: 'Mon compte', app: 'Application', dashboard: 'Tableau de bord' },
     theme: {
         toLight: 'Passer au mode clair',
         toDark: 'Passer au mode sombre',
@@ -172,7 +174,7 @@ const de: DeepPartial<Messages> = {
         close: 'Menü schließen',
         title: 'Navigationsmenü',
     },
-    account: { signIn: 'Anmelden', myAccount: 'Mein Konto' },
+    account: { signIn: 'Anmelden', myAccount: 'Mein Konto', app: 'App', dashboard: 'Dashboard' },
     theme: {
         toLight: 'Zu hellem Modus wechseln',
         toDark: 'Zu dunklem Modus wechseln',
@@ -205,7 +207,7 @@ const ru: DeepPartial<Messages> = {
         close: 'Закрыть меню',
         title: 'Меню навигации',
     },
-    account: { signIn: 'Войти', myAccount: 'Мой аккаунт' },
+    account: { signIn: 'Войти', myAccount: 'Мой аккаунт', app: 'Приложение', dashboard: 'Панель управления' },
     theme: {
         toLight: 'Переключить на светлую тему',
         toDark: 'Переключить на тёмную тему',
@@ -235,7 +237,7 @@ const nl: DeepPartial<Messages> = {
         close: 'Menu sluiten',
         title: 'Navigatiemenu',
     },
-    account: { signIn: 'Inloggen', myAccount: 'Mijn account' },
+    account: { signIn: 'Inloggen', myAccount: 'Mijn account', app: 'App', dashboard: 'Dashboard' },
     theme: {
         toLight: 'Overschakelen naar lichte modus',
         toDark: 'Overschakelen naar donkere modus',
@@ -265,7 +267,7 @@ const ja: DeepPartial<Messages> = {
         close: 'メニューを閉じる',
         title: 'ナビゲーションメニュー',
     },
-    account: { signIn: 'ログイン', myAccount: 'マイアカウント' },
+    account: { signIn: 'ログイン', myAccount: 'マイアカウント', app: 'アプリ', dashboard: 'ダッシュボード' },
     theme: {
         toLight: 'ライトモードに切り替え',
         toDark: 'ダークモードに切り替え',
@@ -295,7 +297,7 @@ const zh: DeepPartial<Messages> = {
         close: '关闭菜单',
         title: '导航菜单',
     },
-    account: { signIn: '登录', myAccount: '我的账户' },
+    account: { signIn: '登录', myAccount: '我的账户', app: '应用', dashboard: '控制台' },
     theme: {
         toLight: '切换到浅色模式',
         toDark: '切换到深色模式',
@@ -325,7 +327,7 @@ const pt: DeepPartial<Messages> = {
         close: 'Fechar menu',
         title: 'Menu de navegação',
     },
-    account: { signIn: 'Entrar', myAccount: 'Minha conta' },
+    account: { signIn: 'Entrar', myAccount: 'Minha conta', app: 'Aplicativo', dashboard: 'Painel' },
     theme: {
         toLight: 'Mudar para o modo claro',
         toDark: 'Mudar para o modo escuro',

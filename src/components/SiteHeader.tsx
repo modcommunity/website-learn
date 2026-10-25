@@ -2,6 +2,7 @@ import {
     AccountButton,
     Header,
     HeaderActions,
+    HeaderLinks,
     LanguagePicker,
     MobileNav,
     ThemeToggle,
@@ -83,6 +84,16 @@ export default function SiteHeader({
     const theme = (
         <ThemeToggle cookieOptions={{ mainUrl: MAIN_URL || undefined }} labels={{ toLight: t('theme.toLight'), toDark: t('theme.toDark') }} />
     )
+    const links = (showLabels?: boolean) => (
+        <HeaderLinks
+            signedIn={signedIn}
+            cityUrl={MAIN_URL}
+            locale={locale}
+            labels={{ app: t('account.app'), dashboard: t('account.dashboard') }}
+            onNavigate={(item) => track('docs_header_link', { item })}
+            showLabels={showLabels}
+        />
+    )
     const account = (className: string) => (
         <AccountButton
             signedIn={signedIn}
@@ -118,6 +129,7 @@ export default function SiteHeader({
                     logoSrc={lockup}
                     footer={
                         <div className="flex flex-col gap-2 sm:hidden">
+                            {links(true)}
                             <div className="flex items-center justify-between gap-2">
                                 {language}
                                 {theme}
@@ -136,6 +148,7 @@ export default function SiteHeader({
                 <HeaderActions
                     language={language}
                     theme={theme}
+                    links={links()}
                     account={account('hidden sm:block')}
                 />
             }

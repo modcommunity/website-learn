@@ -142,6 +142,7 @@ export const UMAMI_EVENTS = [
     'docs_locale_change',
     'docs_theme_change',
     'docs_account',
+    'docs_header_link',
 
     /*
      * A 404 under `/learn`, carrying the path that missed.
