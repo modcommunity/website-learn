@@ -4,6 +4,7 @@ import { shellSidebar } from '@modcommunity/shared/i18n'
 import { shellFooter } from './sections/shellFooter'
 import { notFound } from './sections/notFound'
 import { docsUi } from './sections/docsUi'
+import { appSwitcher } from './sections/appSwitcher'
 
 /**
  * The docs site's message catalogue. `en` is the reference (complete) shape;
@@ -397,6 +398,8 @@ for (const loc of LOCALES) {
          * because the docs chrome is a surface only this site has.
          */
         docs: docsUi[loc],
+        // The sidebar footer's app switcher, ported from city's nav.json.
+        appSwitcher: appSwitcher[loc],
     }
 }
 

@@ -93,6 +93,13 @@ export default defineConfig({
 
     vite: {
         plugins: [tailwindcss()],
+        resolve: {
+            // In local mode the linked @modcommunity/shared sits beside its own
+            // node_modules, which holds another lucide-react than this site's. SSR
+            // and the browser then pick different copies and every icon fails
+            // hydration. One copy, resolved from here.
+            dedupe: ['lucide-react'],
+        },
         server: {
             // Accept the proxied Host header from nginx (dev is reached via tmcdev.net).
             allowedHosts: ['x-tmc-dev01', 'tmcdev.net'],
