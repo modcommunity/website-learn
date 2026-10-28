@@ -14,6 +14,10 @@ export type AppSwitcherStrings = {
     search: string
     none: string
     visit: string
+    sort: string
+    sortPopular: string
+    sortName: string
+    sortTotal: string
     loading: string
     contentTypes: Record<string, string>
 }
@@ -26,6 +30,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Search games…',
         none: 'No games match.',
         visit: 'Open game page',
+        sort: 'Sort',
+        sortPopular: 'Most popular',
+        sortName: 'Name (A–Z)',
+        sortTotal: 'Most content',
         loading: 'Loading games…',
         contentTypes: {
             mod: 'Mods',
@@ -44,6 +52,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Buscar juegos…',
         none: 'Ningún juego coincide.',
         visit: 'Abrir la página del juego',
+        sort: 'Ordenar',
+        sortPopular: 'Más populares',
+        sortName: 'Nombre (A–Z)',
+        sortTotal: 'Más contenido',
         loading: 'Cargando juegos…',
         contentTypes: {
             mod: 'Mods',
@@ -62,6 +74,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Rechercher des jeux…',
         none: 'Aucun jeu ne correspond.',
         visit: 'Ouvrir la page du jeu',
+        sort: 'Trier',
+        sortPopular: 'Plus populaires',
+        sortName: 'Nom (A–Z)',
+        sortTotal: 'Plus de contenu',
         loading: 'Chargement des jeux…',
         contentTypes: {
             mod: 'Mods',
@@ -80,6 +96,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Spiele suchen …',
         none: 'Keine passenden Spiele.',
         visit: 'Spielseite öffnen',
+        sort: 'Sortieren',
+        sortPopular: 'Beliebteste',
+        sortName: 'Name (A–Z)',
+        sortTotal: 'Meiste Inhalte',
         loading: 'Spiele werden geladen …',
         contentTypes: {
             mod: 'Mods',
@@ -98,6 +118,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Поиск игр…',
         none: 'Подходящих игр нет.',
         visit: 'Открыть страницу игры',
+        sort: 'Сортировка',
+        sortPopular: 'Самые популярные',
+        sortName: 'По названию (А–Я)',
+        sortTotal: 'Больше контента',
         loading: 'Загрузка игр…',
         contentTypes: {
             mod: 'Моды',
@@ -116,6 +140,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Games zoeken…',
         none: 'Geen games gevonden.',
         visit: 'Gamepagina openen',
+        sort: 'Sorteren',
+        sortPopular: 'Populairst',
+        sortName: 'Naam (A–Z)',
+        sortTotal: 'Meeste inhoud',
         loading: 'Games laden…',
         contentTypes: {
             mod: 'Mods',
@@ -134,6 +162,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'ゲームを検索…',
         none: '一致するゲームがありません。',
         visit: 'ゲームのページを開く',
+        sort: '並べ替え',
+        sortPopular: '人気順',
+        sortName: '名前順（A–Z）',
+        sortTotal: 'コンテンツ数順',
         loading: 'ゲームを読み込み中…',
         contentTypes: {
             mod: 'MOD',
@@ -152,6 +184,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: '搜索游戏…',
         none: '没有匹配的游戏。',
         visit: '打开游戏页面',
+        sort: '排序',
+        sortPopular: '最受欢迎',
+        sortName: '名称（A–Z）',
+        sortTotal: '内容最多',
         loading: '正在加载游戏…',
         contentTypes: {
             mod: '模组',
@@ -170,6 +206,10 @@ export const appSwitcher: Record<LocaleT, AppSwitcherStrings> = {
         search: 'Pesquisar jogos…',
         none: 'Nenhum jogo encontrado.',
         visit: 'Abrir a página do jogo',
+        sort: 'Ordenar',
+        sortPopular: 'Mais populares',
+        sortName: 'Nome (A–Z)',
+        sortTotal: 'Mais conteúdo',
         loading: 'A carregar jogos…',
         contentTypes: {
             mod: 'Mods',
