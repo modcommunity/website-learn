@@ -57,7 +57,7 @@ Everything a pack says about itself is in one file at the root of its source, `p
 
 **Every path is relative to the pack root**, never `res://`. The runtime puts the pack under its own mount prefix and resolves the paths onto it, so a pack never needs to know where it was mounted. The publisher refuses a path that is absolute, contains `..`, or names a file the pack does not ship.
 
-<Callout type="warn" title="Do not declare that your pack runs code">
+<Callout type="warning" title="Do not declare that your pack runs code">
 There is no field for it. The publisher and the site scan the files and set the flag themselves; a value you wrote would be ignored. See [packs that run code](#packs-that-run-code).
 </Callout>
 
