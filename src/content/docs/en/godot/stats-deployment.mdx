@@ -1,0 +1,90 @@
+---
+title: Stats in the repository, imported to the site
+description: A game keeps its published stat definitions as a JSON file in its repository, generated from the schema the game really builds, and the site owner imports it from the dashboard or from a deploy script. Export then import is an identity.
+navTitle: Stat catalog JSON
+order: 36
+badge: new
+keywords:
+  - "stat-defs.json"
+  - "import"
+  - "export"
+  - "deployment"
+  - "stat catalog"
+  - "dot-stat-defs"
+  - "defs-import"
+source:
+  - dev02:godot/dot-stats/README.md
+  - dev02:godot/dot-stats/tools/export_site_defs.gd
+  - dev02:godot/dot-server-deploy/deploy/import-stat-defs.sh
+  - website-city/docs/dotstats-defs-json.md
+  - website-city/src/lib/dotstats/site/defs_io.ts
+---
+
+A game declares what it counts once, in a `DotStatsSchema`. The site needs the same list, with display names, units and which column a stat shows in, before any number arrives. Retyping it in a dashboard is how the two drift, so the list travels as a file.
+
+## The file
+
+`deployment/stat-defs.json` in the game repository:
+
+```json
+{
+  "format": "dot-stat-defs",
+  "version": 1,
+  "stats": [
+    { "key": "kills", "name": "Kills", "kind": "COUNTER", "column": "HIDDEN" }
+  ]
+}
+```
+
+Each entry carries the key, name, description, kind (`COUNTER`, `GAUGE`, `BEST` or `LOWEST`), unit, format, decimals, category, column and, where it applies, `better`. A derived stat (a ratio, difference, sum or per-minute figure over two stored stats) adds its operation, numerator, denominator and scale, and is never stored itself. Only stats the game marks `publish` are written, in the order the schema declares them.
+
+The `game` field, which names the site's app id, is **optional**. The app id differs between environments and the file lives in the repository, so leaving it out lets one file import into any app. If it is present it must match the app it is sent to.
+
+## Generating it from the real schema
+
+Hand-written JSON drifts from the code, so dot-stats ships one exporter every game uses rather than a copy per game. Run it from the game project with the script and method that return the game's schema:
+
+```bash
+godot --headless --path . --script <dot-stats>/tools/export_site_defs.gd -- \
+    --source res://game/my_progress.gd --method schema --out deployment/stat-defs.json
+```
+
+`--check` writes nothing and exits non-zero when the file on disk is stale, so a test can keep code and file together. `--game <id>` pins an app id when you want one. The same conversion is available in code as `DotStatsSchema.to_site_defs()`.
+
+## Importing it
+
+<Params>
+  <Param name="The dashboard">
+    The stats hub has Export JSON and Import JSON buttons. An import previews first and writes nothing until you confirm.
+  </Param>
+  <Param name="The integration API">
+    `POST /api/integration/v1/stats/defs-import` with an app-scoped token holding the stats-write scope. The body is `{ doc, overwrite, apply }`, and `apply` defaults to true. See the [stats integration API](/learn/api/integration/stats).
+  </Param>
+  <Param name="dot-server-deploy">
+    `deploy/import-stat-defs.sh` posts the repository's file to that endpoint, and defaults to `deployment/stat-defs.json`.
+  </Param>
+</Params>
+
+## Merge rules
+
+- **Idempotent.** Importing the same file twice changes nothing; the second preview lists every stat as unchanged.
+- A game field present in the file is updated. A field left out stays as it is. Array order is the sort order.
+- **A site owner's hand edits survive.** Edits made in the dashboard (name, description, visibility, column) are stored apart from the game's fields, and an import never replaces one that is set. `overwrite: true` is the explicit opt-in that does, and `null` clears.
+- **Keys are never deleted.** A stat the file does not mention is kept; a new key is added.
+- Refused outright: another format version, a `game` that is present and is not the target app, duplicate or malformed keys, and more stats than the site's cap.
+- The apply is one transaction and writes an audit row.
+
+<Callout type="info" title="Export then import is an identity">
+The export side returns the same document shape, with the owner's hand edits in a separate `custom` object. Exporting an app and importing the result back changes nothing.
+</Callout>
+
+<Callout type="warning" title="Only stat definitions have this round trip so far">
+Achievements, leaderboards, map and pack metadata, workshop metadata and game listings are defined in code or on the dashboard today. Their define calls are idempotent, but a file format with preview and export for each is still to come.
+</Callout>
+
+<Related>
+- [`dot-stats`](/learn/godot/addons/dot-stats) — declaring and reporting stats
+- [`dot-leaderboard`](/learn/godot/addons/dot-leaderboard) and [`dot-achievements`](/learn/godot/addons/dot-achievements)
+- [Tooling](/learn/godot/tooling) — TMC's server tool
+- [Stats integration API](/learn/api/integration/stats)
+</Related>

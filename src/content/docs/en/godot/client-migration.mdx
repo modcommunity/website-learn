@@ -1,0 +1,122 @@
+---
+title: Moving a client onto DotGameClient
+description: DotGameClient is the platform layer a game client adds as one child node — loading cover, settings and Escape menu, console, scoreboard, pointer and input block — and this is how a client moves onto it, plus the phone screen fit that is coming.
+navTitle: DotGameClient
+order: 35
+badge: new
+keywords:
+  - "DotGameClient"
+  - "client"
+  - "loading cover"
+  - "settings menu"
+  - "input block"
+  - "phone"
+  - "touch"
+  - "screen fit"
+  - "migration"
+source:
+  - dev02:godot/dot-game/docs/client-migration.md
+  - dev02:godot/dot-game/docs/design.md
+  - dev02:godot/dot-game/addons/dot_game/runtime/dot_game_screen_fit.gd
+---
+
+[`dot-game`](/learn/godot/addons/dot-game) wires the *server* once. `DotGameClient` does the same for the *client*: the loading cover, the settings and Escape menu, the console, the HUD's theme, the scoreboard on Tab, the map list on M, the pointer, the input block and the browser's filesystem flush. Every game was writing those by hand, and the ones that had not yet got to a loading cover simply went without.
+
+**It is a child node, not a base class**, so a client keeps whatever root it already has. A game adds it, hands it the pieces it owns, calls `setup()`, and deletes the code the platform now does.
+
+<Callout type="info" title="Starting a new game">
+Start from the `dot-game-template` repository, link the addons it needs with the resolver script in `dot-ci`, follow the steps below and run the game's `./game.sh test`. Moving an existing client over is the same steps.
+</Callout>
+
+## The steps
+
+1. **Add it first in `_ready`**, before the world, the HUD or the camera are built, so the cover is the first thing drawn.
+
+   ```gdscript
+   platform = DotGameClient.new()
+   platform.name = "Platform"
+   platform.spawned_fn = func() -> bool: return player != null
+   add_child(platform)
+   link = platform.link
+   offline = platform.offline
+   ```
+
+   `platform.link` and `platform.offline` replace the game's own lookup of the client link and its offline test. Any extra hold (a map download, a course being built) goes on `platform.gate`. A 2D game turns off `require_camera` and `capture_pointer`.
+
+2. **Hand it the pieces, then call `setup()`**, once the HUD, the chat box and whatever the settings bind to exist.
+
+   ```gdscript
+   platform.settings = MySettings.new()   # your DotMenuSettings subclass; unset is the stock one
+   platform.hud = hud_root
+   platform.chat = chat
+   platform.board_snapshot_fn = board_snapshot
+   DotLog.result(CHANNEL, "the platform", platform.setup())
+   platform.input_blocked_changed.connect(_suspend_input)
+   ```
+
+3. **After `setup()`**, bind the settings to the camera, audio, effects and look as before, and set the scoreboard's columns and sort.
+
+4. **Suspend input on `input_blocked_changed`.** One handler for every sampler the client has replaces the old menu-state and chat-typing handlers.
+
+5. **Re-import the project.** `DotGameClient` is a new `class_name`, and every project keeps its own class cache.
+
+## What a game deletes
+
+The loading-gate construction, the console build and its HUD-follow call, the menu's busy flag, the scoreboard feeding and the held-Tab handling, the map-list set-up, every place that sets the mouse mode by hand, and a chat hook that only suspended input. What stays is the game's own: the HUD, its keys other than Tab and M, the scoreboard's columns, the samplers and the camera.
+
+## Hooks for what a game wants its own way
+
+Each is additive. Leaving it alone keeps the default behaviour.
+
+<Params>
+  <Param name="set_hud / set_chat">
+    A game that builds its HUD or chat after the platform hands it over when it exists, instead of wiring the menu itself.
+  </Param>
+  <Param name="cover_scene / cover">
+    A loading cover of your own, set before the node is added. Unset keeps the stock one.
+  </Param>
+  <Param name="pointer_fn">
+    Asked wherever the platform would take the pointer back. Return false to leave it free.
+  </Param>
+  <Param name="hold_pointer / release_pointer">
+    For a modal the game draws itself. Keyed rather than counted, so two modals cannot underflow it.
+  </Param>
+  <Param name="menu / adopt_menu">
+    A game that built its own menu still gets the input block, the HUD theme, Tab and M, without handing over a settings node.
+  </Param>
+  <Param name="gate_only">
+    Wire only the chat keyboard and the input block: no settings, menu, console, board or pointer capture.
+  </Param>
+  <Param name="escape_releases_pointer">
+    The first Escape on a captured pointer frees it; the next opens the menu.
+  </Param>
+</Params>
+
+## Gotchas
+
+- **The cover blocks input until it lifts.** A test that boots a client must wait for the cover to be gone before it steers or moves the mouse.
+- **`spawned_fn` must be true only when the player can be shown.** A 3D game includes its camera; the gate also waits for a current camera unless `require_camera` is off.
+- **Never look the gate up by path.** Use `platform.gate`.
+- **`setup()` runs once.** A second call returns a state error.
+- **Never name the menu or console classes in the base's place.** A delivered game running in an older client shell must still parse.
+
+## Phone screen fit (upcoming)
+
+<Callout type="warning" title="Not released yet">
+This lives on a branch of `dot-game` that has not been merged. The names below can still change before it ships.
+</Callout>
+
+On a touch screen the stock window stretch letterboxes the game and leaves the on-screen buttons the size they were authored at, which on a phone can be smaller than a fingertip. `DotGameScreenFit` fixes both:
+
+- It switches the window to **aspect expand**, so there is no pillarbox.
+- It sizes the canvas so the **short side is the HUD design's height**, which means the HUD pieces fit unscaled on a landscape phone.
+- It sizes **touch buttons in millimetres** from the display's real DPI, with a floor in real pixels. On the web and in headless runs the DPI is a guess, so only the pixel floor is guaranteed.
+- `fit_touch_buttons` asks it to keep a block of buttons inside the display's **safe area**, clear of notches and rounded corners, and to refit when the scale factor or DPI changes.
+
+`DotGameClient` attaches one to the root window when `use_screen_fit` is on and the platform reports a touch screen. A game tunes it by assigning `screen_fit` before the client is added, or opts out with `use_screen_fit = false`. When the window is restored (the client exits) the original stretch comes back.
+
+<Related>
+- [`dot-game`](/learn/godot/addons/dot-game) — the server side of the same extraction
+- [`dot-menu`](/learn/godot/addons/dot-menu) and [`dot-console`](/learn/godot/addons/dot-console)
+- [Building a game](/learn/godot/build-a-game)
+</Related>
