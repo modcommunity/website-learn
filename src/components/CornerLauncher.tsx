@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Play, Terminal, X } from 'lucide-react'
+import { MessageSquare, Play, Terminal, Plus } from 'lucide-react'
 import { isLocale, localizeUrl, DEFAULT_LOCALE } from '../i18n/config'
 import { getT } from '../i18n/t'
 import { mainUrl } from '../lib/site'
@@ -126,9 +126,6 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
     /* The squares' shared shape. Signed in, chat is the accent and the console
        is the quiet one beside it — the pairing city uses, and the reason the
        play button is the accent taken DOWN rather than a token of its own. */
-    const square =
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition'
-    const greyed = `${square} border border-border bg-surface-secondary text-muted hover:text-foreground`
 
     /* The stack's rows: the same three destinations at thumb size, labelled.
        `h-11` is the 44px minimum a touch target wants; the squares above are 36
@@ -138,45 +135,31 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
     const pillQuiet = `${pill} border border-border bg-background/95 text-foreground backdrop-blur`
 
     return (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
+        <div className="pointer-events-none fixed bottom-3 right-3 z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2">
             {/*
-             * THE PHONE COAT. `flex-col-reverse` so the DOM reads Play →
-             * Console → Chat while the screen shows Play at the BOTTOM, against
-             * the button that opened it: the order a screen reader wants and the
-             * order a thumb wants are opposite here, and only one of them is
-             * expressible in markup.
+             * ONE compact coat at every width: a small PLAY pill and a round
+             * "more" button beside it. The button slides a menu up from the
+             * corner carrying Console and Chat, which are only on screen while
+             * somebody asks for them. `flex-col-reverse` keeps the DOM order
+             * (Console → Chat) readable while the screen shows the stack
+             * growing upward from the row.
              */}
             <div
                 ref={dial}
-                className="pointer-events-auto flex flex-col items-end gap-2 sm:hidden"
+                className="pointer-events-auto flex flex-col items-end gap-2"
             >
                 {open && (
                     <div
                         id="corner-launcher-stack"
-                        className="flex flex-col-reverse items-end gap-2"
+                        className="flex flex-col-reverse items-end gap-2 sm:hidden"
                     >
-                        <a
-                            href={play}
-                            data-umami-event="docs_launcher"
-                            data-umami-event-half="play"
-                            className={`${pill} corner-launcher-play relative overflow-hidden text-white`}
-                            style={{ animationDelay: '0ms' }}
-                        >
-                            <span
-                                aria-hidden
-                                className="corner-launcher-sheen"
-                            />
-                            <Play className="h-4 w-4 shrink-0 fill-current" />
-                            {t('dock.play')}
-                        </a>
-
                         <a
                             href={term}
                             data-umami-event="docs_launcher"
                             data-umami-event-half="console"
                             title={signedIn ? undefined : t('dock.signIn')}
                             className={pillQuiet}
-                            style={{ animationDelay: '45ms' }}
+                            style={{ animationDelay: '0ms' }}
                         >
                             <Terminal
                                 className={`h-4 w-4 shrink-0 ${signedIn ? 'text-accent' : 'text-muted'}`}
@@ -190,7 +173,7 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
                             data-umami-event-half="chat"
                             title={signedIn ? undefined : t('dock.signIn')}
                             className={pillQuiet}
-                            style={{ animationDelay: '90ms' }}
+                            style={{ animationDelay: '45ms' }}
                         >
                             <MessageSquare
                                 className={`h-4 w-4 shrink-0 ${signedIn ? 'text-accent' : 'text-muted'}`}
@@ -200,99 +183,42 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
                     </div>
                 )}
 
-                {/*
-                 * The one button. It carries the PLAY glyph rather than a plus
-                 * or a chevron, because a reader has to be able to tell what is
-                 * folded up in the corner without opening it — and turns into a
-                 * close cross once it is open, which is the only state where the
-                 * glyph would be lying about what the press does.
-                 */}
-                <button
-                    type="button"
-                    onClick={() => setOpen((o) => !o)}
-                    aria-expanded={open}
-                    aria-controls="corner-launcher-stack"
-                    aria-label={open ? t('dock.close') : t('dock.open')}
-                    title={open ? t('dock.close') : t('dock.open')}
-                    className={
-                        open
-                            ? 'flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-xl backdrop-blur transition'
-                            : 'corner-launcher-play relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full text-white shadow-xl transition'
-                    }
-                >
-                    {open ? (
-                        <X className="h-5 w-5" />
-                    ) : (
-                        <>
-                            <span
-                                aria-hidden
-                                className="corner-launcher-sheen"
-                            />
-                            <Play className="h-5 w-5 fill-current" />
-                        </>
-                    )}
-                </button>
-            </div>
-
-            {/*
-             * THE DESKTOP COAT, unchanged.
-             *
-             * Rounded and bordered on all four sides: the block FLOATS over the
-             * page rather than being docked into it. Flush was tried and
-             * reverted over there — `fixed right-0` resolves against the
-             * viewport minus a classic scrollbar, leaving an 8px strip of
-             * scrollbar track beside the card in the card's own colour.
-             */}
-            <div className="pointer-events-auto relative hidden w-[min(17rem,calc(100vw-2rem))] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-xl backdrop-blur sm:flex">
-                <div className="flex items-stretch gap-1.5 p-1.5">
+                <div className="flex items-center gap-1.5">
                     <a
                         href={play}
-                        /*
-                         * Attributes, not a handler. The hydration this
-                         * component now does is for the signed-in hrefs alone;
-                         * the Umami script reads these off the DOM, so the
-                         * clicks cost no listener either way.
-                         */
                         data-umami-event="docs_launcher"
                         data-umami-event-half="play"
                         aria-label={t('dock.playAria')}
                         title={t('dock.playAria')}
-                        className="corner-launcher-play relative flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 overflow-hidden rounded-xl text-xs font-semibold text-white transition"
+                        className="corner-launcher-play relative flex h-8 items-center justify-center gap-1.5 overflow-hidden rounded-full px-3 text-xs font-semibold text-white shadow-lg transition"
                     >
-                        {/*
-                         * The sheen: one tinted band crossing the button every
-                         * seven seconds and parked off the edge in between. It
-                         * replaced an outline that chased the block's perimeter
-                         * without ever stopping — see the CSS file for why a
-                         * border that never rests is the wrong thing to put over
-                         * somebody else's page. `overflow-hidden` on the link
-                         * trims the band to the rounded corners; it is wider
-                         * than the button on purpose.
-                         */}
                         <span aria-hidden className="corner-launcher-sheen" />
-
-                        {/* Filled, so it reads as a play button rather than an
-                            outlined arrow at this size. */}
                         <Play className="h-3.5 w-3.5 shrink-0 fill-current" />
-                        <span className="truncate">{t('dock.play')}</span>
+                        <span>{t('dock.play')}</span>
                     </a>
 
-                    {/*
-                     * The console: a square rather than a word on the block. It
-                     * is a power tool, and the people who want it will find a
-                     * `>_` in the corner faster than they would read a label.
-                     */}
+                    <button
+                        type="button"
+                        onClick={() => setOpen((o) => !o)}
+                        aria-expanded={open}
+                        aria-controls="corner-launcher-stack"
+                        aria-label={open ? t('dock.close') : t('dock.open')}
+                        title={open ? t('dock.close') : t('dock.open')}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-lg backdrop-blur transition hover:text-accent sm:hidden"
+                    >
+                        <Plus
+                            className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-45' : ''}`}
+                        />
+                    </button>
+
+                    {/* Desktop: the two icons sit right beside Play. */}
                     <a
                         href={term}
                         data-umami-event="docs_launcher"
                         data-umami-event-half="console"
                         aria-label={t('dock.console')}
                         title={signedIn ? t('dock.console') : t('dock.signIn')}
-                        className={
-                            signedIn
-                                ? `${square} border border-border bg-surface-secondary text-muted hover:text-accent`
-                                : greyed
-                        }
+                        className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background/95 shadow-lg backdrop-blur transition sm:flex ${signedIn ? 'text-accent' : 'text-muted hover:text-foreground'}`}
                     >
                         <Terminal className="h-4 w-4" />
                     </a>
@@ -303,11 +229,7 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
                         data-umami-event-half="chat"
                         aria-label={t('dock.chat')}
                         title={signedIn ? t('dock.chat') : t('dock.signIn')}
-                        className={
-                            signedIn
-                                ? `${square} bg-accent text-white hover:brightness-110`
-                                : greyed
-                        }
+                        className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-lg transition sm:flex ${signedIn ? 'bg-accent text-white hover:brightness-110' : 'border border-border bg-background/95 text-muted hover:text-foreground'}`}
                     >
                         <MessageSquare className="h-4 w-4" />
                     </a>
