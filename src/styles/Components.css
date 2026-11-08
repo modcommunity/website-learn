@@ -4,5 +4,5 @@
   @import "./components/Card.css";
   @import "./components/Legal.css";
   @import "./components/Docs.css";
-  @import "./components/CornerLauncher.css";
+  @import "@modcommunity/shared/corner-launcher.css";
 }
