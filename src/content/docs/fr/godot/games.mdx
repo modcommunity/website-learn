@@ -9,7 +9,7 @@ keywords:
   - "démo"
   - "game-arena"
   - "game-hungario"
-  - "game-playground"
+  - "game-playlot"
   - "game-g2gfast"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
@@ -116,9 +116,9 @@ pas écouter, `wss://` parce qu'une page HTTPS ne peut pas ouvrir une socket non
 sécurisée, et threads désactivés parce que les activer exige l'isolation
 cross-origin sur chaque réponse et casse tous les embeds tiers de la page.
 
-## game-playground
+## game-playlot
 
-**Un bac à sable dans la forme classique du bac à sable physique.** Maintenez Q pour un menu d'objets, de PNJ (certains armés), d'armes, de modes de l'outil et de vos constructions sauvegardées ; cliquez sur l'un d'eux et il est à vous. Un pistolet physique qui tient, gèle et ramasse les joueurs ; un pistolet gravitationnel qui propulse ; un pistolet outil qui redimensionne, peint, soude, attache par des cordes, relie des boutons à des portes et plus encore. Les constructions se sauvegardent et se chargent depuis le menu (une pièce soudée seule y figure comme **objet personnalisé**), les objets peuvent être cassables, se tenir sur un objet mobile vous emporte, et le mode créatif écarte un bâtisseur du chemin de tous. Des cartes intégrées (un bac à sable avec des parcours chronométrés sur ses pistes bonus, une carte de surf, une carte de bunny-hop, une carte générée) plus des cartes personnalisées livrées sous forme de documents JSON depuis `game-playground-maps`. Les parcours chronométrés sont ce qui dit que [`dot-timer`](/learn/godot/addons/dot-timer) n'est pas un truc réservé au surf et au bunny-hop : un parcours de saut n'est pas un genre de déplacement.
+**Un bac à sable dans la forme classique du bac à sable physique.** Maintenez Q pour un menu d'objets, de PNJ (certains armés), d'armes, de modes de l'outil et de vos constructions sauvegardées ; cliquez sur l'un d'eux et il est à vous. Un pistolet physique qui tient, gèle et ramasse les joueurs ; un pistolet gravitationnel qui propulse ; un pistolet outil qui redimensionne, peint, soude, attache par des cordes, relie des boutons à des portes et plus encore. Les constructions se sauvegardent et se chargent depuis le menu (une pièce soudée seule y figure comme **objet personnalisé**), les objets peuvent être cassables, se tenir sur un objet mobile vous emporte, et le mode créatif écarte un bâtisseur du chemin de tous. Des cartes intégrées (un bac à sable avec des parcours chronométrés sur ses pistes bonus, une carte de surf, une carte de bunny-hop, une carte générée) plus des cartes personnalisées livrées sous forme de documents JSON depuis `game-playlot-maps`. Les parcours chronométrés sont ce qui dit que [`dot-timer`](/learn/godot/addons/dot-timer) n'est pas un truc réservé au surf et au bunny-hop : un parcours de saut n'est pas un genre de déplacement.
 
 Utilise `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props`, `dot-npc`, `dot-vehicle`, `dot-inventory`,
 `dot-leaderboard`, `dot-ui`, `dot-server`, et `zee-dot-weapons` pour les armes.

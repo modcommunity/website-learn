@@ -10,7 +10,7 @@ keywords:
   - "演示"
   - "game-arena"
   - "game-hungario"
-  - "game-playground"
+  - "game-playlot"
   - "game-g2gfast"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
@@ -100,9 +100,9 @@ godot --headless --path . res://examples/dedicated.tscn        # 一台真正的
 不允许打开不安全的套接字；关掉线程支持是因为打开它就需要在每个响应上做跨源隔离，会
 搞坏页面上所有第三方嵌入内容。
 
-## game-playground
+## game-playlot
 
-**一个经典物理沙盒形态的沙盒。** 按住 Q 打开菜单，里面有道具、NPC（有些带武器）、武器、工具枪模式和你保存的建筑；点一下它就是你的了。物理枪能抓取、冻结并拿起玩家，重力枪能把东西轰出去，工具枪能缩放、上色、焊接、绑绳、把按钮接到门上等等。建筑可以在菜单里保存和加载（一个焊接出来的物件会被列为**自定义道具**），道具可以被打碎，站在移动的道具上会被带着走，创造模式让建造者不碍任何人的事。内置地图（一张在奖励赛道上带计时路线的沙盒、一张 surf 地图、一张 bhop 地图、一张生成的地图），外加来自 `game-playground-maps`、以 JSON 文档形式分发的自定义地图。正是这些计时路线说明了 [`dot-timer`](/learn/godot/addons/dot-timer) 并非只服务于 surf 和 bunny-hop：跳跃路线不属于任何移动类型。
+**一个经典物理沙盒形态的沙盒。** 按住 Q 打开菜单，里面有道具、NPC（有些带武器）、武器、工具枪模式和你保存的建筑；点一下它就是你的了。物理枪能抓取、冻结并拿起玩家，重力枪能把东西轰出去，工具枪能缩放、上色、焊接、绑绳、把按钮接到门上等等。建筑可以在菜单里保存和加载（一个焊接出来的物件会被列为**自定义道具**），道具可以被打碎，站在移动的道具上会被带着走，创造模式让建造者不碍任何人的事。内置地图（一张在奖励赛道上带计时路线的沙盒、一张 surf 地图、一张 bhop 地图、一张生成的地图），外加来自 `game-playlot-maps`、以 JSON 文档形式分发的自定义地图。正是这些计时路线说明了 [`dot-timer`](/learn/godot/addons/dot-timer) 并非只服务于 surf 和 bunny-hop：跳跃路线不属于任何移动类型。
 
 用到 `dot-player-controller`、`dot-timer`、`dot-map`、`dot-props`、`dot-npc`、`dot-vehicle`、`dot-inventory`、
 `dot-leaderboard`、`dot-ui`、`dot-server`，枪械则用 `zee-dot-weapons`。
