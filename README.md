@@ -1,5 +1,3 @@
-# website-learn
-
 The documentation site for [The Modding Community](https://moddingcommunity.com),
 served at **`/learn`** on the main domain.
 
