@@ -1,10 +1,12 @@
 ---
-title: Dot for Godot
-description: The Dot collection — sixty-one open-source Godot 4 addons, a launcher, a server tool and thirteen reference games that add identity, content delivery, netcode, dedicated servers, a player layer and a genre kit on top of stock Godot.
-navTitle: Dot for Godot
+title: GameSpice
+description: GameSpice, the open-source cross-platform gaming platform on Godot 4 — sixty-one addons, a launcher, a server tool and thirteen reference games that add identity, content delivery, netcode, dedicated servers, stats, a live workbench, a player layer and a genre kit on top of stock Godot.
+navTitle: GameSpice
 order: 0
 badge: updated
 keywords:
+  - "gamespice"
+  - "platform"
   - "godot"
   - "gdscript"
   - "dot-core"
@@ -21,10 +23,36 @@ source:
   - dev02:PLATFORM.md
 ---
 
-**Dot** is The Modding Community's collection of Godot 4 assets: sixty-one
-addons, a shell launcher, a server tool, and thirteen games and two weapon packs that exist
-to run the addons together. They are on the site as the
-[Dot assets collection](/co/4-dot-assets).
+**[GameSpice](https://gamespice.net)** is an open-source, cross-platform gaming
+platform built on Godot 4, community- and server-first: communities and the game
+servers they run come before anything else. It is sixty-one addons, a shell
+launcher, a server tool, and thirteen
+games and two weapon packs that exist to run the addons together. They are on
+the site as the [GameSpice assets collection](/co/4-dot-assets).
+
+What that adds up to:
+
+- **One server, every client.** A browser joins over WebSocket on TCP and the
+  desktop app over ENet on UDP, and both play in the same match on the same
+  server ([hosting](/learn/godot/hosting#the-settings-that-decide-whether-anybody-can-join)).
+- **An open CDN with signed releases.** Games and packs are delivered as
+  content-addressed packs that any web server or CDN can host, and the client
+  refuses a manifest that is not signed
+  ([dot-cloud](/learn/godot/addons/dot-cloud)).
+- **TMC as the creator hub.** Games, addons, servers and packs are published,
+  listed and discussed on [The Modding Community](/), and the servers report
+  back to it.
+- **Stats, leaderboards and achievements**, kept by the backbone through
+  [dot-stats](/learn/godot/addons/dot-stats),
+  [dot-leaderboard](/learn/godot/addons/dot-leaderboard) and
+  [dot-achievements](/learn/godot/addons/dot-achievements).
+- **A workshop.** Creators ship maps, weapons, props and tools as
+  [subscribable packs](/learn/godot/workshop) that players subscribe to once.
+- **The Workbench.** The `dot-workbench` addon changes profiles while the game
+  or server is running, from an in-game window or an optional loopback web
+  page; a change is live at once, and only what you changed is exported as new
+  defaults. The aim is for it to grow into a full in-game game editor; today it
+  edits profiles.
 
 **Two GitHub accounts, and the split is a rule rather than an accident.** The
 addons are the organisation's — [`modcommunity/dot-*`](https://github.com/modcommunity)
@@ -41,7 +69,7 @@ an ordinary Godot project.
 
 <Cards>
   <Card title="Getting started" href="/learn/godot/getting-started">
-    From nothing to a Dot game running on your machine, and then to a server
+    From nothing to a GameSpice game running on your machine, and then to a server
     other people can join.
   </Card>
   <Card title="The addons" href="/learn/godot/addons">

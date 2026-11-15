@@ -21,9 +21,9 @@ source:
   - dev02:godot/dot-menu/CLAUDE.md
 ---
 
-**What it is.** The menu every Dot game opens with Escape: a sidebar of pages (General, Video, Audio, Controls, Advanced, plus any your game adds), a Resume button, Help and Leave. Every switch, slider and drop-down is a view of a [dot-settings](/learn/godot/addons/dot-settings) value, so it shows what is stored and writes it back when changed. There is no Apply button, and a value changed from the console shows up the next time the menu opens.
+**What it is.** The menu every GameSpice game opens with Escape: a sidebar of pages (General, Video, Audio, Controls, Advanced, plus any your game adds), a Resume button, Help and Leave. Every switch, slider and drop-down is a view of a [dot-settings](/learn/godot/addons/dot-settings) value, so it shows what is stored and writes it back when changed. There is no Apply button, and a value changed from the console shows up the next time the menu opens.
 
-**When to use it.** You want your game to have settings, rebindable keys, a help screen and a scoreboard that look and behave like every other Dot game's, without copying them. It was pulled out of one game's menus so that all of them could share one. If you only need a settings panel generated from a config, [dot-ui](/learn/godot/addons/dot-ui) is smaller.
+**When to use it.** You want your game to have settings, rebindable keys, a help screen and a scoreboard that look and behave like every other GameSpice game's, without copying them. It was pulled out of one game's menus so that all of them could share one. If you only need a settings panel generated from a config, [dot-ui](/learn/godot/addons/dot-ui) is smaller.
 
 Requires `dot-core`, [dot-ui](/learn/godot/addons/dot-ui) and [dot-settings](/learn/godot/addons/dot-settings). Opening the addon's project runs a small demo world with the menu on it: Escape, H, P and M all work.
 
@@ -98,7 +98,7 @@ A row is one of `toggle`, `slider`, `select` (over a setting), `live_toggle`, `l
 
 ## Configuration without code
 
-`DotMenuConfig` is layered like every Dot config (inspector defaults, then a JSON file, then environment, then command line), so a developer can brand the menu, hide rows, narrow themes or change a setting's default and range from a file:
+`DotMenuConfig` is layered like every GameSpice config (inspector defaults, then a JSON file, then environment, then command line), so a developer can brand the menu, hide rows, narrow themes or change a setting's default and range from a file:
 
 ```json
 {

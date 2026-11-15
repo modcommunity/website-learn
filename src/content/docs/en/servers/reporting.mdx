@@ -67,7 +67,7 @@ can fetch its own integration credential, with nobody copying a token to the box
 
 Answering on the stored address proves you control the server, and holding the
 secret proves you are the process that asked; neither alone completes. A server
-nobody has claimed cannot enroll. The credential holds the scopes a Dot game
+nobody has claimed cannot enroll. The credential holds the scopes a GameSpice game
 server calls and no more: `SERVER_STATS`, `SERVER_USERS`, `USER_LOOKUP`, `AVATAR_READ`, `PARTY_READ`, `PARTY_STATE`, `PARTY_SESSION`, `PARTY_STATS`, `STATS_READ`, `STATS_WRITE`, `LEADERBOARD_WRITE`, `RATING_READ`, `RATING_WRITE`, `ACHIEVEMENTS_WRITE`, `PROFILE_READ` and `PROFILE_WRITE`. Completing again **rotates**: the credential the previous enrollment of this server made is revoked, and one you made by hand is left alone.
 
 Neither route takes a credential, so each is limited per source address instead, and the count is durable: `enroll` 10 a minute and `enroll/complete` 30. Over it is a `429` with `code: "rate_limited"` and a `Retry-After` header. A body over 4 KB is a `413`, and a body that is not JSON or does not fit the shape is a `400`. Every failure carries a machine-readable `code`:

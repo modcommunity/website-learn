@@ -1,6 +1,6 @@
 ---
 title: Hosting a server
-description: Running a Dot server people can join — setup.sh and ./server, what each YAML file owns, the settings that decide whether anybody can connect, roles instead of permission flags, votes, RCON, the container, and the site listing.
+description: Running a GameSpice server people can join — setup.sh and ./server, what each YAML file owns, the settings that decide whether anybody can connect, roles instead of permission flags, votes, RCON, the container, and the site listing.
 navTitle: Hosting a server
 order: 15
 badge: new
@@ -27,7 +27,7 @@ source:
   - dev02:godot/dot-serve/README.md
 ---
 
-There are two ways to run a Dot server, and the difference is what you want to
+There are two ways to run a GameSpice server, and the difference is what you want to
 operate.
 
 <Cards>
@@ -193,7 +193,7 @@ Edit `cfg/server/`, never the shipped files, so an upgrade keeps your settings. 
     port, and only the query port, on every interface. RCON does not follow it.
   </Param>
   <Param name="a2s_enabled" type="server.yml">
-    Answers the twenty-year-old query protocol beside Dot's own, on the same
+    Answers the twenty-year-old query protocol beside GameSpice's own, on the same
     socket. The trackers, uptime monitors and server browsers that already exist
     speak A2S and nothing else — **including this site's scanner**.
 

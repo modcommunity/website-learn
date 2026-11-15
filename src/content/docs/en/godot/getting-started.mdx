@@ -1,6 +1,6 @@
 ---
-title: Getting started with Dot
-description: From nothing to a Dot game running on your own machine, and then to a server other people can join — the engine version, the one command that clones and links the collection, and how to add the addons to a project of your own.
+title: Getting started with GameSpice
+description: From nothing to a GameSpice game running on your own machine, and then to a server other people can join — the engine version, the one command that clones and links the collection, and how to add the addons to a project of your own.
 navTitle: Getting started
 order: 5
 badge: new
@@ -26,9 +26,19 @@ source:
   - dev02:godot/dot-server-deploy/README.md
 ---
 
-**Dot** is The Modding Community's open-source game platform for Godot 4:
-sixty-one addons, a launcher, a server tool and thirteen games that exist to run
-the addons together. Everything on
+**[GameSpice](https://gamespice.net)** is an open-source, cross-platform gaming
+platform built on Godot 4, community- and server-first: sixty-one addons, a
+launcher, a server tool and thirteen games that exist to run the addons
+together. A browser (WebSocket over TCP) and the desktop app (ENet over UDP)
+join the same server and play in the same match. Releases come from an open
+CDN as signed packs, creators publish on The Modding Community, the backbone
+keeps stats, leaderboards and achievements, and players subscribe to
+[workshop packs](/learn/godot/workshop). The Workbench (`dot-workbench`)
+changes profiles while the game or server runs, and is meant to grow into a
+full in-game game editor. [What GameSpice is](/learn/godot) goes through each
+part.
+
+Everything on
 [the play center](https://moddingcommunity.com/play) is built out of it, and all
 of it is MIT licensed: the addons under [`modcommunity`](https://github.com/modcommunity), the games under [`zees-games`](https://github.com/zees-games).
 
@@ -148,7 +158,7 @@ a key no other machine has. Do not commit the result.
 
 </Details>
 
-## 3. Add Dot to a project of your own
+## 3. Add GameSpice to a project of your own
 
 An addon's distributable is its `addons/<name>/` folder and nothing else. Copy
 it in, then enable it in *Project → Project Settings → Plugins*.
@@ -250,7 +260,7 @@ protocol is the [integration API](/learn/api/integration).
 </Callout>
 
 <Related>
-- [Dot for Godot](/learn/godot) — what the collection is and how it stacks
+- [GameSpice](/learn/godot) — what the platform is and how it stacks
 - [Installing](/learn/godot/installing) — the detail behind step 3
 - [Hosting a server](/learn/godot/hosting) — the detail behind step 4
 - [Build your first game](/learn/godot/build-a-game) — the template and `game.sh`
