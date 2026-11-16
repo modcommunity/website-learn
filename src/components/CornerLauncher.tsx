@@ -11,7 +11,13 @@ import { useSignedIn } from '../lib/auth-hint'
  * the locale, the auth hint, the destinations (through `mainUrl`, as every
  * non-docs href here, so a docs-subdomain deploy points at website-city) and the
  * labels. The styles come from `@modcommunity/shared/corner-launcher.css`.
+ *
+ * Play is the exception to the localized destinations: the play center moved
+ * to GameSpice /games (website-city 308s `/play` there), so the button links
+ * there directly and opens it in a new tab rather than navigating away.
  */
+const PLAY_GAMES_URL = 'https://gamespice.net/games'
+
 export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
     const t = getT(locale)
     const loc = isLocale(locale) ? locale : DEFAULT_LOCALE
@@ -21,7 +27,8 @@ export default function CornerLauncher({ locale = 'en' }: { locale?: string }) {
 
     return (
         <SharedCornerLauncher
-            play={mainUrl(localizeUrl('/play', loc))}
+            play={PLAY_GAMES_URL}
+            playNewTab
             chat={signedIn ? mainUrl(localizeUrl('/messages', loc)) : login}
             console={signedIn ? mainUrl(localizeUrl('/console', loc)) : login}
             signedIn={signedIn}
