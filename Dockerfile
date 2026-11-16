@@ -38,6 +38,11 @@ ARG INTERNAL_PORT
 # that has to be kept in step with the compose port mapping by hand.
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 
+# Writes the CSP variables the template sends (CSP_MODE etc., read from .env
+# at container start); the image's entrypoint runs every executable *.sh in
+# /docker-entrypoint.d before nginx.
+COPY --chmod=755 docker/25-security-headers.sh /docker-entrypoint.d/25-security-headers.sh
+
 # The image ships a web root with its own index.html (the "Welcome to nginx!"
 # page) and 50x.html in it, and COPY MERGES into a directory rather than
 # replacing it. Nothing in dist/ is named index.html at the top level — every

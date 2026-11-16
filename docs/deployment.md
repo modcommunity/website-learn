@@ -52,3 +52,25 @@ Sitemap: https://docs.moddingcommunity.com/learn/sitemap.xml
 ```
 
 `src/pages/learn/search/[locale].json.ts` also lives under that prefix, which makes **`search` a reserved first path segment**: a doc page at `search/anything` would collide with the search index endpoint.
+
+## Security headers
+
+The container's nginx (docker/nginx.conf.template) sends, on every response
+including redirects and the 404 page: `nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, HSTS `max-age=31536000`
+(no `includeSubDomains`, no preload), `X-Frame-Options: SAMEORIGIN`, a
+Permissions-Policy turning off camera, microphone, location, payment and
+device APIs, and a Content-Security-Policy.
+
+The CSP is written at container start by docker/25-security-headers.sh: the
+site's own scripts plus inline ones (Astro inlines small scripts), the
+analytics origins taken from `PUBLIC_UMAMI_SRC` / `PUBLIC_PA_SRC` /
+`PUBLIC_PA_API`, `https:` images, media and frames, and
+`frame-ancestors 'self'`. `CSP_MODE` in `.env` picks the header: `report`
+(the default, and what any unknown value means) sends it report-only, `enforce`
+blocks, `off` sends none; a restart applies it. `CSP_REPORT_URI` adds a
+`report-uri`. Switch to `enforce` once a few pages, the search box and a
+locale page show no CSP reports in the browser console.
+
+src/lib/security-headers.test.ts checks that every location with its own
+`add_header` repeats all seven lines, and the script's output per mode.

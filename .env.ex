@@ -61,3 +61,8 @@ INTERNAL_PORT=3000
 # Umami
 # PUBLIC_UMAMI_SRC=https://umami.example.com/script.js
 # PUBLIC_UMAMI_WEBSITE_ID=
+
+# Security headers (docker/25-security-headers.sh, read at container start)
+# report (default) = Content-Security-Policy-Report-Only, enforce = blocking, off = none
+# CSP_MODE=report
+# CSP_REPORT_URI=
