@@ -1,0 +1,69 @@
+---
+title: The item store
+description: How games and server owners sell items on the platform. Who can open a store, what an item can cost, how points work, why a purchase can never charge twice, and what is not available yet (paying with credits).
+navTitle: Item store
+order: 23
+badge: new
+keywords:
+  - "store"
+  - "shop"
+  - "items"
+  - "points"
+  - "credits"
+  - "purchase"
+  - "entitlements"
+  - "subscriptions"
+source:
+  - docs/store-security.md (website-city)
+  - docs/app-points.md (website-city)
+---
+
+Every game on the platform can have an **item store**, and so can each server of that game if the game allows it. Players buy items on the website; the game server then asks the platform what a player owns and gives it to them in game. Nothing is sold inside the game client itself, so a modified client cannot grant itself anything.
+
+<Callout type="warning" title="Credits cannot be bought yet">
+A store can price an item in credits, but buying credits is not available: credits are switched off site wide and no real payment is taken anywhere. Today an item is free or costs points. Do not plan a launch that depends on paid items.
+</Callout>
+
+## Who can open a store
+
+- **The game's owner** (write permission on the app) adds, edits and deletes items, opens or closes the store, and chooses which currencies it accepts.
+- **A server owner** can run a store for their own server, only when the game allows server stores. A game can also require its servers to be approved first.
+- **Moderators** can lock any store, or all of a game's server stores, with a note the owner sees. An owner cannot lift a moderator lock.
+- A site admin can close every store at once; nothing is deleted.
+
+Items can go through approval before they are on sale, the same as other content. Changing what a buyer sees or gets (name, picture, price, what it grants) puts an approved item back in review; changing its sort order or switching it off does not.
+
+## What an item costs
+
+| Price | What it is |
+| --- | --- |
+| Free | Granted at once. Taking it away revokes it. |
+| Points | Earned by playing; see below. |
+| Credits | Switched off, see the note above. |
+| Subscription | Switched off as well; existing ones are not renewed while it is off. |
+
+The names players see for each currency are configurable per game, so a game can call its points "coins".
+
+### Points
+
+There are two kinds, and the difference matters:
+
+- **Achievement points.** Earned from a game's achievements and summed live, never stored as a balance. Each achievement is capped so a game cannot declare a huge reward. Points from games an admin has marked trusted pool into one site balance that any store can spend; points from other games stay in that game.
+- **Game points.** A currency of one game only, earned from signed events sent by that game's own dedicated servers, at amounts the owner sets, and spent only in that game's store. They never convert into anything else.
+
+## Why a purchase cannot go wrong
+
+- Every purchase for a member runs under one lock, so two tabs, two servers or a retry storm queue up instead of racing.
+- The balance is read after the lock, and a purchase that would go below zero is refused before anything is written.
+- Each purchase carries a key the site generated, so a double click or a retry returns the first purchase instead of charging again.
+- The buyer pays the price they saw: if the price changed in between, the purchase is refused rather than charged.
+- A one-time item can be owned once.
+- A refund returns exactly what was charged, to the pools it came from.
+
+## Giving the item in game
+
+A server reads what a player owns from the platform and receives a short-lived signed token. Read the public key once over a trusted channel, keep it in the server's configuration and verify every token against that stored key, never against the key in the same response. The full contract is in the [integration API reference](/learn/api/integration).
+
+## Limits
+
+Limits such as items per store are settings an admin can change; check the site's admin settings instead of relying on a number written here.
