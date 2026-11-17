@@ -1,8 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { UMAMI_EVENTS, localeFromPath, queryField } from './umami'
+import { UMAMI_EVENTS, localeFromPath, queryShape, track } from './umami'
 
 /**
  * The registry's own rule, made checkable.
@@ -88,24 +88,54 @@ describe('localeFromPath', () => {
     })
 })
 
-describe('queryField', () => {
-    it('trims and passes an ordinary query through', () => {
-        expect(queryField('  how do i publish  ')).toBe('how do i publish')
+describe('queryShape', () => {
+    it('describes a query without containing it', () => {
+        const secret = 'me@example.com token=abc123'
+        const out = queryShape(`  ${secret}  `)
+
+        expect(JSON.stringify(out)).not.toContain('example')
+        expect(JSON.stringify(out)).not.toContain('abc123')
+        expect(out).toEqual({ qlen: secret.length, qwords: 2, qbucket: 'long' })
     })
 
-    /*
-     * A search box takes whatever somebody pastes into it. The cap is what
-     * keeps a stray paste out of the analytics store and stops one row
-     * carrying a paragraph.
-     */
-    it('truncates something far too long', () => {
-        const out = queryField('x'.repeat(500))
+    it('buckets by length and counts words', () => {
+        expect(queryShape('api')).toEqual({ qlen: 3, qwords: 1, qbucket: 'short' })
+        expect(queryShape('how to publish').qbucket).toBe('medium')
+        expect(queryShape('')).toEqual({ qlen: 0, qwords: 0, qbucket: 'short' })
+    })
+})
 
-        expect(out).toHaveLength(81)
-        expect(out.endsWith('…')).toBe(true)
+describe('track', () => {
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('is a no-op without a window (SSR)', () => {
+        expect(() => track('docs_search_open')).not.toThrow()
     })
 
-    it('leaves a query exactly at the limit alone', () => {
-        expect(queryField('y'.repeat(80))).toBe('y'.repeat(80))
+    it('is a no-op when Umami is absent, blocked or not loaded', () => {
+        vi.stubGlobal('window', { location: { pathname: '/learn/' } })
+        expect(() => track('docs_search_open')).not.toThrow()
+    })
+
+    it('never throws when umami.track itself throws', () => {
+        vi.stubGlobal('window', {
+            location: { pathname: '/learn/' },
+            umami: { track: () => { throw new Error('blocked') } },
+        })
+        expect(() => track('docs_search_open')).not.toThrow()
+    })
+
+    it('adds path and locale and passes the data through', () => {
+        const spy = vi.fn()
+        vi.stubGlobal('window', {
+            location: { pathname: '/es/learn/api/' },
+            umami: { track: spy },
+        })
+        track('docs_pager', { dir: 'next' })
+        expect(spy).toHaveBeenCalledWith('docs_pager', {
+            path: '/es/learn/api/',
+            locale: 'es',
+            dir: 'next',
+        })
     })
 })

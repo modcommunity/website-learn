@@ -50,9 +50,9 @@ export const UMAMI_EVENTS = [
      * `docs_search_query` is fired DEBOUNCED on a settled query, never per
      * keystroke: typing "authentication" would otherwise file fourteen
      * searches, thirteen of which are prefixes nobody meant. It carries the
-     * query text and the number of hits, and `results: 0` is the most valuable
+     * query SHAPE (length, word count; never the text) and the number of hits, and `results: 0` is the most valuable
      * row this site produces — it is a reader asking the documentation a
-     * question it does not answer, named in their own words.
+     * question it does not answer. (The words themselves are never sent, see `queryShape`.)
      *
      * `docs_search_select` separates "searched" from "found something":
      * `rank` says how far down the list the answer was, which is the only
@@ -154,6 +154,21 @@ export const UMAMI_EVENTS = [
      * finds, and it is otherwise findable only by reading nginx's log.
      */
     'docs_not_found',
+
+    /*
+     * A click on a link to a file (a `download` attribute, or an archive,
+     * installer or document extension). `file` is the path's last segment,
+     * `ext` its extension; both are public in the URL. An external download
+     * is also an `outbound-link-click`, which is intended: that one says where
+     * it went, this one says that it was a file.
+     */
+    'docs_download',
+
+    /*
+     * Reader feedback ("was this page helpful"). The site has no such control
+     * today; the name is reserved by the guard test only when a control exists,
+     * so it is deliberately NOT registered here. Add it with the control.
+     */
 ] as const
 
 export type UmamiEventName = (typeof UMAMI_EVENTS)[number]
@@ -212,15 +227,26 @@ export function localeFromPath(path: string): string {
 }
 
 /**
- * Truncate a search query before it becomes an event field.
+ * Describe a search query without recording it.
  *
- * Two reasons, and the second is the one that matters. A query is free text a
- * reader typed, so it can be arbitrarily long — and it can also be something
- * they pasted by accident. Capping it keeps a stray paste out of the analytics
- * store, and keeps one row from carrying a paragraph.
+ * A query is free text a reader typed, and it may be something pasted by
+ * accident (an email, a token, a path with a user name). It is therefore never
+ * sent. What the analytics needs is the shape: how long it was and how many
+ * words, which still separates "one keyword" from "a question" and still lets
+ * `results: 0` rows be counted. `bucket` keeps cardinality low for charts.
  */
-export function queryField(query: string): string {
+export function queryShape(query: string): {
+    qlen: number
+    qwords: number
+    qbucket: 'short' | 'medium' | 'long'
+} {
     const q = query.trim()
+    const qlen = q.length
+    const qwords = q === '' ? 0 : q.split(/\s+/).length
 
-    return q.length > 80 ? `${q.slice(0, 80)}…` : q
+    return {
+        qlen,
+        qwords,
+        qbucket: qlen <= 8 ? 'short' : qlen <= 24 ? 'medium' : 'long',
+    }
 }

@@ -91,6 +91,7 @@ export default function DocsNav({
                     <button
                         type="button"
                         aria-label={t('docs.nav.close')}
+                        /* umami-ignore: closing the drawer, pure UI (opening is docs_nav_drawer) */
                         onClick={() => setOpen(false)}
                         className="absolute inset-0 cursor-default bg-black/60 backdrop-blur-sm"
                     />
@@ -103,7 +104,8 @@ export default function DocsNav({
                             </span>
                             <button
                                 type="button"
-                                onClick={() => setOpen(false)}
+                                /* umami-ignore: closing the drawer, pure UI (opening is docs_nav_drawer) */
+                        onClick={() => setOpen(false)}
                                 aria-label={t('docs.nav.close')}
                                 className="rounded p-1 text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
                             >

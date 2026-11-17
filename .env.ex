@@ -60,7 +60,7 @@ INTERNAL_PORT=3000
 
 # Umami
 # PUBLIC_UMAMI_SRC=https://umami.example.com/script.js
-# PUBLIC_UMAMI_WEBSITE_ID=
+# PUBLIC_UMAMI_WEBSITE_ID=   # this site's own id; events are listed in docs/analytics.md
 
 # Security headers (docker/25-security-headers.sh, read at container start)
 # report (default) = Content-Security-Policy-Report-Only, enforce = blocking, off = none

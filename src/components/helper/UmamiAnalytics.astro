@@ -35,17 +35,29 @@ const {
     data-website-id={websiteId}
 />
 {setOutboundClicks && (
-    <script>
+    <script is:inline>
         (() => {
             const name = 'outbound-link-click';
 
-            document.querySelectorAll('a').forEach(a => {
+            /*
+             * One delegated listener, not a pass over `querySelectorAll('a')`
+             * at load: the header, rail and footer are React islands that hydrate
+             * after this runs, so links tagged by a one-time pass missed them.
+             * Links that carry their own `data-umami-event` are left to Umami.
+             * Never throws, no-ops when Umami is absent or blocked.
+             */
+            document.addEventListener('click', ev => {
+                try {
+                    const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
 
-                if (a.host !== window.location.host && !a.getAttribute('data-umami-event')) {
-                    a.setAttribute('data-umami-event', name);
-                    a.setAttribute('data-umami-event-url', a.href);
+                    if (!a || !window.umami || a.getAttribute('data-umami-event')) return;
+                    if (!/^https?:$/.test(a.protocol) || a.host === window.location.host) return;
+
+                    window.umami.track(name, { url: a.origin + a.pathname });
+                } catch (e) {
+                    /* Analytics must never break a page. */
                 }
-            })
+            }, true);
         })()
     </script>
 )}

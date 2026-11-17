@@ -138,6 +138,7 @@ export function localeLink(locale: string): LinkComponent {
                 target={t}
                 rel={mergeRel(href, rel, t === '_blank')}
                 {...rest}
+                // umami-ignore: docs_app_link is tracked in the handler above
                 onClick={onClick}
             >
                 {children}

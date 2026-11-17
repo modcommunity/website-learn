@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Search, CornerDownLeft, X, FileText } from 'lucide-react'
 import { getT } from '../../i18n/t'
 import { search, type Doc } from '../../lib/search'
-import { queryField, track } from '../../lib/umami'
+import { queryShape, track } from '../../lib/umami'
 
 /**
  * Which mounted instance owns the global keyboard shortcut.
@@ -202,7 +202,7 @@ export default function DocsSearch({
              */
             if (searched.current && !picked.current)
                 track('docs_search_abandon', {
-                    query: queryField(lastQuery.current),
+                    ...queryShape(lastQuery.current),
                     results: hitsRef.current,
                 })
 
@@ -265,7 +265,7 @@ export default function DocsSearch({
             searched.current = true
 
             track('docs_search_query', {
-                query: queryField(q),
+                ...queryShape(q),
                 results: hitsRef.current,
             })
         }, 500)
@@ -286,7 +286,7 @@ export default function DocsSearch({
         picked.current = true
 
         track('docs_search_select', {
-            query: queryField(query),
+            ...queryShape(query),
             href,
             rank: rank + 1,
             results: hits.length,
@@ -331,6 +331,7 @@ export default function DocsSearch({
         <>
             <button
                 type="button"
+                /* umami-ignore: docs_search_open fires from the open effect */
                 onClick={() => setOpen(true)}
                 onMouseEnter={() => void load()}
                 className={`group flex w-full items-center gap-2 rounded-lg border border-border bg-surface-secondary px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:border-accent/40 hover:text-foreground ${className}`}
@@ -360,6 +361,7 @@ export default function DocsSearch({
                     <button
                         type="button"
                         aria-label={t('docs.search.close')}
+                        /* umami-ignore: closing; a searched-and-left close is docs_search_abandon */
                         onClick={() => setOpen(false)}
                         className="fixed inset-0 cursor-default bg-black/60 backdrop-blur-sm"
                     />
@@ -381,7 +383,8 @@ export default function DocsSearch({
                             />
                             <button
                                 type="button"
-                                onClick={() => setOpen(false)}
+                                /* umami-ignore: closing; a searched-and-left close is docs_search_abandon */
+                        onClick={() => setOpen(false)}
                                 aria-label={t('docs.search.close')}
                                 className="rounded p-1 text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
                             >
@@ -412,6 +415,7 @@ export default function DocsSearch({
                                         <li key={hit.doc.path}>
                                             <a
                                                 href={hit.doc.href}
+                                                /* umami-ignore: onPick fires docs_search_select */
                                                 onClick={() =>
                                                     onPick(hit.doc.href, i, 'click')
                                                 }

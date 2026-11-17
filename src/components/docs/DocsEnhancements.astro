@@ -124,6 +124,36 @@ const labels = {
             emit(name, data)
         })
 
+        /* ---- File downloads ---------------------------------------------- */
+
+        /*
+         * A link to a file: a `download` attribute or a file extension. One
+         * delegated listener covers prose links and every island. It reports
+         * the last path segment and extension only (public in the URL, never
+         * the query string).
+         */
+        var FILE_EXT = /\.(zip|tar|gz|tgz|7z|rar|exe|msi|dmg|pkg|deb|rpm|appimage|apk|pdf|csv|json|bin|iso)$/i
+
+        // umami-ignore: fires docs_download via emit() below
+        document.addEventListener('click', function (ev) {
+            var a = ev.target.closest && ev.target.closest('a[href]')
+            if (!a) return
+
+            var url
+            try {
+                url = new URL(a.getAttribute('href'), window.location.href)
+            } catch (e) {
+                return
+            }
+
+            if (!a.hasAttribute('download') && !FILE_EXT.test(url.pathname)) return
+
+            var file = url.pathname.split('/').pop() || ''
+            var m = /\.([a-z0-9]+)$/i.exec(file)
+
+            emit('docs_download', { file: file, ext: m ? m[1].toLowerCase() : '' })
+        })
+
         /*
          * `<details>` needs `toggle`, not `click`: it is also opened by the
          * keyboard and by the browser's own find-in-page, and `open` is the
@@ -215,6 +245,7 @@ const labels = {
             btn.textContent = L.copy
             btn.setAttribute('aria-label', L.copy)
 
+            // umami-ignore: fires docs_code_copy / docs_code_copy_error in done()
             btn.addEventListener('click', function () {
                 var code = pre.querySelector('code')
                 var text = (code || pre).innerText

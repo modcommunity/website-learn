@@ -147,6 +147,7 @@ function TreeSection({
                 {node.children.length > 0 && (
                     <button
                         type="button"
+                        /* umami-ignore: onToggle fires docs_nav_section_toggle */
                         onClick={() => onToggle(node.path)}
                         aria-expanded={isOpen}
                         aria-label={
@@ -232,6 +233,7 @@ function TreeLeaf({
                 {hasChildren && (
                     <button
                         type="button"
+                        /* umami-ignore: onToggle fires docs_nav_section_toggle */
                         onClick={() => onToggle(node.path)}
                         aria-expanded={isOpen}
                         aria-label={
