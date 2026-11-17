@@ -108,7 +108,7 @@ lien, il s'appelle désormais
 
 ```bash
 ./play.sh               # un serveur et le client navigateur, sur la boucle locale
-./play.sh playground    # démarrer sur un jeu précis
+./play.sh playlot    # démarrer sur un jeu précis
 ./play.sh games         # ce qu'il y a d'autre dans content/
 ./play.sh status
 ./play.sh down
@@ -147,7 +147,7 @@ chose et exige son propre domaine enregistrable.
 - **Des rôles, pas des flags.** Le modèle de permissions de dot-server est fait
   de flags, délibérément ; `groups.yml` est la traduction, donc un opérateur
   écrit `permissions: [kick, ban, mute]` sous un groupe `admin` et un joueur reçoit les flags.
-- **Des jeux installés par nom.** `--games g2gfast,playground` (ou `TMC_GAMES`)
+- **Des jeux installés par nom.** `--games airdrift,playlot` (ou `TMC_GAMES`)
   récupère au démarrage le descripteur et le pack de chaque jeu depuis l'origine
   de contenu ; `owner/name@version` désigne le jeu publié par quelqu'un d'autre. Un
   dossier sous `content/` contenant un `game.yml` est un jeu, et `changelevel`

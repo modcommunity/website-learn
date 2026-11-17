@@ -11,7 +11,7 @@ keywords:
   - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
-  - "game-g2gfast"
+  - "game-airdrift"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "game-zombie-zone"
@@ -68,7 +68,7 @@ Los jugadores lo conocen como **Zee's Fatal Contact**.
 Existe para demostrar que los complementos componen, para enseñar cómo son los
 puentes, y para ser aquello de lo que se copia un juego nuevo.
 
-Siete modos (todos contra todos, deathmatch por equipos, un modo de hordas llamado `siege`, rey de la colina, captura de bandera, gun game y solo francotiradores) en tres mapas integrados, `dm_box`, `dm_atrium` y `dm_pit`, además de los mapas de surf de combate de `g2gfast-maps`. Aquí corre en un solo proceso gran parte de la familia: `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-loadout`, `dot-match`, `dot-team`, `dot-spawn`, `dot-objective`, `dot-npc` para las hordas, `dot-props`, `dot-bot`, `dot-ui`, `dot-menu`, `dot-net` y `dot-server`, con chat, voz, moderación, estadísticas y logros a su lado.
+Siete modos (todos contra todos, deathmatch por equipos, un modo de hordas llamado `siege`, rey de la colina, captura de bandera, gun game y solo francotiradores) en tres mapas integrados, `dm_box`, `dm_atrium` y `dm_pit`, además de los mapas de surf de combate de `airdrift-maps`. Aquí corre en un solo proceso gran parte de la familia: `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-loadout`, `dot-match`, `dot-team`, `dot-spawn`, `dot-objective`, `dot-npc` para las hordas, `dot-props`, `dot-bot`, `dot-ui`, `dot-menu`, `dot-net` y `dot-server`, con chat, voz, moderación, estadísticas y logros a su lado.
 
 Cuatro archivos importan, y la razón de que cada uno esté en el *juego* y no en un
 complemento es siempre la misma:
@@ -130,7 +130,7 @@ Es el único sitio donde `dot-player-controller`, `dot-timer`, `dot-map`,
 proceso. Su conjunto de pruebas ha encontrado nueve fallos, tres de ellos en otros
 repositorios; las capturas de pantalla encontraron cuatro más.
 
-## game-g2gfast
+## game-airdrift
 
 **El servidor de cronómetro de bunny-hop y surf, con la forma de los servidores de movimiento de los shooters competitivos por rondas.** Sus unidades, cvars y campo de visión, primera y tercera persona, y cada jugador dibujado como un avatar — el suyo de la plataforma, o uno estándar. Cada mapa importado es su propio paquete, que se descarga cuando el servidor cambia a él, así que el paquete del juego sigue siendo pequeño y un mapa nuevo no necesita un juego nuevo.
 

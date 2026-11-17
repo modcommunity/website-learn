@@ -106,7 +106,7 @@ enlace antiguo, ahora es
 
 ```bash
 ./play.sh               # un servidor y el cliente de navegador, en el loopback
-./play.sh playground    # empieza en un juego concreto
+./play.sh playlot    # empieza en un juego concreto
 ./play.sh games         # qué más hay en content/
 ./play.sh status
 ./play.sh down
@@ -141,7 +141,7 @@ distinta y necesita su propio dominio registrable.
 - **Roles, no flags.** El modelo de permisos de dot-server son flags, a
   propósito; `groups.yml` es la traducción, así que un operador escribe
   `permissions: [kick, ban, mute]` bajo un grupo `admin` y un jugador recibe los flags.
-- **Juegos instalados por nombre.** `--games g2gfast,playground` (o `TMC_GAMES`) descarga al arrancar el descriptor y el paquete de cada juego desde el origen de contenido; `owner/name@version` nombra el juego publicado por otra persona. Un directorio bajo `content/` con un `game.yml` dentro es un juego, y `changelevel` cambia entre ellos con los jugadores todavía conectados.
+- **Juegos instalados por nombre.** `--games airdrift,playlot` (o `TMC_GAMES`) descarga al arrancar el descriptor y el paquete de cada juego desde el origen de contenido; `owner/name@version` nombra el juego publicado por otra persona. Un directorio bajo `content/` con un `game.yml` dentro es un juego, y `changelevel` cambia entre ellos con los jugadores todavía conectados.
 - **Los jugadores eligen el siguiente juego.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` sobre los juegos de `content/`, a través de [`dot-vote`](/learn/godot/addons/dot-vote). El prefijo deja el `!rtv` a secas para un juego que vote sus propios mapas. Cada juego tiene su propio límite de tiempo en su propio `game.yml`.
 - **Un cliente de navegador.** `./server export-web` lo compila; una sola
   exportación sirve a todos los servidores, porque la dirección viene de

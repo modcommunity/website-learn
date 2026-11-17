@@ -11,7 +11,7 @@ keywords:
   - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
-  - "game-g2gfast"
+  - "game-airdrift"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "game-zombie-zone"
@@ -75,7 +75,7 @@ source:
 アドオンが組み合わさることを示し、橋渡しコードがどんな形になるかを見せ、新しい
 ゲームがそこからコピーされる対象になるために存在します。
 
-7 つのモード（フリーフォーオール、チームデスマッチ、`siege` というホードモード、キング・オブ・ザ・ヒル、キャプチャー・ザ・フラッグ、ガンゲーム、スナイパーのみ）と、組み込みマップ 3 つ（`dm_box`、`dm_atrium`、`dm_pit`）、さらに `g2gfast-maps` の戦闘サーフマップがあります。ここではファミリーの大半が 1 プロセスで動きます。`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-loadout`、`dot-match`、`dot-team`、`dot-spawn`、`dot-objective`、ホードのための `dot-npc`、`dot-props`、`dot-bot`、`dot-ui`、`dot-menu`、`dot-net`、`dot-server` に加え、チャット、ボイス、モデレーション、統計、実績が並びます。
+7 つのモード（フリーフォーオール、チームデスマッチ、`siege` というホードモード、キング・オブ・ザ・ヒル、キャプチャー・ザ・フラッグ、ガンゲーム、スナイパーのみ）と、組み込みマップ 3 つ（`dm_box`、`dm_atrium`、`dm_pit`）、さらに `airdrift-maps` の戦闘サーフマップがあります。ここではファミリーの大半が 1 プロセスで動きます。`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-loadout`、`dot-match`、`dot-team`、`dot-spawn`、`dot-objective`、ホードのための `dot-npc`、`dot-props`、`dot-bot`、`dot-ui`、`dot-menu`、`dot-net`、`dot-server` に加え、チャット、ボイス、モデレーション、統計、実績が並びます。
 
 重要なファイルは 4 つで、それぞれがアドオンではなく*ゲーム側*にある理由は毎回
 同じです。
@@ -134,7 +134,7 @@ godot --headless --path . res://examples/dedicated.tscn        # 実物の DotSe
 バグを見つけ、うち 3 件は他のリポジトリのものでした。スクリーンショットがさらに
 4 件を見つけています。
 
-## game-g2gfast
+## game-airdrift
 
 **ラウンド制の対戦シューターの移動サーバーの形をした、bunny-hop と surf のタイマーサーバー。** それらの単位、cvar、視野角、一人称と三人称、そして全プレイヤーがアバターとして描かれます——プラットフォームから来た本人のもの、あるいは既定のもの。インポートされた各マップはそれぞれ独立したパックで、サーバーがそのマップに切り替わるときに取得されるので、ゲームのパックは小さいままで、新しいマップに新しいゲームは要りません。
 

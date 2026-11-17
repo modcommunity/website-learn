@@ -11,7 +11,7 @@ keywords:
   - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
-  - "game-g2gfast"
+  - "game-airdrift"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "game-zombie-zone"
@@ -67,7 +67,7 @@ source:
 **一个用开发贴图的 3D 竞技场射击游戏。参考游戏。** 它存在的意义是证明这些插件能组合起来、
 展示桥接代码长什么样，以及成为新游戏抄写的模板。
 
-七种模式（自由混战、团队死斗、名为 `siege` 的尸潮模式、山丘之王、夺旗、枪械升级赛和仅限狙击枪），三张内置地图 `dm_box`、`dm_atrium` 和 `dm_pit`，外加来自 `g2gfast-maps` 的战斗 surf 地图。合集里的大部分插件在这里跑在同一个进程中：`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-loadout`、`dot-match`、`dot-team`、`dot-spawn`、`dot-objective`、用于尸潮的 `dot-npc`、`dot-props`、`dot-bot`、`dot-ui`、`dot-menu`、`dot-net` 和 `dot-server`，旁边还有聊天、语音、管理、统计和成就。
+七种模式（自由混战、团队死斗、名为 `siege` 的尸潮模式、山丘之王、夺旗、枪械升级赛和仅限狙击枪），三张内置地图 `dm_box`、`dm_atrium` 和 `dm_pit`，外加来自 `airdrift-maps` 的战斗 surf 地图。合集里的大部分插件在这里跑在同一个进程中：`dot-player-controller`、`dot-combat`、`dot-weapon`、`dot-loadout`、`dot-match`、`dot-team`、`dot-spawn`、`dot-objective`、用于尸潮的 `dot-npc`、`dot-props`、`dot-bot`、`dot-ui`、`dot-menu`、`dot-net` 和 `dot-server`，旁边还有聊天、语音、管理、统计和成就。
 
 有四个文件很关键，而它们各自属于*游戏*而不是插件的理由每次都一样：
 
@@ -119,7 +119,7 @@ godot --headless --path . res://examples/dedicated.tscn        # 一台真正的
 `dot-ui` 和 `dot-server` 在同一个进程里一起跑的唯一场所。它的测试套件找出了九个
 bug，其中三个在别的仓库里；截图又找出了四个。
 
-## game-g2gfast
+## game-airdrift
 
 **回合制竞技射击游戏移动服务器形态的 bunny-hop 与 surf 计时服务器。** 它们的单位、cvar 与视场角、第一人称与第三人称，以及把每位玩家都画成形象——他们从平台带来的那个，或者一个默认形象。每张导入的地图都是自己的资源包，在服务器切换到它时才获取，所以游戏资源包保持小巧，新增地图也不需要新游戏。
 

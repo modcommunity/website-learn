@@ -106,7 +106,7 @@ Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `.\server.ps1`
 
 ```bash
 ./play.sh               # サーバーとブラウザークライアントを、ループバックで
-./play.sh playground    # 特定のゲームで開始する
+./play.sh playlot    # 特定のゲームで開始する
 ./play.sh games         # content/ に他に何があるか
 ./play.sh status
 ./play.sh down
@@ -143,7 +143,7 @@ HTTPS のページは `ws://` ソケットを開けないため、この形は�
 - **フラグではなくロール。** dot-server の権限モデルは意図的にフラグですが、
   `groups.yml` がその翻訳です。運営者は `admin` グループの下に `permissions: [kick, ban, mute]` と書き、
   プレイヤーにはフラグが付きます。
-- **ゲームは名前でインストールされます。** `--games g2gfast,playground`（または
+- **ゲームは名前でインストールされます。** `--games airdrift,playlot`（または
   `TMC_GAMES`）で、起動時にコンテンツの配信元から各ゲームのディスクリプターとパックを
   取得します。`owner/name@version` は他の誰かが公開したゲームを指します。`content/` の
   下にある `game.yml` を含むディレクトリーが 1 本のゲームで、`changelevel` は

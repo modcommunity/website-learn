@@ -95,7 +95,7 @@ Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `.\server.ps1`。
 
 ```bash
 ./play.sh               # 在回环地址上启动一台服务器和浏览器客户端
-./play.sh playground    # 从某个特定游戏开始
+./play.sh playlot    # 从某个特定游戏开始
 ./play.sh games         # content/ 里还有什么
 ./play.sh status
 ./play.sh down
@@ -125,7 +125,7 @@ HTTPS 页面不能打开 `ws://` 套接字，所以这种形态只在这里可�
   变量形式暴露出来的东西，都能用它自己的名字写进去。
 - **是角色，不是 flag。** dot-server 的权限模型刻意是 flag；`groups.yml` 就是那层翻译，
   于是服主在 `admin` 组下写 `permissions: [kick, ban, mute]`，玩家就拿到对应的 flag。
-- **按名字安装游戏。** `--games g2gfast,playground`（或 `TMC_GAMES`）会在启动时从内容源获取每个游戏的描述文件和资源包；`owner/name@version` 指的是别人发布的游戏。`content/` 下任何一个含有 `game.yml` 的目录就是一个游戏，`changelevel` 能在玩家仍然在线的情况下切换它们。
+- **按名字安装游戏。** `--games airdrift,playlot`（或 `TMC_GAMES`）会在启动时从内容源获取每个游戏的描述文件和资源包；`owner/name@version` 指的是别人发布的游戏。`content/` 下任何一个含有 `game.yml` 的目录就是一个游戏，`changelevel` 能在玩家仍然在线的情况下切换它们。
 - **下一局玩什么由玩家决定。** 对 `content/` 里的游戏使用 `!game_nominate`、`!game_rtv`、`!game_vote`、`!game_timeleft`、`!game_next`，走的是 [`dot-vote`](/learn/godot/addons/dot-vote)。这个前缀把不带前缀的 `!rtv` 留给自己对地图投票的游戏。每个游戏在自己的 `game.yml` 里有自己的时间限制。
 - **一个浏览器客户端。** `./server export-web` 负责构建；一次导出就能服务所有服务器，
   因为地址来自 `?server=`。

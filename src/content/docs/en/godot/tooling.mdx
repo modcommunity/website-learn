@@ -107,7 +107,7 @@ now.
 
 ```bash
 ./play.sh               # a server and the browser client, on the loopback
-./play.sh playground    # start on a particular game
+./play.sh playlot    # start on a particular game
 ./play.sh games         # what else is in content/
 ./play.sh status
 ./play.sh down
@@ -140,7 +140,7 @@ needs its own registrable domain.
 - **Roles, not flags.** dot-server's permission model is flags, deliberately;
   `groups.yml` is the translation, so an operator writes
   `permissions: [kick, ban, mute]` under an `admin` group and a player gets the flags.
-- **Games installed by name.** `--games g2gfast,playground` (or `TMC_GAMES`) fetches each game's descriptor and pack from the content origin at startup; `owner/name@version` names somebody else's published game. A directory under `content/` with a `game.yml` in it is a game, and `changelevel` switches between them with players still connected.
+- **Games installed by name.** `--games airdrift,playlot` (or `TMC_GAMES`) fetches each game's descriptor and pack from the content origin at startup; `owner/name@version` names somebody else's published game. A directory under `content/` with a `game.yml` in it is a game, and `changelevel` switches between them with players still connected.
 - **The players choose the next game.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` over the games in `content/`, through [`dot-vote`](/learn/godot/addons/dot-vote). The prefix leaves the bare `!rtv` to a game that votes on its own maps. Each game gets its own time limit in its own `game.yml`.
 - **A browser client.** `./server export-web` builds it; one export serves every
   server, because the address comes from `?server=`.

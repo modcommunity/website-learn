@@ -107,7 +107,7 @@ Dasselbe Projekt, klarerer Name. Wenn du einen älteren Checkout oder einen
 
 ```bash
 ./play.sh               # ein Server und der Browser-Client, auf dem Loopback
-./play.sh playground    # mit einem bestimmten Spiel starten
+./play.sh playlot    # mit einem bestimmten Spiel starten
 ./play.sh games         # was sonst noch in content/ liegt
 ./play.sh status
 ./play.sh down
@@ -148,7 +148,7 @@ anderes und braucht eine eigene registrierbare Domain.
 - **Rollen statt Flags.** Das Rechtemodell von dot-server besteht bewusst aus
   Flags; `groups.yml` ist die Übersetzung, sodass eine Betreiberin
   `permissions: [kick, ban, mute]` unter einer Gruppe `admin` schreibt und ein Spieler die Flags bekommt.
-- **Spiele werden per Name installiert.** `--games g2gfast,playground` (oder `TMC_GAMES`) holt beim Start Descriptor und Paket jedes Spiels vom Content-Ursprung; `owner/name@version` benennt das veröffentlichte Spiel von jemand anderem. Ein Verzeichnis unter `content/` mit einer `game.yml` darin ist ein Spiel, und `changelevel` wechselt zwischen ihnen, während die Spieler verbunden bleiben.
+- **Spiele werden per Name installiert.** `--games airdrift,playlot` (oder `TMC_GAMES`) holt beim Start Descriptor und Paket jedes Spiels vom Content-Ursprung; `owner/name@version` benennt das veröffentlichte Spiel von jemand anderem. Ein Verzeichnis unter `content/` mit einer `game.yml` darin ist ein Spiel, und `changelevel` wechselt zwischen ihnen, während die Spieler verbunden bleiben.
 - **Die Spieler wählen das nächste Spiel.** `!game_nominate`, `!game_rtv`, `!game_vote`, `!game_timeleft`, `!game_next` über die Spiele in `content/`, per [`dot-vote`](/learn/godot/addons/dot-vote). Das Präfix überlässt das bloße `!rtv` einem Spiel, das über seine eigenen Karten abstimmt. Jedes Spiel hat sein eigenes Zeitlimit in seiner eigenen `game.yml`.
 - **Ein Browser-Client.** `./server export-web` baut ihn; ein Export bedient jeden
   Server, weil die Adresse aus `?server=` kommt.

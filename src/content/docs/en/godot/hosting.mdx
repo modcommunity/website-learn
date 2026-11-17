@@ -76,11 +76,11 @@ again after an update is safe: your edits are the server's configuration.
 
 ```bash
 ./server --port 27015 --name "My server"
-./server --games g2gfast,playground        # install and offer only these
+./server --games airdrift,playlot        # install and offer only these
 ./server -- +sv_cheats 1 +changelevel lobby
 ```
 
-A game is not part of this build. Each is a signed [dot-cloud](/learn/godot/addons/dot-cloud) pack on a content origin, and `--games` (or `TMC_GAMES`) names the ones this server installs and offers — `g2gfast`, `gamemann/game-fatal-contact@1.2.0`, or `someone/their-game@latest`. At startup the server fetches each game's `game.yml` out of its pack, checks it against the pack's signature, and downloads the pack; every player's client downloads the same pack when it joins. Adding a game needs no new server build and no new client build. With no list, the server offers whatever is already in `content/`, which is what a hand-run server wants.
+A game is not part of this build. Each is a signed [dot-cloud](/learn/godot/addons/dot-cloud) pack on a content origin, and `--games` (or `TMC_GAMES`) names the ones this server installs and offers — `airdrift`, `gamemann/game-fatal-contact@1.2.0`, or `someone/their-game@latest`. At startup the server fetches each game's `game.yml` out of its pack, checks it against the pack's signature, and downloads the pack; every player's client downloads the same pack when it joins. Adding a game needs no new server build and no new client build. With no list, the server offers whatever is already in `content/`, which is what a hand-run server wants.
 
 Exit codes are meaningful, so a supervisor can tell a misconfiguration from a
 crash: `2` usage, `3` no runtime, `4` no project, `5` bad config, `6` port in
@@ -96,7 +96,7 @@ wrong *and* I have been telling people to connect for ten minutes".
 
 ```bash
 ./play.sh               # a server and the browser client, on the loopback
-./play.sh playground    # start on a particular game
+./play.sh playlot    # start on a particular game
 ./play.sh down
 ```
 

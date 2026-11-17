@@ -11,7 +11,7 @@ keywords:
   - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
-  - "game-g2gfast"
+  - "game-airdrift"
   - "mg-smash-copter"
   - "mg-buses-from-hell"
   - "game-zombie-zone"
@@ -67,7 +67,7 @@ Players know it as **Zee's Fatal Contact**.
 the addons compose, to show what the bridges look like, and to be the thing a
 new game is copied from.
 
-Seven modes (free-for-all, team deathmatch, a horde mode called `siege`, king of the hill, capture the flag, gun game and snipers only) on three built-in maps, `dm_box`, `dm_atrium` and `dm_pit`, plus the combat surf maps from `g2gfast-maps`. Most of the family runs in one process here: `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-loadout`, `dot-match`, `dot-team`, `dot-spawn`, `dot-objective`, `dot-npc` for the horde, `dot-props`, `dot-bot`, `dot-ui`, `dot-menu`, `dot-net` and `dot-server`, with chat, voice, moderation, stats and achievements beside them.
+Seven modes (free-for-all, team deathmatch, a horde mode called `siege`, king of the hill, capture the flag, gun game and snipers only) on three built-in maps, `dm_box`, `dm_atrium` and `dm_pit`, plus the combat surf maps from `airdrift-maps`. Most of the family runs in one process here: `dot-player-controller`, `dot-combat`, `dot-weapon`, `dot-loadout`, `dot-match`, `dot-team`, `dot-spawn`, `dot-objective`, `dot-npc` for the horde, `dot-props`, `dot-bot`, `dot-ui`, `dot-menu`, `dot-net` and `dot-server`, with chat, voice, moderation, stats and achievements beside them.
 
 Four files matter, and the reason each one is in the *game* rather than in an
 addon is the same reason every time:
@@ -128,7 +128,7 @@ It is the only place `dot-player-controller`, `dot-timer`, `dot-map`, `dot-props
 found nine bugs, three of them in other repositories; screenshots found four
 more.
 
-## game-g2gfast
+## game-airdrift
 
 **The bunny-hop and surf timer server, in the shape of the round-based competitive shooters' movement servers.** Their units, cvars and field of view, first and third person, and every player drawn as an avatar — theirs from the platform, or a stock one. Each imported map is its own pack, fetched when the server changes to it, so the game pack stays small and a new map needs no new game.
 
