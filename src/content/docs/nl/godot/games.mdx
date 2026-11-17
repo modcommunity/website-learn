@@ -7,7 +7,7 @@ badge: updated
 keywords:
   - "voorbeeld"
   - "demo"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -55,13 +55,13 @@ een [`dot-replay`](/learn/godot/addons/dot-replay)-ring op elke server
 bewaard), en een [`dot-friends`](/learn/godot/addons/dot-friends)-client naast de
 partyclient in de geëxporteerde clientschil, die zichzelf voor de sessie uitschakelt wanneer de site zijn vriendenroutes met een 404 beantwoordt. Geen enkele game linkt er zelf naar.
 
-Bots zijn het andere dat de meeste ervan delen. Negen games vullen lege plekken met spelers van `dot-bot`, het botbrein van de familie (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell en mg-dangerous-delivery), en alle nemen de `bot_difficulty`-presets ervan aan in de console: `easy`, `medium` (de standaard), `hard` en `nightmare`, elk een bundel afzonderlijke `bot_*`-instellingen.
+Bots zijn het andere dat de meeste ervan delen. Negen games vullen lege plekken met spelers van `dot-bot`, het botbrein van de familie (game-fatal-contact, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell en mg-dangerous-delivery), en alle nemen de `bot_difficulty`-presets ervan aan in de console: `easy`, `medium` (de standaard), `hard` en `nightmare`, elk een bundel afzonderlijke `bot_*`-instellingen.
 
-## game-arena
+## game-fatal-contact
 
-Spelers kennen het als **Zee's Fatal Contact** (voorheen Arena); de repository houdt zijn naam tot hij naar game-fatal-contact verhuist.
+Spelers kennen het als **Zee's Fatal Contact**.
 
-**Een 3D-arenashooter met dev-textures. De referentiegame.** Hij bestaat om
+**Een 3D-shooter met dev-textures. De referentiegame.** Hij bestaat om
 te bewijzen dat de add-ons samenwerken, om te laten zien hoe de bruggen eruitzien,
 en om datgene te zijn waar een nieuwe game van wordt overgeschreven.
 
@@ -70,16 +70,16 @@ Zeven modi (free-for-all, teamdeathmatch, een hordemodus genaamd `siege`, king o
 Vier bestanden doen ertoe, en de reden dat elk ervan in de *game* zit en niet in
 een add-on is steeds dezelfde:
 
-- **`maps/arena_map.gd`** — een level is een lijst dozen, en die lijst wordt drie
+- **`maps/fc_map.gd`** — een level is een lijst dozen, en die lijst wordt drie
   dingen: meshes, physicsbodies en analytische geometrie voor een headless server.
   Ze los bouwen levert drie beschrijvingen op die uit elkaar lopen, en dat uit
   elkaar lopen is onzichtbaar tot schoten door iets heen gaan dat clients wel
   zien.
-- **`game/arena_player.gd`** — beweging, wapens, gezondheid en hitboxes op één
+- **`game/fc_player.gd`** — beweging, wapens, gezondheid en hitboxes op één
   body. Elke add-on zegt dat deze bedrading bij de game hoort, want een add-on die
   het zou doen, dicteert een scèneopbouw.
-- **`game/arena_game.gd`** — de naad. dot-match weet niets van schade, dot-combat niets van scores, dot-loadout niets van wapens; hier wordt een kill uit combat een matchscore en een respawn uit match een loadout. Het noemt `dot-server` nooit, dus een listen-server, een test en een dedicated server draaien allemaal dezelfde game.
-- **`game/arena_module.gd`** — de integratie met de dedicated server. Samen met `game/arena_services.gd` ernaast is het de enige code die `dot-server` noemt.
+- **`game/fc_game.gd`** — de naad. dot-match weet niets van schade, dot-combat niets van scores, dot-loadout niets van wapens; hier wordt een kill uit combat een matchscore en een respawn uit match een loadout. Het noemt `dot-server` nooit, dus een listen-server, een test en een dedicated server draaien allemaal dezelfde game.
+- **`game/fc_module.gd`** — de integratie met de dedicated server. Samen met `game/fc_services.gd` ernaast is het de enige code die `dot-server` noemt.
 
 De wapens zijn alle zevenentwintig van [`zee-dot-weapons`](#zee-dot-weapons), en geen ervan is in de game gedefinieerd. Een loadout, gekozen met B, bestaat uit vijf slots (melee, primair, secundair, werpwapen, gear) op een budget van zeven punten: een geweer, een pistool, een granaat en een harnas passen met een punt over, en een zwaar wapen met een harnas niet, omdat dat de combinatie is waar niemand een antwoord op heeft. Een serverbeheerder kan de keuze beperken, of voor iedereen één kit vastzetten, met de `mp_loadout_*`-cvars.
 

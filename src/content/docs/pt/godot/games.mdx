@@ -7,7 +7,7 @@ badge: updated
 keywords:
   - "exemplo"
   - "demonstração"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -56,13 +56,13 @@ e banimento), e um cliente [`dot-friends`](/learn/godot/addons/dot-friends) ao
 lado do cliente de grupo no invólucro do cliente exportado, que se desliga para a sessão quando o site responde com um 404 às suas rotas de amigos.
 Nenhum jogo liga nenhum dos dois.
 
-Os bots são a outra coisa que a maioria partilha. Nove jogos preenchem os lugares vazios com jogadores do `dot-bot`, o cérebro de bots da família (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell e mg-dangerous-delivery), e todos aceitam na consola as predefinições `bot_difficulty`: `easy`, `medium` (a predefinida), `hard` e `nightmare`, cada uma um conjunto de definições `bot_*` individuais.
+Os bots são a outra coisa que a maioria partilha. Nove jogos preenchem os lugares vazios com jogadores do `dot-bot`, o cérebro de bots da família (game-fatal-contact, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell e mg-dangerous-delivery), e todos aceitam na consola as predefinições `bot_difficulty`: `easy`, `medium` (a predefinida), `hard` e `nightmare`, cada uma um conjunto de definições `bot_*` individuais.
 
-## game-arena
+## game-fatal-contact
 
-Os jogadores conhecem-no como **Zee's Fatal Contact** (antes Arena); o repositório mantém o nome até passar para game-fatal-contact.
+Os jogadores conhecem-no como **Zee's Fatal Contact**.
 
-**Um shooter de arena 3D com texturas de teste. O jogo de referência.** Existe
+**Um shooter 3D com texturas de teste. O jogo de referência.** Existe
 para provar que os complementos se compõem, para mostrar o aspeto das pontes, e
 para ser aquilo de onde se copia um jogo novo.
 
@@ -71,16 +71,16 @@ Sete modos (todos contra todos, deathmatch por equipas, um modo de hordas chamad
 Há quatro ficheiros que importam, e a razão para cada um estar no *jogo* e não
 num complemento é sempre a mesma:
 
-- **`maps/arena_map.gd`** — um nível é uma lista de caixas, e essa lista dá
+- **`maps/fc_map.gd`** — um nível é uma lista de caixas, e essa lista dá
   origem a três coisas: malhas, corpos físicos e geometria analítica para um
   servidor sem interface. Construí-las em separado dá três descrições que se
   desencontram, e o desencontro é invisível até os tiros começarem a atravessar
   algo que os clientes veem.
-- **`game/arena_player.gd`** — movimento, armas, vida e caixas de impacto num só
+- **`game/fc_player.gd`** — movimento, armas, vida e caixas de impacto num só
   corpo. Todos os complementos dizem que esta ligação pertence ao jogo, porque um
   complemento que a fizesse ditaria uma forma de cena.
-- **`game/arena_game.gd`** — a costura. O dot-match nada sabe de dano, o dot-combat nada de pontuação, o dot-loadout nada de armas; é aqui que um abate de combate se torna pontuação de partida e um reaparecimento de partida se torna um equipamento. Nunca nomeia o `dot-server`, por isso um servidor de escuta, um teste e um servidor dedicado correm todos o mesmo jogo.
-- **`game/arena_module.gd`** — a integração com o servidor dedicado. Com o `game/arena_services.gd` ao lado, é o único código que nomeia o `dot-server`.
+- **`game/fc_game.gd`** — a costura. O dot-match nada sabe de dano, o dot-combat nada de pontuação, o dot-loadout nada de armas; é aqui que um abate de combate se torna pontuação de partida e um reaparecimento de partida se torna um equipamento. Nunca nomeia o `dot-server`, por isso um servidor de escuta, um teste e um servidor dedicado correm todos o mesmo jogo.
+- **`game/fc_module.gd`** — a integração com o servidor dedicado. Com o `game/fc_services.gd` ao lado, é o único código que nomeia o `dot-server`.
 
 As armas são todas as vinte e sete do [`zee-dot-weapons`](#zee-dot-weapons), e nenhuma é definida no jogo. Um equipamento, escolhido com B, são cinco ranhuras (corpo a corpo, primária, secundária, arremesso, equipamento) num orçamento de sete pontos: uma espingarda, uma pistola, uma granada e armadura cabem com um ponto de sobra, e uma arma pesada com armadura não cabe, porque é a combinação a que ninguém sabe responder. O dono de um servidor pode restringir a escolha, ou fixar um só equipamento para todos, com as cvars `mp_loadout_*`.
 

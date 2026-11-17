@@ -8,7 +8,7 @@ keywords:
   - "示例"
   - "样例"
   - "演示"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -58,11 +58,11 @@ source:
 外壳里与组队客户端并列的一个 [`dot-friends`](/learn/godot/addons/dot-friends) 客户端，当站点对它的好友路由返回 404 时，它会在本次会话内自行关闭。
 没有任何游戏会自己去链接它们。
 
-大多数游戏还共用另一样东西：机器人。九个游戏用 `dot-bot`（本合集的机器人大脑）里的玩家来填补空座位（game-arena、game-hungario、game-zombie-zone、game-hide-n-seek、mg-prop-hunt、mg-wipeout、mg-deathrun、mg-buses-from-hell 和 mg-dangerous-delivery），它们都可以在控制台里使用它的 `bot_difficulty` 预设：`easy`、`medium`（默认）、`hard` 和 `nightmare`，每个预设都是一组单独的 `bot_*` 设置。
+大多数游戏还共用另一样东西：机器人。九个游戏用 `dot-bot`（本合集的机器人大脑）里的玩家来填补空座位（game-fatal-contact、game-hungario、game-zombie-zone、game-hide-n-seek、mg-prop-hunt、mg-wipeout、mg-deathrun、mg-buses-from-hell 和 mg-dangerous-delivery），它们都可以在控制台里使用它的 `bot_difficulty` 预设：`easy`、`medium`（默认）、`hard` 和 `nightmare`，每个预设都是一组单独的 `bot_*` 设置。
 
-## game-arena
+## game-fatal-contact
 
-玩家看到的名字是 **Zee's Fatal Contact**（原名 Arena）；仓库在迁到 game-fatal-contact 之前保留现在的名字。
+玩家看到的名字是 **Zee's Fatal Contact**。
 
 **一个用开发贴图的 3D 竞技场射击游戏。参考游戏。** 它存在的意义是证明这些插件能组合起来、
 展示桥接代码长什么样，以及成为新游戏抄写的模板。
@@ -71,13 +71,13 @@ source:
 
 有四个文件很关键，而它们各自属于*游戏*而不是插件的理由每次都一样：
 
-- **`maps/arena_map.gd`** —— 一个关卡就是一串盒子，而这串盒子会变成三样东西：网格、
+- **`maps/fc_map.gd`** —— 一个关卡就是一串盒子，而这串盒子会变成三样东西：网格、
   物理体，以及给无界面服务器用的解析几何。分别构建就会得到三份互相漂移的描述，而这种
   漂移在子弹开始穿过客户端看得见的东西之前都是不可见的。
-- **`game/arena_player.gd`** —— 移动、武器、生命和碰撞盒装在同一个 body 上。所有插件
+- **`game/fc_player.gd`** —— 移动、武器、生命和碰撞盒装在同一个 body 上。所有插件
   都说这种接线属于游戏，因为由插件来做就等于替你规定了场景结构。
-- **`game/arena_game.gd`** —— 那道接缝。dot-match 对伤害一无所知，dot-combat 对计分一无所知，dot-loadout 对武器一无所知；战斗击杀变成对局得分、对局重生变成一套配装，就发生在这里。它从不提到 `dot-server`，所以监听服务器、测试和专用服务器跑的是同一个游戏。
-- **`game/arena_module.gd`** —— 专用服务器集成。连同它旁边的 `game/arena_services.gd`，它是唯一提到 `dot-server` 的代码。
+- **`game/fc_game.gd`** —— 那道接缝。dot-match 对伤害一无所知，dot-combat 对计分一无所知，dot-loadout 对武器一无所知；战斗击杀变成对局得分、对局重生变成一套配装，就发生在这里。它从不提到 `dot-server`，所以监听服务器、测试和专用服务器跑的是同一个游戏。
+- **`game/fc_module.gd`** —— 专用服务器集成。连同它旁边的 `game/fc_services.gd`，它是唯一提到 `dot-server` 的代码。
 
 武器是 [`zee-dot-weapons`](#zee-dot-weapons) 的全部二十七把，没有一把是在游戏里定义的。配装在 B 键上选择，共五个槽位（近战、主武器、副武器、投掷物、装备），预算七点：一把步枪、一把手枪、一枚手雷加护甲刚好放得下并剩一点，而重武器加护甲就放不下，因为这是没人能应付的组合。服主可以用 `mp_loadout_*` cvar 限制可选范围，或者给所有人固定一套配装。
 

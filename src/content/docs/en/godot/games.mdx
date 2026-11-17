@@ -8,7 +8,7 @@ keywords:
   - "example"
   - "sample"
   - "demo"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -57,13 +57,13 @@ and a [`dot-friends`](/learn/godot/addons/dot-friends) client beside the party c
 shell, which switches itself off for the session when the site answers its friends routes with a 404.
 No game links either itself.
 
-Bots are the other thing most of them share. Nine games fill empty seats with players from `dot-bot`, the family's bot brain (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell and mg-dangerous-delivery), and all of them take its `bot_difficulty` presets at the console: `easy`, `medium` (the default), `hard` and `nightmare`, each a bundle of individual `bot_*` settings.
+Bots are the other thing most of them share. Nine games fill empty seats with players from `dot-bot`, the family's bot brain (game-fatal-contact, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell and mg-dangerous-delivery), and all of them take its `bot_difficulty` presets at the console: `easy`, `medium` (the default), `hard` and `nightmare`, each a bundle of individual `bot_*` settings.
 
-## game-arena
+## game-fatal-contact
 
-Players know it as **Zee's Fatal Contact** (formerly Arena); the repository keeps its name until it moves to game-fatal-contact.
+Players know it as **Zee's Fatal Contact**.
 
-**A 3D dev-textured arena shooter. The reference game.** It exists to prove
+**A 3D dev-textured shooter. The reference game.** It exists to prove
 the addons compose, to show what the bridges look like, and to be the thing a
 new game is copied from.
 
@@ -72,16 +72,16 @@ Seven modes (free-for-all, team deathmatch, a horde mode called `siege`, king of
 Four files matter, and the reason each one is in the *game* rather than in an
 addon is the same reason every time:
 
-- **`maps/arena_map.gd`** — a level is a list of boxes, and that list becomes
+- **`maps/fc_map.gd`** — a level is a list of boxes, and that list becomes
   three things: meshes, physics bodies, and analytic geometry for a headless
   server. Building them separately means three descriptions that drift, and the
   drift is invisible until shots start passing through something clients can
   see.
-- **`game/arena_player.gd`** — movement, weapons, health and hitboxes on one
+- **`game/fc_player.gd`** — movement, weapons, health and hitboxes on one
   body. Every addon says this wiring belongs in the game, because an addon that
   did it would dictate a scene shape.
-- **`game/arena_game.gd`** — the seam. dot-match knows nothing about damage, dot-combat nothing about scoring, dot-loadout nothing about weapons; this is where a combat kill becomes a match score and a match respawn becomes a loadout. It never names `dot-server`, so a listen server, a test and a dedicated server all run the same game.
-- **`game/arena_module.gd`** — the dedicated-server integration. With `game/arena_services.gd` beside it, it is the only code that names `dot-server`.
+- **`game/fc_game.gd`** — the seam. dot-match knows nothing about damage, dot-combat nothing about scoring, dot-loadout nothing about weapons; this is where a combat kill becomes a match score and a match respawn becomes a loadout. It never names `dot-server`, so a listen server, a test and a dedicated server all run the same game.
+- **`game/fc_module.gd`** — the dedicated-server integration. With `game/fc_services.gd` beside it, it is the only code that names `dot-server`.
 
 The weapons are all twenty-seven of [`zee-dot-weapons`](#zee-dot-weapons), and none is defined in the game. A loadout, chosen on B, is five slots (melee, primary, secondary, thrown, gear) on a seven-point budget: a rifle, a pistol, a grenade and armour fit with a point to spare, and a heavy weapon with armour does not, because that is the combination nobody can answer. A server owner can restrict the choice, or fix one kit for everybody, with the `mp_loadout_*` cvars.
 

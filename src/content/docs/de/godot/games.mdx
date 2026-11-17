@@ -7,7 +7,7 @@ badge: updated
 keywords:
   - "Beispiel"
   - "Demo"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -56,13 +56,13 @@ Kick und Ban abgelegt) und ein [`dot-friends`](/learn/godot/addons/dot-friends)-
 neben dem Party-Client in der exportierten Client-Shell, der sich für die Sitzung selbst abschaltet, wenn die Seite seine Freunde-Routen mit einem 404 beantwortet. Kein Spiel
 bindet eines von beiden selbst ein.
 
-Bots sind das andere, was die meisten gemeinsam haben. Neun Spiele füllen leere Plätze mit Spielern aus `dot-bot`, dem Bot-Gehirn der Familie (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell und mg-dangerous-delivery), und alle nehmen an der Konsole dessen `bot_difficulty`-Voreinstellungen an: `easy`, `medium` (der Standard), `hard` und `nightmare`, jede ein Bündel einzelner `bot_*`-Einstellungen.
+Bots sind das andere, was die meisten gemeinsam haben. Neun Spiele füllen leere Plätze mit Spielern aus `dot-bot`, dem Bot-Gehirn der Familie (game-fatal-contact, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell und mg-dangerous-delivery), und alle nehmen an der Konsole dessen `bot_difficulty`-Voreinstellungen an: `easy`, `medium` (der Standard), `hard` und `nightmare`, jede ein Bündel einzelner `bot_*`-Einstellungen.
 
-## game-arena
+## game-fatal-contact
 
-Spieler kennen es als **Zee's Fatal Contact** (früher Arena); das Repository behält seinen Namen, bis es nach game-fatal-contact umzieht.
+Spieler kennen es als **Zee's Fatal Contact**.
 
-**Ein 3D-Arena-Shooter mit Dev-Texturen. Das Referenzspiel.** Es existiert, um
+**Ein 3D-Shooter mit Dev-Texturen. Das Referenzspiel.** Es existiert, um
 zu zeigen, dass die Addons zusammenspielen, um zu zeigen, wie die Brücken
 aussehen, und um das zu sein, wovon ein neues Spiel abgeschrieben wird.
 
@@ -71,16 +71,16 @@ Sieben Modi (Jeder gegen jeden, Team-Deathmatch, ein Horde-Modus namens `siege`,
 Vier Dateien zählen, und der Grund, warum jede davon im *Spiel* statt in einem
 Addon liegt, ist jedes Mal derselbe:
 
-- **`maps/arena_map.gd`** — ein Level ist eine Liste von Quadern, und aus dieser
+- **`maps/fc_map.gd`** — ein Level ist eine Liste von Quadern, und aus dieser
   Liste werden drei Dinge: Meshes, Physikkörper und analytische Geometrie für
   einen headless Server. Sie getrennt zu bauen, ergibt drei Beschreibungen, die
   auseinanderdriften — und die Abweichung ist unsichtbar, bis Schüsse anfangen,
   durch etwas hindurchzugehen, das Clients sehen können.
-- **`game/arena_player.gd`** — Bewegung, Waffen, Gesundheit und Trefferzonen an
+- **`game/fc_player.gd`** — Bewegung, Waffen, Gesundheit und Trefferzonen an
   einem Körper. Jedes Addon sagt, diese Verdrahtung gehört ins Spiel, denn ein
   Addon, das sie vornähme, würde eine Szenenform vorschreiben.
-- **`game/arena_game.gd`** — die Nahtstelle. dot-match weiß nichts von Schaden, dot-combat nichts von Wertung, dot-loadout nichts von Waffen; hier wird ein Kampf-Kill zu einem Partiepunkt und ein Partie-Respawn zu einer Ausrüstung. Sie nennt `dot-server` nie, sodass ein Listen-Server, ein Test und ein dedizierter Server dasselbe Spiel ausführen.
-- **`game/arena_module.gd`** — die Anbindung an den dedizierten Server. Zusammen mit `game/arena_services.gd` daneben ist es der einzige Code, der `dot-server` nennt.
+- **`game/fc_game.gd`** — die Nahtstelle. dot-match weiß nichts von Schaden, dot-combat nichts von Wertung, dot-loadout nichts von Waffen; hier wird ein Kampf-Kill zu einem Partiepunkt und ein Partie-Respawn zu einer Ausrüstung. Sie nennt `dot-server` nie, sodass ein Listen-Server, ein Test und ein dedizierter Server dasselbe Spiel ausführen.
+- **`game/fc_module.gd`** — die Anbindung an den dedizierten Server. Zusammen mit `game/fc_services.gd` daneben ist es der einzige Code, der `dot-server` nennt.
 
 Die Waffen sind alle siebenundzwanzig aus [`zee-dot-weapons`](#zee-dot-weapons), und keine ist im Spiel definiert. Eine Ausrüstung, mit B gewählt, besteht aus fünf Plätzen (Nahkampf, Primär, Sekundär, Wurfwaffe, Ausrüstung) auf einem Budget von sieben Punkten: Ein Gewehr, eine Pistole, eine Granate und eine Rüstung passen mit einem Punkt Reserve, eine schwere Waffe mit Rüstung nicht, denn genau diese Kombination kann niemand beantworten. Ein Serverbetreiber kann die Auswahl mit den `mp_loadout_*`-Cvars einschränken oder für alle eine feste Ausrüstung vorgeben.
 

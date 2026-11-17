@@ -90,7 +90,7 @@ remove: [dm_old_map]
 maps: [dm_new_map]
 ```
 
-**Change one game only.** Put the file under `cfg/server/game/<game>/<addon>/`, for example `cfg/server/game/game-arena/dot_map/maps.yml`. Other games on the same box are unaffected.
+**Change one game only.** Put the file under `cfg/server/game/<game>/<addon>/`, for example `cfg/server/game/game-fatal-contact/dot_map/maps.yml`. Other games on the same box are unaffected.
 
 <Callout type="info" title="The old paths still load, until 2026-12-31">
 A flat file such as `cfg/party.yml` and the older `cfg/server/<addon>/` folder both still work, with one WARN per file that tells you where to move it. If the new file exists, the old one is ignored whole. After 2026-12-31 the old paths are ignored.
@@ -115,7 +115,7 @@ remove: [dot-voice]    # ids dropped after the lists are merged
 entries:
   - dot-core                      # a git repository
   - dot-vote@v0.2.1               # pinned to a tag or commit
-  - repo: game-arena
+  - repo: game-fatal-contact
     pin: v1.0.0
     content: arena                # games.yml only: the content directory
     maps: [dm_one, dm_two]        # the rotation, in this order

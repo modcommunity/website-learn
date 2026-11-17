@@ -117,7 +117,7 @@ missing.
 <Callout type="info" title="Do not make the addon links by hand">
 Every project except `dot-core` needs `dot-core` present just to *open*, and a
 game needs every addon it uses. Those links are gitignored, because a consumer
-copies the folders instead — so a fresh clone of `game-arena` does not open
+copies the folders instead — so a fresh clone of `game-fatal-contact` does not open
 until something has linked dozens of addons into it. Across the whole
 collection one run makes getting on for three hundred.
 </Callout>
@@ -125,14 +125,14 @@ collection one run makes getting on for three hundred.
 ## 2. Play one
 
 ```bash
-./bootstrap.sh --play arena      # or g2gfast, hungario, playground
+./bootstrap.sh --play fatal-contact      # or g2gfast, hungario, playground
 ```
 
 No server, no CDN, nothing to download: every game falls back to playing offline
-when no dedicated server is attached. `arena` gives you three bots on
+when no dedicated server is attached. `fatal-contact` gives you three bots on
 `dm_atrium`, `hungario` six, and `g2gfast` and `playground` a map and a timer.
 
-`arena` starts in warmup and runs WARMUP → COUNTDOWN → LIVE, and nobody spawns
+`fatal-contact` starts in warmup and runs WARMUP → COUNTDOWN → LIVE, and nobody spawns
 until LIVE, about thirteen seconds in. That is the match loop, not a hang.
 
 What each game is for is on [Reference games](/learn/godot/games).

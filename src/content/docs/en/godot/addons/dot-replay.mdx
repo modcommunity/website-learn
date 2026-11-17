@@ -33,7 +33,7 @@ duck-typed.
 var rec := DotReplayRecorder.new()
 rec.configure(DotReplayConfig.new(), 64)                  # 64 ticks per second
 rec.keyframe_fn = func(_tick: int) -> Variant: return game.capture_state()
-var header := DotReplayHeader.make("arena", "dm_box", 64, players)
+var header := DotReplayHeader.make("fc", "dm_box", 64, players)
 rec.start(header, "user://replays/match.dreplay")
 
 # every server tick, before anything of that tick is recorded:

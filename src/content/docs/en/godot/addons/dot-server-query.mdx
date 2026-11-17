@@ -158,9 +158,9 @@ smuggled into the keywords string as `r3,t1:8,t2:5` and hoped for. Here it is a
 section of its own.
 
 ```gdscript
-class ArenaQuery extends DotQueryProvider:
+class FcQuery extends DotQueryProvider:
     func _provider_name() -> String:
-        return "arena"
+        return "fc"
 
     func _contribute(snapshot: DotQuerySnapshot) -> void:
         snapshot.info["bots"] = match_state.bot_count()
@@ -170,7 +170,7 @@ class ArenaQuery extends DotQueryProvider:
             "time_left": match_state.seconds_remaining(),
         })
 
-DotRegistry.get_service(&"dot_query_source").add_provider(ArenaQuery.new())
+DotRegistry.get_service(&"dot_query_source").add_provider(FcQuery.new())
 ```
 
 **The bot count is the one that proves the point.** Nothing in a server

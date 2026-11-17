@@ -8,7 +8,7 @@ keywords:
   - "サンプル"
   - "例"
   - "デモ"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -65,11 +65,11 @@ source:
 フレンド用ルートに対してサイトが 404 を返すと、そのセッションでは自動的にオフになります）です。どのゲームも
 どちらもリンクしません。
 
-もうひとつ、多くのゲームに共通するのがボットです。9 本のゲームが、ファミリーのボット頭脳である `dot-bot` のプレイヤーで空席を埋めます（game-arena、game-hungario、game-zombie-zone、game-hide-n-seek、mg-prop-hunt、mg-wipeout、mg-deathrun、mg-buses-from-hell、mg-dangerous-delivery）。すべてが、コンソールから `bot_difficulty` のプリセットを受け付けます。`easy`、`medium`（既定）、`hard`、`nightmare` の 4 つで、それぞれ個別の `bot_*` 設定の詰め合わせです。
+もうひとつ、多くのゲームに共通するのがボットです。9 本のゲームが、ファミリーのボット頭脳である `dot-bot` のプレイヤーで空席を埋めます（game-fatal-contact、game-hungario、game-zombie-zone、game-hide-n-seek、mg-prop-hunt、mg-wipeout、mg-deathrun、mg-buses-from-hell、mg-dangerous-delivery）。すべてが、コンソールから `bot_difficulty` のプリセットを受け付けます。`easy`、`medium`（既定）、`hard`、`nightmare` の 4 つで、それぞれ個別の `bot_*` 設定の詰め合わせです。
 
-## game-arena
+## game-fatal-contact
 
-プレイヤーには **Zee's Fatal Contact**（旧称 Arena）として表示されます。リポジトリは game-fatal-contact に移るまで今の名前のままです。
+プレイヤーには **Zee's Fatal Contact**として表示されます。
 
 **開発用テクスチャーの 3D アリーナ・シューター。リファレンスゲームです。**
 アドオンが組み合わさることを示し、橋渡しコードがどんな形になるかを見せ、新しい
@@ -80,15 +80,15 @@ source:
 重要なファイルは 4 つで、それぞれがアドオンではなく*ゲーム側*にある理由は毎回
 同じです。
 
-- **`maps/arena_map.gd`** — レベルは箱のリストで、そのリストが 3 つのものになります。
+- **`maps/fc_map.gd`** — レベルは箱のリストで、そのリストが 3 つのものになります。
   メッシュ、物理ボディ、そしてヘッドレスサーバー用の解析ジオメトリー。別々に作ると
   3 つの記述がずれていき、そのずれはクライアントに見えている何かを弾がすり抜け
   始めるまで気づけません。
-- **`game/arena_player.gd`** — 移動、武器、体力、ヒットボックスを 1 つのボディに。
+- **`game/fc_player.gd`** — 移動、武器、体力、ヒットボックスを 1 つのボディに。
   どのアドオンも「この配線はゲームの仕事だ」と言います。アドオンがやってしまえば
   シーンの形を押し付けることになるからです。
-- **`game/arena_game.gd`** — 継ぎ目。dot-match はダメージを知らず、dot-combat はスコアリングを知らず、dot-loadout は武器を知りません。戦闘のキルが試合のスコアになり、試合のリスポーンがロードアウトになるのはここです。`dot-server` を名指しすることは決してないので、リッスンサーバーでも、テストでも、専用サーバーでも、同じゲームが動きます。
-- **`game/arena_module.gd`** — 専用サーバーとの統合部分。隣にある `game/arena_services.gd` と合わせて、`dot-server` を名指しする唯一のコードです。
+- **`game/fc_game.gd`** — 継ぎ目。dot-match はダメージを知らず、dot-combat はスコアリングを知らず、dot-loadout は武器を知りません。戦闘のキルが試合のスコアになり、試合のリスポーンがロードアウトになるのはここです。`dot-server` を名指しすることは決してないので、リッスンサーバーでも、テストでも、専用サーバーでも、同じゲームが動きます。
+- **`game/fc_module.gd`** — 専用サーバーとの統合部分。隣にある `game/fc_services.gd` と合わせて、`dot-server` を名指しする唯一のコードです。
 
 武器は [`zee-dot-weapons`](#zee-dot-weapons) の 27 種すべてで、ゲーム内で定義されたものは 1 つもありません。ロードアウトは B で選び、5 つのスロット（近接、プライマリ、セカンダリ、投擲、ギア）を 7 ポイントの予算で組みます。ライフル、ピストル、グレネード、アーマーなら 1 ポイント余りますが、重火器とアーマーの組み合わせは収まりません。誰にも答えの出せない組み合わせだからです。サーバー管理者は `mp_loadout_*` cvar で選択肢を制限したり、全員に同じキットを固定したりできます。
 

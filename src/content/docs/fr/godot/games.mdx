@@ -7,7 +7,7 @@ badge: updated
 keywords:
   - "exemple"
   - "démo"
-  - "game-arena"
+  - "game-fatal-contact"
   - "game-hungario"
   - "game-playlot"
   - "game-g2gfast"
@@ -66,11 +66,11 @@ chaque bannissement), et un client [`dot-friends`](/learn/godot/addons/dot-frien
 pour la session quand le site répond 404 à ses routes d'amis. Aucun jeu ne lie ni
 l'un ni l'autre.
 
-Les bots sont l'autre point commun à la plupart d'entre eux. Neuf jeux remplissent les places vides avec des joueurs issus de `dot-bot`, le cerveau de bots de la famille (game-arena, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell et mg-dangerous-delivery), et tous acceptent à la console ses préréglages `bot_difficulty` : `easy`, `medium` (par défaut), `hard` et `nightmare`, chacun un lot de réglages `bot_*` individuels.
+Les bots sont l'autre point commun à la plupart d'entre eux. Neuf jeux remplissent les places vides avec des joueurs issus de `dot-bot`, le cerveau de bots de la famille (game-fatal-contact, game-hungario, game-zombie-zone, game-hide-n-seek, mg-prop-hunt, mg-wipeout, mg-deathrun, mg-buses-from-hell et mg-dangerous-delivery), et tous acceptent à la console ses préréglages `bot_difficulty` : `easy`, `medium` (par défaut), `hard` et `nightmare`, chacun un lot de réglages `bot_*` individuels.
 
-## game-arena
+## game-fatal-contact
 
-Les joueurs le connaissent sous le nom **Zee's Fatal Contact** (anciennement Arena) ; le dépôt garde son nom jusqu'à son passage à game-fatal-contact.
+Les joueurs le connaissent sous le nom **Zee's Fatal Contact**.
 
 **Un jeu de tir d'arène en 3D texturé en dev. Le jeu de référence.** Il existe
 pour prouver que les modules se composent, pour montrer à quoi ressemblent les
@@ -81,16 +81,16 @@ Sept modes (chacun pour soi, deathmatch par équipes, un mode de horde appelé `
 Quatre fichiers comptent, et la raison pour laquelle chacun est dans le *jeu*
 plutôt que dans un module est toujours la même :
 
-- **`maps/arena_map.gd`** — un niveau est une liste de boîtes, et cette liste
+- **`maps/fc_map.gd`** — un niveau est une liste de boîtes, et cette liste
   devient trois choses : des maillages, des corps physiques, et de la géométrie
   analytique pour un serveur sans interface. Les construire séparément donne
   trois descriptions qui divergent, et la divergence est invisible jusqu'à ce que
   les tirs se mettent à traverser quelque chose que les clients voient.
-- **`game/arena_player.gd`** — déplacement, armes, santé et boîtes de collision
+- **`game/fc_player.gd`** — déplacement, armes, santé et boîtes de collision
   sur un même corps. Tous les modules disent que ce câblage appartient au jeu,
   parce qu'un module qui le ferait dicterait une forme de scène.
-- **`game/arena_game.gd`** — la couture. dot-match ne sait rien des dégâts, dot-combat rien du score, dot-loadout rien des armes ; c'est ici qu'une élimination de combat devient un score de partie et qu'une réapparition de partie devient un équipement. Il ne nomme jamais `dot-server`, si bien qu'un serveur d'écoute, un test et un serveur dédié font tourner le même jeu.
-- **`game/arena_module.gd`** — l'intégration au serveur dédié. Avec `game/arena_services.gd` à côté, c'est le seul code qui nomme `dot-server`.
+- **`game/fc_game.gd`** — la couture. dot-match ne sait rien des dégâts, dot-combat rien du score, dot-loadout rien des armes ; c'est ici qu'une élimination de combat devient un score de partie et qu'une réapparition de partie devient un équipement. Il ne nomme jamais `dot-server`, si bien qu'un serveur d'écoute, un test et un serveur dédié font tourner le même jeu.
+- **`game/fc_module.gd`** — l'intégration au serveur dédié. Avec `game/fc_services.gd` à côté, c'est le seul code qui nomme `dot-server`.
 
 Les armes sont les vingt-sept de [`zee-dot-weapons`](#zee-dot-weapons), et aucune n'est définie dans le jeu. Un équipement, choisi sur B, tient en cinq emplacements (corps à corps, principale, secondaire, lancée, accessoire) sur un budget de sept points : un fusil, un pistolet, une grenade et une armure tiennent avec un point de reste, et une arme lourde avec une armure non, parce que c'est la combinaison à laquelle personne ne sait répondre. Le propriétaire d'un serveur peut restreindre le choix, ou imposer un même kit à tous, avec les cvars `mp_loadout_*`.
 

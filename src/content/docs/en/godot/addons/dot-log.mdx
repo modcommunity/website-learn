@@ -30,9 +30,9 @@ Requires `dot-core`.
 
 ```gdscript
 var router := DotLogRouter.new()
-router.set_context({"service": "arena", "env": "prod", "host": "eu-1"})
+router.set_context({"service": "fc", "env": "prod", "host": "eu-1"})
 
-router.targets.append(DotLogTargetFile.new("user://logs", "arena"))
+router.targets.append(DotLogTargetFile.new("user://logs", "fc"))
 router.targets.append(DotLogTargetMemory.new(512))   # the console, and bug reports
 
 add_child(router)                                    # starts on _ready
@@ -108,7 +108,7 @@ for the same reason.
 The level is in every line, in every format, always:
 
 ```
-2026-09-14T04:59:08.051Z inf server   booting hostname="arena" port=27015 slots=16
+2026-09-14T04:59:08.051Z inf server   booting hostname="fc" port=27015 slots=16
 2026-09-14T04:59:09.114Z WRN vote     could not open the vote yet reason=time
 ```
 

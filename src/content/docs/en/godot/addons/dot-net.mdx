@@ -224,7 +224,7 @@ client and server built before 2026-09-26 must be rebuilt once.
 - **Feed `DotNetStats.note_rtt`.** `receive_snapshot` reads
   `rtt_percentile(0.5)` on every snapshot to drive the clock, and dot-net never
   touches a transport — so nothing inside it can write a sample. Call it with
-  your link's ping every tick; game-arena's bridge does it through an
+  your link's ping every tick; game-fatal-contact's bridge does it through an
   `rtt_source` callable of its own.
 - **Adopt the server's tick rate on the client** with
   `DotNetClock.adopt_tick_rate()`, which also sets
