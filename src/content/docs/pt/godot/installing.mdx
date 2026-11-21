@@ -63,8 +63,8 @@ TextServerExtension — não ocorrem em lado nenhum destes repositórios.
 há repositório pai, portanto não há forma de clonar a coleção inteira de uma vez.
 
 ```bash
-git clone https://github.com/modcommunity/dot-core
-git clone https://github.com/modcommunity/dot-timer
+git clone https://github.com/gamespice-platform/core
+git clone https://github.com/gamespice-platform/timer
 ```
 
 Isso é consequência da forma como são consumidos: quem quiser um cronómetro de
@@ -77,12 +77,12 @@ só para *abrir*, e os jogos precisam de todos os complementos que usam. Essas
 ligações estão no `.gitignore`, porque quem consome copia as pastas em vez disso
 — e por isso um clone novo não abre até que algo as tenha criado.
 
-**Não as crie à mão.** O `dot-bootstrap` clona todos os repositórios e liga todos
+**Não as crie à mão.** O `bootstrap` clona todos os repositórios e liga todos
 os complementos de que cada projeto precisa:
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh              # clona o que falta, atualiza o resto, liga tudo
 ./bootstrap.sh --links      # só refaz as ligações
 ./bootstrap.sh --status     # ramo, alterações, por enviar, por repositório
@@ -103,7 +103,7 @@ O `--content-keys` é o único modo que não é sobre repositórios:
 o [dot-cloud](/learn/godot/addons/dot-cloud) recusa um manifesto não assinado,
 por isso publicar um pacote precisa de uma chave privada, e uma chave privada é a
 única coisa que um clone nunca pode trazer. Cria uma e aponta o
-`dot-server-deploy/client/content.json` para ela — o que deixa esse ficheiro
+`server-deploy/client/content.json` para ela — o que deixa esse ficheiro
 versionado localmente modificado, de propósito, e é por isso que é opcional.
 
 O [Primeiros passos](/learn/godot/getting-started) é o guia completo, incluindo o

@@ -64,8 +64,8 @@ un repositorio padre, así que no hay forma de clonar toda la colección de una
 vez.
 
 ```bash
-git clone https://github.com/modcommunity/dot-core
-git clone https://github.com/modcommunity/dot-timer
+git clone https://github.com/gamespice-platform/core
+git clone https://github.com/gamespice-platform/timer
 ```
 
 Eso es consecuencia de cómo se consumen: quien quiera un cronómetro de speedrun
@@ -79,12 +79,12 @@ enlaces están en el `.gitignore`, porque quien consume el complemento copia las
 carpetas en su lugar — y por eso un clon recién hecho no se abre hasta que
 algo los haya creado.
 
-**No los hagas a mano.** `dot-bootstrap` clona cada repositorio y enlaza todos
+**No los hagas a mano.** `bootstrap` clona cada repositorio y enlaza todos
 los complementos que necesita cada proyecto:
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh              # clona lo que falta, actualiza lo demás, enlaza todo
 ./bootstrap.sh --links      # rehace solo los enlaces
 ./bootstrap.sh --status     # rama, cambios, sin subir, por repositorio
@@ -105,7 +105,7 @@ trescientas carpetas en cincuenta y ocho de ellos.
 [dot-cloud](/learn/godot/addons/dot-cloud) rechaza un manifiesto sin firmar, así
 que publicar un paquete necesita una clave privada, y una clave privada es lo
 único que un clon nunca puede llevar. Genera una y apunta
-`dot-server-deploy/client/content.json` hacia ella — lo que deja ese archivo
+`server-deploy/client/content.json` hacia ella — lo que deja ese archivo
 versionado modificado en local, a propósito, y es la razón de que sea opcional.
 
 [Primeros pasos](/learn/godot/getting-started) es el recorrido completo,

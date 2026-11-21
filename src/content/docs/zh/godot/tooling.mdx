@@ -73,7 +73,7 @@ dotserve -- +sv_cheats 1 +map dm_arena
 
 ## TMC 的服务器工具
 
-`dot-server-deploy` 是这套合集汇聚成“服主用一条命令就能启动的东西”的地方。它是
+`server-deploy` 是这套合集汇聚成“服主用一条命令就能启动的东西”的地方。它是
 一个 Godot 项目，负责启动 `dot-server`、从 `cfg/*.yml` 读配置、从 `content/` 加载
 游戏，并提供一个浏览器客户端——而且它**自己不带任何游戏**。每个游戏，包括大厅在内，都是一个签名的 [dot-cloud](/learn/godot/addons/dot-cloud) 资源包，由服务器从内容源安装、由每个客户端在连接时下载，所以不管加入哪个游戏，客户端都是同一份构建，新增游戏也不需要新客户端。
 
@@ -88,7 +88,7 @@ Windows：先 `setup.bat`（`setup.ps1` 的壳），再 `.\server.ps1`。
 
 <Callout type="info" title="它以前叫 `dot-server-setup-test`">
 还是同一个项目，只是名字更清楚。如果你有旧的检出副本或旧链接，它现在是
-[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy)。
+[`gamespice-platform/server-deploy`](https://github.com/gamespice-platform/server-deploy)。
 </Callout>
 
 ### 三个容易混淆的脚本

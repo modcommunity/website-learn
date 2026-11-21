@@ -61,8 +61,8 @@ repositories.
 parent repository, so there is no way to clone the whole collection at once.
 
 ```bash
-git clone https://github.com/modcommunity/dot-core
-git clone https://github.com/modcommunity/dot-timer
+git clone https://github.com/gamespice-platform/core
+git clone https://github.com/gamespice-platform/timer
 ```
 
 That is a consequence of how they are consumed: somebody who wants a speedrun
@@ -75,12 +75,12 @@ games need every addon they use. Those links are gitignored, because a consumer
 copies the folders instead — and a fresh clone therefore does not open until
 something has made them.
 
-**Do not make them by hand.** `dot-bootstrap` clones every repository and links
+**Do not make them by hand.** `bootstrap` clones every repository and links
 every addon each project needs:
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh              # clone what is missing, pull what is not, link everything
 ./bootstrap.sh --links      # only redo the links
 ./bootstrap.sh --status     # branch, dirty, unpushed, per repository
@@ -101,7 +101,7 @@ every project.
 [dot-cloud](/learn/godot/addons/dot-cloud) refuses an unsigned manifest, so
 publishing a pack needs a private key, and a private key is the one thing a
 clone can never carry. It mints one and points
-`dot-server-deploy/client/content.json` at it — which leaves that committed file
+`server-deploy/client/content.json` at it — which leaves that committed file
 locally modified, on purpose, and is why it is opt-in.
 
 [Getting started](/learn/godot/getting-started) is the whole walk-through,
@@ -113,7 +113,7 @@ and finds a Godot binary at run time.
 
 ## The two-step check
 
-Every project has the same two-step check, and [`dot-ci`](/learn/godot/tooling#dot-ci) runs exactly these two steps on every push and tag. **Both steps matter**.
+Every project has the same two-step check, and [`ci`](/learn/godot/tooling#ci) runs exactly these two steps on every push and tag. **Both steps matter**.
 
 ```bash
 cd <project>

@@ -60,8 +60,8 @@ TextServerExtension のシグネチャ——は、これらのリポジトリの
 無いので、コレクション全体を一度にクローンする方法はありません。
 
 ```bash
-git clone https://github.com/modcommunity/dot-core
-git clone https://github.com/modcommunity/dot-timer
+git clone https://github.com/gamespice-platform/core
+git clone https://github.com/gamespice-platform/timer
 ```
 
 これは使われ方の帰結です。スピードラン用タイマーが欲しい人は、`dot-timer` と
@@ -74,12 +74,12 @@ git clone https://github.com/modcommunity/dot-timer
 利用者は代わりにフォルダーをコピーするからです——そのため、新しくクローンした直後は、
 何かがリンクを作るまでプロジェクトは開けません。
 
-**手で作らないでください。** `dot-bootstrap` がすべてのリポジトリをクローンし、各
+**手で作らないでください。** `bootstrap` がすべてのリポジトリをクローンし、各
 プロジェクトが必要とするアドオンをすべてリンクします。
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh              # 無いものはクローン、あるものは pull、すべてリンク
 ./bootstrap.sh --links      # リンクだけをやり直す
 ./bootstrap.sh --status     # リポジトリごとのブランチ、未コミット、未プッシュ
@@ -98,7 +98,7 @@ cd dot-bootstrap
 `--content-keys` は、リポジトリとは関係のない唯一のモードです。
 [dot-cloud](/learn/godot/addons/dot-cloud) は署名のないマニフェストを拒否するので、
 パックの公開には秘密鍵が必要で、秘密鍵はクローンが決して運べない唯一のものです。
-これは鍵を作り、`dot-server-deploy/client/content.json` をそれに向けます——その結果、
+これは鍵を作り、`server-deploy/client/content.json` をそれに向けます——その結果、
 コミット済みのそのファイルがローカルで変更された状態になりますが、それは意図的で、
 オプトインである理由でもあります。
 

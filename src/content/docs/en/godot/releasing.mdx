@@ -22,23 +22,23 @@ source:
   - dev02:CLAUDE.md
 ---
 
-A release in this family is three things that must meet in the right order: the **addons** (versioned by tag), the **lock** in `dot-server-deploy` that names the tag each server installs, and the **web shell**, the client that frames a game in the browser. Get the order wrong and the failure is either a CI error or, worse, a player on a client that cannot fetch what the server runs.
+A release in this family is three things that must meet in the right order: the **addons** (versioned by tag), the **lock** in `server-deploy` that names the tag each server installs, and the **web shell**, the client that frames a game in the browser. Get the order wrong and the failure is either a CI error or, worse, a player on a client that cannot fetch what the server runs.
 
 ## The orders
 
 | Releasing | Order |
 | --- | --- |
-| an addon | tag the addon → the site publishes its pack (hourly, or "Pull now") → bump `addons.lock` in dot-server-deploy and push → restart the servers |
+| an addon | tag the addon → the site publishes its pack (hourly, or "Pull now") → bump `addons.lock` in server-deploy and push → restart the servers |
 | a game | tag every addon it needs → lock them and push → wait for the web-shell workflow's tag → tag the game |
 | a new shell | nothing by hand: push the lock (or a `client/` change) and the web-shell workflow exports, uploads, pins and tags |
 
 - **Push the lock only after the packs are on the origin.** A client that cannot fetch an addon pack joins on its own addons and does not retry that server this session. Check with `curl <origin>/<owner>/<repo>/<version>/manifest.json`.
 - **Publish content before the build that needs it.** A build published without its packs is a client that can mount no game.
-- **Each skipped step fails in CI**, not on a player's machine: the CI of dot-server-deploy parses every script against the lock at the locked refs, and a game's release refuses a pack that no released server tool can run.
+- **Each skipped step fails in CI**, not on a player's machine: the CI of server-deploy parses every script against the lock at the locked refs, and a game's release refuses a pack that no released server tool can run.
 
 ## Tagging, and what CI does with the tag
 
-Every repository calls the shared [`dot-ci`](/learn/godot/tooling#dot-ci) workflows, pinned to the major tag. The current line is **`v1`** (at the time of writing, `v1.3.5`), so `@v1` follows compatible fixes without you editing each repository.
+Every repository calls the shared [`ci`](/learn/godot/tooling#ci) workflows, pinned to the major tag. The current line is **`v1`** (at the time of writing, `v1.3.5`), so `@v1` follows compatible fixes without you editing each repository.
 
 - On every push, `validate` runs the two-step check from [Installing](/learn/godot/installing#the-two-step-check).
 - On a `v*` tag, `release` attaches the artifact and a `SHA256SUMS` file, and for a game builds its content pack. It signs nothing: the signature is made by the site when it publishes the pack.
@@ -73,7 +73,7 @@ An export that was never published looks identical to a fix that did not work, b
 
 <Related>
 - [Operator guide](/learn/godot/operator-guide)
-- [Tooling: dot-ci](/learn/godot/tooling#dot-ci)
+- [Tooling: ci](/learn/godot/tooling#ci)
 - [dot-cloud](/learn/godot/addons/dot-cloud)
 - [Build your first game](/learn/godot/build-a-game)
 </Related>

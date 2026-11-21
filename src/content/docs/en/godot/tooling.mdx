@@ -1,6 +1,6 @@
 ---
 title: Tooling
-description: dotserve, the shell launcher that starts a dot-server without knowing how dot-server works, TMC's server tool (YAML configuration, games out of a directory, a browser client), and dot-ci, the shared CI every repository calls.
+description: dotserve, the shell launcher that starts a dot-server without knowing how dot-server works, TMC's server tool (YAML configuration, games out of a directory, a browser client), and ci, the shared CI every repository calls.
 navTitle: Tooling
 order: 60
 keywords:
@@ -83,7 +83,7 @@ The generated systemd unit lists `3` to `6` under `RestartPreventExitStatus`.
 
 ## TMC's server tool
 
-`dot-server-deploy` is where the collection comes together into something a
+`server-deploy` is where the collection comes together into something a
 server owner starts with one command. It is a Godot project that boots a
 `dot-server`, reads its configuration from `cfg/*.yml`, loads games out of
 `content/`, and serves a browser client — and it ships **no game of its own**. Every game, the lobby included, is a signed [dot-cloud](/learn/godot/addons/dot-cloud) pack that the server installs from a content origin and every client downloads on connect, so the client is the same build whatever it joins and a new game needs no new one.
@@ -99,7 +99,7 @@ Windows: `setup.bat` (a shim for `setup.ps1`), then `.\server.ps1`.
 
 <Callout type="info" title="It used to be called `dot-server-setup-test`">
 Same project, clearer name. If you have an older checkout or an older link, it
-is [`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy)
+is [`gamespice-platform/server-deploy`](https://github.com/gamespice-platform/server-deploy)
 now.
 </Callout>
 
@@ -167,7 +167,7 @@ translation.
 
 It is also where every game in the collection is published as a pack and switched between under live players, and the first place anything in this collection was loaded in a browser.
 
-## `dot-ci`
+## `ci`
 
 **What it is:** the shared continuous integration for the whole collection, as three reusable GitHub Actions workflows (`validate`, `release`, `release-maps`) and a handful of shell scripts. Like `dotserve` it is not a Godot project: nothing in it is ever linked into one.
 
@@ -183,7 +183,7 @@ on:
   pull_request:
 jobs:
   validate:
-    uses: modcommunity/dot-ci/.github/workflows/validate.yml@v1
+    uses: gamespice-platform/ci/.github/workflows/validate.yml@v1
 ```
 
 `validate` fetches the pinned Godot runtime, clones the addons your project lists in its `.gitignore`, runs the `--import` pass, parses every tracked script, runs every suite under a timeout, and reads each suite's stderr even when it exits 0 — the same two steps as [Installing](/learn/godot/installing#the-two-step-check). `release` runs on a `v*` tag, attaches the artifact and a `SHA256SUMS` file, and for a game builds its content pack as well. It signs nothing: a pack's signature is made on a machine that holds the key ([dot-cloud](/learn/godot/addons/dot-cloud)).

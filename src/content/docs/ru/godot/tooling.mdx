@@ -82,7 +82,7 @@ dotserve -- +sv_cheats 1 +map dm_arena
 
 ## Серверный инструмент TMC
 
-`dot-server-deploy` — место, где коллекция собирается в то, что владелец
+`server-deploy` — место, где коллекция собирается в то, что владелец
 сервера запускает одной командой. Это проект Godot, который поднимает
 `dot-server`, читает конфигурацию из `cfg/*.yml`, загружает игры из `content/` и
 отдаёт браузерный клиент — и **собственной игры не содержит**. Каждая игра, включая лобби, — это подписанный пакет [dot-cloud](/learn/godot/addons/dot-cloud), который сервер устанавливает из источника содержимого, а каждый клиент скачивает при подключении, так что клиент — одна и та же сборка независимо от того, к чему он присоединяется, а новой игре не нужна новая.
@@ -98,7 +98,7 @@ Windows: `setup.bat` (обёртка над `setup.ps1`), затем `.\server.p
 
 <Callout type="info" title="Раньше он назывался `dot-server-setup-test`">
 Тот же проект, название яснее. Если у вас старая копия или старая ссылка, теперь
-это [`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy).
+это [`gamespice-platform/server-deploy`](https://github.com/gamespice-platform/server-deploy).
 </Callout>
 
 ### Три скрипта, которые легко перепутать

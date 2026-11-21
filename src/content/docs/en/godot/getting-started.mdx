@@ -40,7 +40,7 @@ part.
 
 Everything on
 [the play center](https://moddingcommunity.com/play) is built out of it, and all
-of it is MIT licensed: the addons under [`modcommunity`](https://github.com/modcommunity), the games under [`zees-games`](https://github.com/zees-games).
+of it is MIT licensed: the addons under [`gamespice-platform`](https://github.com/gamespice-platform), the games under [`zees-games`](https://github.com/zees-games).
 
 This page takes you from an empty directory to a game running locally, and then
 to a server other people can join.
@@ -63,21 +63,21 @@ the same way, which is stated in every repository's README rather than buried.
 
 ## 1. Get the collection
 
-`dot-bootstrap` is the one place that knows what the collection consists of. It
+`bootstrap` is the one place that knows what the collection consists of. It
 clones or pulls every repository and wires up the addon links each project needs
 in order to open.
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh
 ```
 
 <Details title="On Windows">
 
 ```powershell
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser   # once, if PowerShell refuses
 .\bootstrap.ps1
 ```
@@ -142,11 +142,11 @@ What each game is for is on [Reference games](/learn/godot/games).
 `dot-cloud` refuses an unsigned manifest, and it is right to: a mounted pack can
 contain scripts, so a client that mounts unsigned content runs whatever the
 server sent it. A private key is therefore the one thing a clone can never
-carry, and `dot-server-deploy/keys/` is gitignored precisely so one cannot
+carry, and `server-deploy/keys/` is gitignored precisely so one cannot
 arrive in a commit.
 
 So a fresh clone can **consume** content and publish none. `--content-keys`
-mints this machine an identity and rewrites `dot-server-deploy/client/content.json`
+mints this machine an identity and rewrites `server-deploy/client/content.json`
 to trust it:
 
 ```bash
@@ -193,7 +193,7 @@ it.
 
 ## 4. Run a server
 
-[`dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy) boots a
+[`server-deploy`](https://github.com/gamespice-platform/server-deploy) boots a
 `dot-server`, reads YAML out of `cfg/`, loads games out of `content/` and serves
 a browser client. The games are not in it: each is a signed pack that the server installs and every client downloads when it joins, so `setup.sh` publishes the games beside it as packs on a developer machine, and a production box fetches them from the content origin instead.
 
@@ -240,7 +240,7 @@ getting the listing on the site to say you are up.
 ## Contributing
 
 Issues and pull requests are welcome on any repository under
-[`modcommunity`](https://github.com/modcommunity), and so is a bug report that
+[`gamespice-platform`](https://github.com/gamespice-platform), and so is a bug report that
 is only a description of what you saw. The two contributions that help most are
 the two the platform cannot manufacture for itself:
 

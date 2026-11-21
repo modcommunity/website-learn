@@ -19,7 +19,7 @@ source:
 
 Sixty-one addons that work together and, apart from `dot-core`, work independently.
 Each is its own repository under
-[`modcommunity`](https://github.com/modcommunity), each ships one
+[`gamespice-platform`](https://github.com/gamespice-platform), each ships one
 `addons/<name>/` folder, and each has its own headless test suite.
 
 <Callout type="info" title="Only `dot-core` is ever a hard dependency">
@@ -161,7 +161,7 @@ are. Every game in the collection uses these.
 
 ## Not addons, but part of the collection
 
-Four projects are not folders you copy into a game. [`dot-serve`](/learn/godot/tooling#dotserve) and [`dot-server-deploy`](/learn/godot/tooling#tmcs-server-tool) start and host a server, [`dot-ci`](/learn/godot/tooling#dot-ci) is the shared CI every repository calls, and [`dot-game-template`](/learn/godot/games#dot-game-template) is a small complete game (Coin Grab) to copy a new project from. [`dot-bootstrap`](/learn/godot/getting-started) clones and links all of it.
+Four projects are not folders you copy into a game. [`dot-serve`](/learn/godot/tooling#dotserve) and [`server-deploy`](/learn/godot/tooling#tmcs-server-tool) start and host a server, [`ci`](/learn/godot/tooling#ci) is the shared CI every repository calls, and [`game-template`](/learn/godot/games#game-template) is a small complete game (Coin Grab) to copy a new project from. [`bootstrap`](/learn/godot/getting-started) clones and links all of it.
 
 <Related>
 - [Getting started](/learn/godot/getting-started) — install one and run something

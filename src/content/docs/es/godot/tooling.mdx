@@ -82,7 +82,7 @@ generada lista del `3` al `6` bajo `RestartPreventExitStatus`.
 
 ## La herramienta de servidor de TMC
 
-`dot-server-deploy` es donde la colección se junta en algo que un dueño de
+`server-deploy` es donde la colección se junta en algo que un dueño de
 servidor arranca con un solo comando. Es un proyecto de Godot que arranca un
 `dot-server`, lee su configuración de `cfg/*.yml`, carga juegos desde `content/`
 y sirve un cliente de navegador — y **no incluye ningún juego propio**. Cada juego, el vestíbulo incluido, es un paquete firmado de [dot-cloud](/learn/godot/addons/dot-cloud) que el servidor instala desde un origen de contenido y que todos los clientes descargan al conectarse, así que el cliente es la misma compilación sea cual sea el juego al que entra y un juego nuevo no necesita una nueva.
@@ -99,7 +99,7 @@ Windows: `setup.bat` (un envoltorio de `setup.ps1`), y luego `.\server.ps1`.
 <Callout type="info" title="Antes se llamaba `dot-server-setup-test`">
 Es el mismo proyecto, con un nombre más claro. Si tienes una copia antigua o un
 enlace antiguo, ahora es
-[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy).
+[`gamespice-platform/server-deploy`](https://github.com/gamespice-platform/server-deploy).
 </Callout>
 
 ### Tres scripts fáciles de confundir

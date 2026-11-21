@@ -30,10 +30,10 @@ source:
 
 ## 1. Start from the template
 
-[`dot-game-template`](https://github.com/modcommunity/dot-game-template) is a small, complete, networked game, **Coin Grab**, written the way the platform wants a game written: server-authoritative, predicted on the client, delivered as a signed pack, and playable offline from the same scene. Press **Use this template** on GitHub, or clone it, then rename it once:
+[`game-template`](https://github.com/gamespice-platform/game-template) is a small, complete, networked game, **Coin Grab**, written the way the platform wants a game written: server-authoritative, predicted on the client, delivered as a signed pack, and playable offline from the same scene. Press **Use this template** on GitHub, or clone it, then rename it once:
 
 ```bash
-git clone --depth 1 https://github.com/modcommunity/dot-game-template crate-rush
+git clone --depth 1 https://github.com/gamespice-platform/game-template crate-rush
 cd crate-rush && rm -rf .git && git init -b main
 tools/rename.sh cr crate-rush
 ```
@@ -49,12 +49,12 @@ A game is mounted at runtime under a path that depends on its version, so it can
 The addons are not copied into your repository. The `/addons/<name>` lines in `.gitignore` are the list, and one script reads it and links them:
 
 ```bash
-git clone https://github.com/modcommunity/dot-ci ../dot-ci
-../dot-ci/scripts/resolve-deps.sh .
+git clone https://github.com/gamespice-platform/ci ../ci
+../ci/scripts/resolve-deps.sh .
 godot --headless --path . --import
 ```
 
-Re-run the import whenever an addon adds a `class_name`: each project keeps its own class cache, and a stale one reads like a broken addon (`Identifier "DotX" not declared`). To use another addon, add its line to `.gitignore` and link again. Working inside the whole family? [`dot-bootstrap`](https://github.com/modcommunity/dot-bootstrap) does all of this for every repository at once.
+Re-run the import whenever an addon adds a `class_name`: each project keeps its own class cache, and a stale one reads like a broken addon (`Identifier "DotX" not declared`). To use another addon, add its line to `.gitignore` and link again. Working inside the whole family? [`bootstrap`](https://github.com/gamespice-platform/bootstrap) does all of this for every repository at once.
 
 ## 3. Run it, host it, test it
 
@@ -70,7 +70,7 @@ The template checks itself with `tools/check.sh` (import, parse every script, ev
 | `./game.sh soak [MAP] [MIN]` | Run bots headless for a while and judge the result: [Bot soak testing](/learn/godot/soak-testing). |
 | `./game.sh suites` | List the suites. |
 
-Options go **before** the command: `./game.sh --no-parse test`, never `test --no-parse`. `online` and `server` use [`dot-server-deploy`](/learn/godot/tooling#tmcs-server-tool) beside your repository and rebuild your game's pack first, so what you play is what is on disk now.
+Options go **before** the command: `./game.sh --no-parse test`, never `test --no-parse`. `online` and `server` use [`server-deploy`](/learn/godot/tooling#tmcs-server-tool) beside your repository and rebuild your game's pack first, so what you play is what is on disk now.
 
 <Callout type="info" title="Look at it, too">
 No assertion reaches an interface or a motion. Every view or UI change wants a frame rendered and looked at; that is what `shot` is for.
@@ -113,7 +113,7 @@ Every game client adds [`dot-game`](/learn/godot/addons/dot-game)'s `DotGameClie
 
 ## 6. Ship it
 
-Push a `v*` tag and [dot-ci](/learn/godot/tooling#dot-ci) packages the game; the site signs and publishes it as `<your site username>/<repository>`, and a server installs it by that name. The order of tags across addons, the lock and the shell is on [Releasing](/learn/godot/releasing).
+Push a `v*` tag and [ci](/learn/godot/tooling#ci) packages the game; the site signs and publishes it as `<your site username>/<repository>`, and a server installs it by that name. The order of tags across addons, the lock and the shell is on [Releasing](/learn/godot/releasing).
 
 <Related>
 - [Getting started](/learn/godot/getting-started)

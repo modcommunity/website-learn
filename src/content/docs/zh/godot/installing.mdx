@@ -57,8 +57,8 @@ TextServerExtension 的签名——在这些仓库里一处都没出现过。
 整套合集克隆下来。
 
 ```bash
-git clone https://github.com/modcommunity/dot-core
-git clone https://github.com/modcommunity/dot-timer
+git clone https://github.com/gamespice-platform/core
+git clone https://github.com/gamespice-platform/timer
 ```
 
 这是使用方式决定的：想要一个速通计时器的人，应该能只拿走 `dot-timer` 和
@@ -70,11 +70,11 @@ git clone https://github.com/modcommunity/dot-timer
 的每一个插件。这些软链都在 `.gitignore` 里，因为使用者是复制目录而不是链接——所以刚克隆
 下来的仓库在有东西把它们建出来之前是打不开的。
 
-**不要手动建。** `dot-bootstrap` 会克隆每个仓库，并把每个项目需要的每个插件都链接好：
+**不要手动建。** `bootstrap` 会克隆每个仓库，并把每个项目需要的每个插件都链接好：
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh              # 克隆缺的、拉取没缺的、链接所有东西
 ./bootstrap.sh --links      # 只重做链接
 ./bootstrap.sh --status     # 每个仓库的分支、是否有改动、是否有未推送内容
@@ -90,7 +90,7 @@ cd dot-bootstrap
 
 `--content-keys` 是唯一与仓库无关的模式：[dot-cloud](/learn/godot/addons/dot-cloud) 拒绝未签名的
 清单，所以发布资源包需要一把私钥，而私钥是克隆永远带不来的东西。它会生成一把，并让
-`dot-server-deploy/client/content.json` 指向它——这会让那个已提交的文件在本地处于被修改状态，
+`server-deploy/client/content.json` 指向它——这会让那个已提交的文件在本地处于被修改状态，
 这是有意为之，也是它需要主动选择的原因。
 
 [入门](/learn/godot/getting-started)是完整的上手流程，包括 Windows 的做法（它复制文件夹，

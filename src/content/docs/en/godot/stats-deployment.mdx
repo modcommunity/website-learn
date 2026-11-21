@@ -60,7 +60,7 @@ godot --headless --path . --script <dot-stats>/tools/export_site_defs.gd -- \
   <Param name="The integration API">
     `POST /api/integration/v1/stats/defs-import` with an app-scoped token holding the stats-write scope. The body is `{ doc, overwrite, apply }`, and `apply` defaults to true. See the [stats integration API](/learn/api/integration/stats).
   </Param>
-  <Param name="dot-server-deploy">
+  <Param name="server-deploy">
     `deploy/import-stat-defs.sh` posts the repository's file to that endpoint, and defaults to `deployment/stat-defs.json`.
   </Param>
 </Params>

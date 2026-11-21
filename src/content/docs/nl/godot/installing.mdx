@@ -63,8 +63,8 @@ geen bovenliggende repository, dus de hele collectie in één keer klonen kan
 niet.
 
 ```bash
-git clone https://github.com/modcommunity/dot-core
-git clone https://github.com/modcommunity/dot-timer
+git clone https://github.com/gamespice-platform/core
+git clone https://github.com/gamespice-platform/timer
 ```
 
 Dat volgt uit hoe ze gebruikt worden: wie een speedruntimer wil, moet
@@ -77,12 +77,12 @@ en de games hebben elke add-on nodig die ze gebruiken. Die links staan in
 `.gitignore`, want een gebruiker kopieert de mappen in plaats daarvan — en een
 verse clone opent dus pas nadat iets ze heeft gemaakt.
 
-**Maak ze niet met de hand.** `dot-bootstrap` kloont elke repository en koppelt
+**Maak ze niet met de hand.** `bootstrap` kloont elke repository en koppelt
 elke add-on die elk project nodig heeft:
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
-cd dot-bootstrap
+git clone https://github.com/gamespice-platform/bootstrap.git
+cd bootstrap
 ./bootstrap.sh              # kloon wat ontbreekt, pull wat er is, koppel alles
 ./bootstrap.sh --links      # doe alleen de links opnieuw
 ./bootstrap.sh --status     # branch, dirty, unpushed, per repository
@@ -103,7 +103,7 @@ achtenvijftig ervan.
 [dot-cloud](/learn/godot/addons/dot-cloud) weigert een niet-ondertekend manifest,
 dus een pakket publiceren vraagt een privésleutel, en een privésleutel is het ene
 wat een clone nooit kan meedragen. Het maakt er een aan en laat
-`dot-server-deploy/client/content.json` ernaar wijzen — waardoor dat gecommitte
+`server-deploy/client/content.json` ernaar wijzen — waardoor dat gecommitte
 bestand lokaal gewijzigd is, met opzet, en daarom is het opt-in.
 
 [Aan de slag](/learn/godot/getting-started) is de hele walkthrough, inclusief wat

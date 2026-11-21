@@ -81,7 +81,7 @@ RCON のリスナー自体が開きません。拒否されるのは、そのま
 
 ## TMC のサーバーツール
 
-`dot-server-deploy` は、このコレクションがサーバー運営者の「コマンド 1 つで
+`server-deploy` は、このコレクションがサーバー運営者の「コマンド 1 つで
 起動できるもの」にまとまる場所です。`dot-server` を起動し、設定を `cfg/*.yml` から
 読み、`content/` からゲームを読み込み、ブラウザークライアントを配信する Godot
 プロジェクトで、**自前のゲームは 1 本も持ちません**。ロビーを含むすべてのゲームは、署名された [dot-cloud](/learn/godot/addons/dot-cloud) パックで、サーバーがコンテンツの配信元からインストールし、すべてのクライアントが接続時にダウンロードします。そのためクライアントは何に参加しても同じビルドで、新しいゲームに新しいクライアントは要りません。
@@ -98,7 +98,7 @@ Windows: `setup.bat`（`setup.ps1` のラッパー）のあとに `.\server.ps1`
 <Callout type="info" title="以前は `dot-server-setup-test` という名前でした">
 同じプロジェクトで、名前が分かりやすくなっただけです。古いチェックアウトや古い
 リンクをお持ちなら、現在は
-[`modcommunity/dot-server-deploy`](https://github.com/modcommunity/dot-server-deploy)
+[`gamespice-platform/server-deploy`](https://github.com/gamespice-platform/server-deploy)
 です。
 </Callout>
 

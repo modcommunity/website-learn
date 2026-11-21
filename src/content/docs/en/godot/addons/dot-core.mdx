@@ -271,7 +271,7 @@ the pack loads (`dot-cloud` asks between download and mount).
 - **A pack states what it needs in `requires.json`** at its root —
   `{"format": 1, "addons": {"dot_net": 3}}` — and nobody writes it by hand:
   `addons/dot_core/tools/dot_requires.gd` derives it from the game's own files
-  at the levels of the checkout that built it, and dot-ci writes it into the
+  at the levels of the checkout that built it, and ci writes it into the
   pack. A game that commits its own has it audited instead.
 
 <Callout type="info" title="An API level, not the release version">
